@@ -288,21 +288,16 @@ tr.row-amber td { background: rgba(255, 193, 7, .12) !important; }
 .auth-brand .tg { font-size: .72rem; color: var(--bs-secondary-color); letter-spacing: .04em; text-transform: uppercase; }
 .auth-brand img { max-height: 54px; }
 
-/* Right vibrant panel */
-.auth-right { position: relative; overflow: hidden; display: none;
-  background: linear-gradient(140deg, #ec008c 0%, #7a1fa2 40%, #2e3192 100%); }
-@media (min-width: 900px) { .auth-right { display: block; } }
-.auth-right::before { content: ""; position: absolute; inset: 0;
-  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.18), transparent 40%),
-              radial-gradient(circle at 75% 80%, rgba(0,174,239,.35), transparent 45%); }
-.auth-right .glow { position: absolute; border-radius: 50%; filter: blur(2px); opacity: .9; }
-.auth-poster { position: absolute; top: 50%; left: 50%; width: 210px; transform: translate(-50%,-50%) rotate(-6deg);
-  background: #fff; border-radius: 14px; padding: 26px 22px; box-shadow: 0 30px 60px -15px rgba(0,0,0,.5); }
-.auth-poster .l { font-weight: 900; line-height: 1.02; font-size: 2.1rem; letter-spacing: -.02em; }
-.auth-poster .l1 { color: #2e3192; } .auth-poster .l2 { color: #ec008c; } .auth-poster .l3 { color: #39b54a; } .auth-poster .l4 { color: #00aeef; }
-.auth-right .tag { position: absolute; bottom: 26px; left: 0; right: 0; text-align: center; color: #fff; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .8rem; opacity: .9; }
-.floaty { animation: floaty 5s ease-in-out infinite; }
-.floaty.d { animation-delay: -2.5s; }
-@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+/* Right people panel (Navratri models from the business's own banner) */
+.auth-people { position: relative; display: none; background: #fff;
+  background-image: url("../img/login-people.jpg"); background-repeat: no-repeat;
+  background-position: right bottom; background-size: contain; }
+:root[data-bs-theme="dark"] .auth-people { background-color: #fff; }
+@media (min-width: 900px) { .auth-people { display: block; } }
+
+/* On phones/tablets, show the people as a compact image inside the form column */
+.auth-people-mobile { display: block; text-align: center; margin: .5rem 0 -1rem; }
+.auth-people-mobile img { max-height: 190px; width: auto; }
+@media (min-width: 900px) { .auth-people-mobile { display: none; } }
 
 @media print { .no-print { display: none !important; } }

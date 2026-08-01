@@ -48,6 +48,11 @@ $title = 'Login';
         <p class="auth-signup">Staff access only · contact the admin for an account</p>
       </form>
 
+      <!-- People shown here on phones/tablets (hidden on desktop where the side panel shows them) -->
+      <div class="auth-people-mobile">
+        <img src="<?= e(asset_url('img/login-people.jpg')) ?>" alt="" loading="lazy">
+      </div>
+
       <div class="auth-features">
         <div class="auth-feature"><div class="fi"><i class="bi bi-shield-check"></i></div><b>Secure &amp; Safe</b><small>Your data is 100% secure</small></div>
         <div class="auth-feature"><div class="fi"><i class="bi bi-speedometer2"></i></div><b>Fast &amp; Reliable</b><small>Quick access anytime</small></div>
@@ -67,19 +72,8 @@ $title = 'Login';
       </div>
     </div>
 
-    <!-- Right: vibrant printing panel -->
-    <div class="auth-right">
-      <span class="glow floaty" style="width:120px;height:120px;background:#00aeef;top:12%;left:14%"></span>
-      <span class="glow floaty d" style="width:80px;height:80px;background:#ffd400;bottom:18%;left:22%"></span>
-      <span class="glow floaty" style="width:60px;height:60px;background:#39b54a;top:22%;right:16%"></span>
-      <div class="auth-poster floaty">
-        <div class="l l1">WE</div>
-        <div class="l l2">PRINT</div>
-        <div class="l l3">WHAT YOU</div>
-        <div class="l l4">THINK</div>
-      </div>
-      <div class="tag"><?= e($businessName) ?></div>
-    </div>
+    <!-- Right: the business's own Navratri banner models -->
+    <div class="auth-people" role="img" aria-label="<?= e($businessName) ?>"></div>
   </div>
 </div>
 

@@ -1,5 +1,17 @@
-<?php use App\Core\Csrf; $title = 'Settings'; ?>
+<?php use App\Core\Acl; use App\Core\Csrf; $title = 'Settings'; ?>
 <h4 class="mb-3">Settings</h4>
+<?php if (Acl::can('whatsapp.settings') || Acl::can('update.manage')): ?>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <?php if (Acl::can('whatsapp.settings')): ?>
+    <a class="btn btn-outline-success btn-sm" href="<?= e(admin_url('whatsapp/settings')) ?>"><i class="bi bi-whatsapp"></i> WhatsApp Settings</a>
+    <a class="btn btn-outline-success btn-sm" href="<?= e(admin_url('whatsapp/templates')) ?>"><i class="bi bi-chat-square-text"></i> WhatsApp Templates</a>
+  <?php endif; ?>
+  <?php if (Acl::can('update.manage')): ?>
+    <a class="btn btn-outline-secondary btn-sm" href="<?= e(admin_url('system/updates')) ?>"><i class="bi bi-cloud-arrow-down"></i> System Updates</a>
+    <a class="btn btn-outline-secondary btn-sm" href="<?= e(admin_url('system/backups')) ?>"><i class="bi bi-archive"></i> Backups</a>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
 <form method="post" action="<?= e(admin_url('settings')) ?>" enctype="multipart/form-data">
   <?= Csrf::field() ?>
   <div class="card mb-3"><div class="card-body">

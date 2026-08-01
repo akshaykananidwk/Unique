@@ -1,5 +1,7 @@
 <?php $title = 'Inbound WhatsApp'; ?>
-<h4 class="mb-3">Inbound WhatsApp Messages <span class="text-muted fs-6">(<?= (int)$total ?>)</span></h4>
+<h4 class="mb-3">WhatsApp</h4>
+<?= App\Core\View::partial('whatsapp/_nav', ['waActive' => 'inbound']) ?>
+<h5 class="mb-3">Inbound Messages <span class="text-muted fs-6">(<?= (int)$total ?>)</span></h5>
 <?php if (!$rows): ?>
   <div class="empty-state"><i class="bi bi-inbox"></i>No inbound messages yet.
     Configure the webhook URL from WhatsApp Settings in your provider panel.</div>

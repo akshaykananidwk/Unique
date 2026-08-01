@@ -1,5 +1,6 @@
-<?php use App\Core\Csrf; $title = 'WhatsApp Settings'; ?>
-<h4 class="mb-3">WhatsApp Settings</h4>
+<?php use App\Core\Csrf; use App\Core\View; $title = 'WhatsApp Settings'; ?>
+<h4 class="mb-3">WhatsApp</h4>
+<?= View::partial('whatsapp/_nav', ['waActive' => 'settings']) ?>
 <div class="row g-3">
   <div class="col-lg-7">
     <form method="post" action="<?= e(admin_url('whatsapp/settings')) ?>">

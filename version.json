@@ -1,10 +1,9 @@
 {
-    "version": "1.0.1",
+    "version": "1.0.2",
     "released_at": "2026-08-01",
     "changelog": [
-        "Update engine: fixed GitHub API calls for branch names containing a slash (e.g. claude/feature) — Check for Update and Update Now now work on such branches",
-        "WhatsApp: added a Status-check diagnostics panel on Settings (master switch, API key, cron worker health, pending/sent/failed counts, last API error)",
-        "WhatsApp: added a 'Send pending now' button to flush the queue from the browser and surface the exact provider response",
-        "WhatsApp: worker records its last-run time so the UI can tell whether the cron is alive"
+        "WhatsApp settings are now reachable from the menu: the sidebar 'WhatsApp' opens Settings, every WhatsApp page has tabs (Settings | Templates | Logs | Inbound), and the main Settings page links to them",
+        "Update engine: fixed GitHub API calls for branch names containing a slash",
+        "WhatsApp: Status-check diagnostics panel + 'Send pending now' + cron worker health tracking"
     ]
 }

@@ -1,8 +1,10 @@
 <?php use App\Core\Acl; use App\Core\Csrf; $title = 'WhatsApp Logs';
 $statusColors = ['pending' => 'secondary', 'processing' => 'info', 'sent' => 'success', 'failed' => 'danger', 'cancelled' => 'dark'];
 ?>
+<h4 class="mb-3">WhatsApp</h4>
+<?= App\Core\View::partial('whatsapp/_nav', ['waActive' => 'logs']) ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-  <h4 class="mb-0">WhatsApp Logs <span class="text-muted fs-6">(<?= (int)$total ?>)</span></h4>
+  <h5 class="mb-0">Logs <span class="text-muted fs-6">(<?= (int)$total ?>)</span></h5>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary btn-sm" href="<?= e(admin_url('whatsapp/inbound')) ?>"><i class="bi bi-inbox"></i> Inbound</a>
     <?php if (Acl::can('whatsapp.resend')): ?>

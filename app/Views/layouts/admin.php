@@ -17,7 +17,9 @@ $nav = [
     ['item.manage', 'items', 'box-seam', 'Items'],
     ['category.manage', 'categories', 'tags', 'Categories'],
     ['report.staff', 'reports', 'graph-up', 'Reports'],
-    ['whatsapp.logs', 'whatsapp/logs', 'whatsapp', 'WhatsApp'],
+    // WhatsApp: land on Settings for those who can manage it, else the logs page
+    [Acl::can('whatsapp.settings') ? 'whatsapp.settings' : 'whatsapp.logs',
+     Acl::can('whatsapp.settings') ? 'whatsapp/settings' : 'whatsapp/logs', 'whatsapp', 'WhatsApp'],
     ['user.manage', 'users', 'person-gear', 'Users'],
     ['role.manage', 'roles', 'shield-lock', 'Roles'],
     ['branch.manage', 'branches', 'shop', 'Branches'],

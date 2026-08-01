@@ -4,7 +4,8 @@ $placeholders = ['{customer_name}','{customer_phone}','{job_no}','{order_date}',
   '{tracking_link}','{proof_link}','{receipt_link}','{branch_name}','{branch_phone}','{branch_address}',
   '{staff_name}','{designer_name}','{feedback_text}','{revision_no}','{business_name}','{business_phone}','{today}'];
 ?>
-<h4 class="mb-3">WhatsApp Templates</h4>
+<h4 class="mb-3">WhatsApp</h4>
+<?= App\Core\View::partial('whatsapp/_nav', ['waActive' => 'templates']) ?>
 <p class="small text-muted">Tap a placeholder chip to copy it, then paste into the message body. Messages can be typed in English or Gujarati.</p>
 <div class="mb-3 d-flex flex-wrap gap-1">
   <?php foreach ($placeholders as $ph): ?>

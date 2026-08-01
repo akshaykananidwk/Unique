@@ -14,7 +14,7 @@ class AuthController
         if (Auth::check()) {
             redirect(admin_url());
         }
-        View::render('auth/login', [], 'layouts/blank');
+        View::render('auth/login', [], 'layouts/auth');
     }
 
     public function login(): void
@@ -29,6 +29,10 @@ class AuthController
         if (!$result['ok']) {
             flash('danger', $result['error'] ?? 'Login failed.');
             redirect(admin_url('login'));
+        }
+        if (!empty($_POST['remember'])) {
+            $p = session_get_cookie_params();
+            setcookie(session_name(), session_id(), time() + 60 * 60 * 24 * 30, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
         }
         $intended = $_SESSION['intended'] ?? null;
         unset($_SESSION['intended']);

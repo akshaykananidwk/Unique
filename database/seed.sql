@@ -98,7 +98,7 @@ SELECT r.id, p.id FROM `roles` r, `permissions` p WHERE r.slug='accountant' AND 
 -- ---------------------------------------------------------------- Settings defaults
 INSERT INTO `settings` (`group_key`,`setting_key`,`setting_value`,`is_encrypted`) VALUES
 ('general','business_name','Krishna Print',0),
-('general','business_tagline','Quality printing, on time',0),
+('general','business_tagline','Printing | Branding | Innovation',0),
 ('general','business_logo','',0),
 ('general','business_favicon','',0),
 ('general','business_address','',0),

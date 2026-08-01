@@ -1,5 +1,6 @@
 <?php use App\Core\Csrf; use App\Core\Settings; $title = (string)Settings::get('business_name', 'Krishna Print'); ?>
 <section class="hero text-center">
+  <?= kp_cubes_svg('hero-cubes') ?>
   <div class="container position-relative" style="z-index:1">
     <h1 class="display-4"><?= e($title) ?></h1>
     <p class="lead mb-4"><?= e((string)Settings::get('business_tagline', 'Quality printing, delivered on time')) ?></p>

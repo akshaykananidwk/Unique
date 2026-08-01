@@ -184,6 +184,28 @@ function local_phone(?string $raw): ?string
     return strlen($digits) === 10 ? $digits : null;
 }
 
+/** Decorative screen-print CMYK 3D cube cluster as an inline SVG string. */
+function kp_cubes_svg(string $class = 'kp-cubes'): string
+{
+    $cube = static function (float $x, float $y, float $d, float $e, array $c): string {
+        $p = static fn(array $pts): string => implode(' ', array_map(fn($pt) => round($pt[0], 1) . ',' . round($pt[1], 1), $pts));
+        return '<polygon points="' . $p([[$x, $y], [$x + $e, $y - $e], [$x + $d + $e, $y - $e], [$x + $d, $y]]) . '" fill="' . $c[1] . '"/>'
+            . '<polygon points="' . $p([[$x, $y], [$x + $d, $y], [$x + $d, $y + $d], [$x, $y + $d]]) . '" fill="' . $c[0] . '"/>'
+            . '<polygon points="' . $p([[$x + $d, $y], [$x + $d + $e, $y - $e], [$x + $d + $e, $y - $e + $d], [$x + $d, $y + $d]]) . '" fill="' . $c[2] . '"/>';
+    };
+    $C = [
+        'magenta' => ['#EC008C', '#FF5CB8', '#B4006E'], 'yellow' => ['#FFD400', '#FFE95C', '#D6B000'],
+        'cyan' => ['#00AEEF', '#5CCBF5', '#0086BA'], 'green' => ['#39B54A', '#6FD07C', '#2A8B38'],
+        'blue' => ['#2E3192', '#5A5DB8', '#1F2168'], 'pink' => ['#F06EAA', '#F7A8CE', '#C94E86'],
+    ];
+    $svg = '';
+    foreach ([[18, 70, 34, 16, 'magenta'], [58, 44, 30, 14, 'yellow'], [92, 78, 30, 14, 'cyan'],
+              [30, 118, 26, 12, 'green'], [128, 52, 26, 12, 'pink'], [150, 96, 24, 11, 'blue']] as [$x, $y, $d, $e, $col]) {
+        $svg .= $cube((float)$x, (float)$y, (float)$d, (float)$e, $C[$col]);
+    }
+    return '<svg class="' . e($class) . '" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">' . $svg . '</svg>';
+}
+
 /** Bootstrap-icon name for a category — its own icon, else a keyword guess, else a default. */
 function category_icon(array $category): string
 {

@@ -1,9 +1,10 @@
 {
-    "version": "1.0.4",
+    "version": "1.0.5",
     "released_at": "2026-08-02",
     "changelog": [
-        "WhatsApp messages now send immediately on their own — no cron and no 'Send pending now' needed. A new 'Send messages immediately' switch (on by default) flushes the queue right after each action, so order confirmations, OTPs and status updates go instantly.",
-        "WhatsApp Status-check panel updated to show Auto-send is on and no longer warns about the cron when it isn't needed.",
-        "Public website redesign, order-only (no prices), track-by-mobile, category icons and the UTC-database timezone fix (from 1.0.3)."
+        "Brand-new login page: 3D CMYK cube artwork, cursive 'Welcome Back!', icon input fields with show/password toggle, Remember Me, feature badges, and a vibrant 'WE PRINT WHAT YOU THINK' panel — fully responsive on mobile and desktop.",
+        "Bundled a local cursive font (no external CDN) so the login heading renders everywhere.",
+        "Public home hero now carries the same 3D CMYK cube identity for a consistent, premium printing-press look.",
+        "Tip: set your brand colour to red in Settings to match the reference exactly."
     ]
 }

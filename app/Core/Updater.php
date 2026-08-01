@@ -66,6 +66,16 @@ class Updater
         return "/repos/{$owner}/{$repo}";
     }
 
+    /**
+     * URL-encode a git ref for a path segment while PRESERVING slashes.
+     * Branch names like "claude/feature-x" must keep the slash — GitHub's
+     * /commits/{ref} and /zipball/{ref} endpoints 404 on a %2F-encoded slash.
+     */
+    private function refPath(string $ref): string
+    {
+        return implode('/', array_map('rawurlencode', explode('/', $ref)));
+    }
+
     public function testConnection(): array
     {
         $owner = (string)Settings::get('upd_repo_owner', '');
@@ -84,7 +94,7 @@ class Updater
     public function checkForUpdate(): array
     {
         $branch = (string)Settings::get('upd_branch', 'main');
-        $commit = $this->gh($this->repoPath() . '/commits/' . rawurlencode($branch));
+        $commit = $this->gh($this->repoPath() . '/commits/' . $this->refPath($branch));
         if (($commit['_http'] ?? 0) !== 200) {
             return ['ok' => false, 'message' => 'Cannot reach GitHub: HTTP ' . ($commit['_http'] ?? 0) . ' ' . ($commit['message'] ?? '')];
         }
@@ -94,6 +104,7 @@ class Updater
         // Remote version.json for semantic version + changelog
         $remoteVersion = null;
         $vfile = $this->gh($this->repoPath() . '/contents/version.json?ref=' . rawurlencode($branch));
+        // (query-param ref accepts an encoded slash fine; path-segment refs do not — see refPath)
         if (($vfile['_http'] ?? 0) === 200 && !empty($vfile['content'])) {
             $decoded = json_decode((string)base64_decode((string)$vfile['content'], true), true);
             if (is_array($decoded)) {
@@ -340,7 +351,7 @@ class Updater
         @unlink($zipPath);
 
         $fh = fopen($zipPath, 'wb');
-        $ch = curl_init('https://api.github.com' . $this->repoPath() . '/zipball/' . rawurlencode($branch));
+        $ch = curl_init('https://api.github.com' . $this->repoPath() . '/zipball/' . $this->refPath($branch));
         $headers = ['Accept: application/vnd.github+json', 'User-Agent: KrishnaPrint-Updater'];
         if ($token !== '') {
             $headers[] = 'Authorization: Bearer ' . $token;

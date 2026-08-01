@@ -1,13 +1,10 @@
 {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "released_at": "2026-08-01",
     "changelog": [
-        "Initial release: multi-branch order & job management",
-        "Staff + public order entry with dynamic item options",
-        "WhatsApp queue, templates, worker and inbound webhook",
-        "Design proof loop with voice feedback and double-confirm approval",
-        "Payments, receipts, ledgers and outstanding reports",
-        "Dashboard, staff performance and full report suite",
-        "One-click installer and GitHub auto-update engine with rollback"
+        "Update engine: fixed GitHub API calls for branch names containing a slash (e.g. claude/feature) — Check for Update and Update Now now work on such branches",
+        "WhatsApp: added a Status-check diagnostics panel on Settings (master switch, API key, cron worker health, pending/sent/failed counts, last API error)",
+        "WhatsApp: added a 'Send pending now' button to flush the queue from the browser and surface the exact provider response",
+        "WhatsApp: worker records its last-run time so the UI can tell whether the cron is alive"
     ]
 }

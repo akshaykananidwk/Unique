@@ -99,7 +99,12 @@ class Whatsapp
         }
         $message = self::render((string)$tpl['body'], $data);
         $delay = max(0, (int)$tpl['delay_minutes']);
-        $scheduledAt = self::applyQuietHours(date('Y-m-d H:i:s', time() + $delay * 60));
+        $scheduledAt = date('Y-m-d H:i:s', time() + $delay * 60);
+        // Quiet hours apply only to non-urgent bulk messages. Transactional messages
+        // (proof link, order confirmation, OTP, payment receipt, status updates) go immediately.
+        if (self::isQuietHoursEligible((string)$tpl['event_key'])) {
+            $scheduledAt = self::applyQuietHours($scheduledAt);
+        }
         foreach (array_unique($numbers) as $number) {
             self::queueRaw(
                 $number,
@@ -145,6 +150,13 @@ class Whatsapp
             'scheduled_at' => $scheduledAt ?? now(),
             'created_at' => now(),
         ]);
+    }
+
+    /** Only non-urgent bulk reminders respect quiet hours; transactional messages send immediately. */
+    private static function isQuietHoursEligible(string $eventKey): bool
+    {
+        $bulk = ['payment.balance_reminder', 'order.overdue', 'system.daily_summary', 'proof.reminder'];
+        return in_array($eventKey, $bulk, true);
     }
 
     /** Push a send time out of the configured quiet window. */

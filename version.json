@@ -1,10 +1,9 @@
 {
-    "version": "1.0.5",
+    "version": "1.0.6",
     "released_at": "2026-08-02",
     "changelog": [
-        "Brand-new login page: 3D CMYK cube artwork, cursive 'Welcome Back!', icon input fields with show/password toggle, Remember Me, feature badges, and a vibrant 'WE PRINT WHAT YOU THINK' panel — fully responsive on mobile and desktop.",
-        "Bundled a local cursive font (no external CDN) so the login heading renders everywhere.",
-        "Public home hero now carries the same 3D CMYK cube identity for a consistent, premium printing-press look.",
-        "Tip: set your brand colour to red in Settings to match the reference exactly."
+        "First-class admin panel: a premium branded sidebar with grouped sections (Main, Customers & Catalog, Money & Reports, Communication, Administration, System), clean active states, a polished top bar with search and avatar, and a pinned New Order button. Fully responsive — the sidebar is fixed on desktop and slides in on mobile.",
+        "The whole admin now follows your brand colour — buttons, links, badges and highlights all use it consistently.",
+        "Design proof links (and OTPs, order confirmations, payment receipts, status updates) now send to the customer immediately, even during quiet hours. Quiet hours now apply only to non-urgent bulk reminders."
     ]
 }

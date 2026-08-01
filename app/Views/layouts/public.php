@@ -30,7 +30,7 @@ $cartCount = count($_SESSION['cart'] ?? []);
     <div class="collapse navbar-collapse" id="pubnav">
       <ul class="navbar-nav ms-auto align-items-md-center gap-md-2">
         <li class="nav-item"><a class="nav-link" href="<?= e(base_url('products')) ?>">Products</a></li>
-        <li class="nav-item"><a class="nav-link" href="<?= e(base_url('track')) ?>">Track Order</a></li>
+        <li class="nav-item"><a class="nav-link" href="<?= e(base_url('my-orders')) ?>">Track Order</a></li>
         <li class="nav-item"><a class="btn btn-outline-primary btn-sm position-relative" href="<?= e(base_url('cart')) ?>">
           <i class="bi bi-cart3"></i> Cart
           <?php if ($cartCount): ?><span class="badge bg-danger rounded-pill"><?= $cartCount ?></span><?php endif; ?>

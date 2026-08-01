@@ -2,49 +2,7 @@
 (function () {
   'use strict';
 
-  // ---------------------------------------------------------------- product live price
-  const priceBox = document.getElementById('livePrice');
-  const productForm = document.getElementById('productOrderForm');
-  if (productForm && priceBox && window.KP_PRODUCT) {
-    const p = window.KP_PRODUCT; // {base_price, pricing_type, slabs:[{min,max,rate}], options:{key:{values:{id:{delta,mode}}}}, tax_percent, min_qty}
-    const money = n => '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-    function calc() {
-      const qty = Math.max(p.min_qty, parseFloat(productForm.querySelector('[name=qty]').value) || p.min_qty);
-      let rate = parseFloat(p.base_price);
-      if (p.pricing_type === 'slab') {
-        (p.slabs || []).forEach(s => { if (qty >= s.min && (!s.max || qty <= s.max)) rate = parseFloat(s.rate); });
-      }
-      let add = 0; const mult = [];
-      productForm.querySelectorAll('[data-opt-key]').forEach(el => {
-        const key = el.getAttribute('data-opt-key');
-        let ids = [];
-        if (el.type === 'radio' || el.type === 'checkbox') { if (el.checked) ids = [el.value]; }
-        else if (el.tagName === 'SELECT' && el.value) ids = [el.value];
-        ids.forEach(id => {
-          const v = ((p.options[key] || {}).values || {})[id];
-          if (!v) return;
-          if (v.mode === 'add') add += parseFloat(v.delta);
-          else if (v.mode === 'multiply') mult.push(parseFloat(v.delta));
-          else if (v.mode === 'replace') rate = parseFloat(v.delta);
-        });
-      });
-      rate += add;
-      mult.forEach(m => rate *= m);
-      let billed = qty;
-      if (p.pricing_type === 'area') {
-        const w = parseFloat((productForm.querySelector('[name=opt_width_ft]') || {}).value) || 0;
-        const h = parseFloat((productForm.querySelector('[name=opt_height_ft]') || {}).value) || 0;
-        if (w > 0 && h > 0) billed = w * h * qty;
-      }
-      const amount = p.pricing_type === 'fixed' ? rate : rate * billed;
-      const tax = amount * (parseFloat(p.tax_percent) || 0) / 100;
-      priceBox.innerHTML = '<strong>' + money(amount + tax) + '</strong>' +
-        (tax > 0 ? ' <small class="text-muted">(incl. ' + p.tax_percent + '% tax)</small>' : '');
-    }
-    productForm.addEventListener('input', calc);
-    productForm.addEventListener('change', calc);
-    calc();
-  }
+  // Public site is order-only — no prices are shown to customers.
 
   // ---------------------------------------------------------------- OTP box autofocus
   const otp = document.getElementById('otpInput');

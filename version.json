@@ -1,9 +1,12 @@
 {
-    "version": "1.0.2",
-    "released_at": "2026-08-01",
+    "version": "1.0.3",
+    "released_at": "2026-08-02",
     "changelog": [
-        "WhatsApp settings are now reachable from the menu: the sidebar 'WhatsApp' opens Settings, every WhatsApp page has tabs (Settings | Templates | Logs | Inbound), and the main Settings page links to them",
-        "Update engine: fixed GitHub API calls for branch names containing a slash",
-        "WhatsApp: Status-check diagnostics panel + 'Send pending now' + cron worker health tracking"
+        "Public website redesigned: modern hero, category tiles with icons/photos, graphic product cards, features and steps — looks great on mobile and desktop",
+        "Public site is now order-only — no prices shown anywhere to customers",
+        "Track by mobile number on the homepage: enter your number (WhatsApp OTP when enabled) to see all your orders with live status, progress %, dates, balance and a full timeline",
+        "Categories can have an icon (auto-picked from the name when not set) shown on the public site",
+        "Fixed a timezone mismatch so 'overdue' and 'today' figures are correct even when the database server runs in UTC",
+        "Automatic WhatsApp confirmation is queued the moment a public order is placed"
     ]
 }

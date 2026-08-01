@@ -34,6 +34,21 @@ class DB
         return self::$pdo;
     }
 
+    /**
+     * Align the MySQL session time zone with PHP's, so SQL NOW()/CURDATE()/DATE_SUB(NOW())
+     * agree with PHP-written datetimes. Without this, "overdue" and "today" logic is wrong
+     * on servers where MySQL runs in UTC but the app timezone is Asia/Kolkata.
+     */
+    public static function syncTimezone(): void
+    {
+        try {
+            $offset = (new \DateTime('now'))->format('P'); // e.g. +05:30
+            self::$pdo->exec("SET time_zone = '$offset'");
+        } catch (\Throwable) {
+            // Some managed MySQL forbid SET time_zone — safe to ignore
+        }
+    }
+
     public static function prefix(): string
     {
         return self::$prefix;

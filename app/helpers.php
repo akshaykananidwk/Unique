@@ -184,6 +184,31 @@ function local_phone(?string $raw): ?string
     return strlen($digits) === 10 ? $digits : null;
 }
 
+/** Bootstrap-icon name for a category — its own icon, else a keyword guess, else a default. */
+function category_icon(array $category): string
+{
+    if (!empty($category['icon'])) {
+        return preg_replace('/[^a-z0-9\-]/', '', strtolower((string)$category['icon'])) ?: 'box-seam';
+    }
+    $name = strtolower(trim((string)($category['name'] ?? '') . ' ' . (string)($category['slug'] ?? '')));
+    $map = [
+        'visiting' => 'person-vcard', 'card' => 'person-vcard', 'business card' => 'person-vcard',
+        'flex' => 'flag', 'banner' => 'flag', 'hoarding' => 'badge-ad',
+        'bill' => 'journal-text', 'book' => 'journal-text', 'letterhead' => 'file-earmark-text', 'stationery' => 'file-earmark-text',
+        'sticker' => 'sticky', 'label' => 'tag', 'board' => 'easel', 'signage' => 'signpost', 'sunboard' => 'easel',
+        'stamp' => 'stamp', 'brochure' => 'file-richtext', 'pamphlet' => 'file-richtext', 'flyer' => 'file-richtext',
+        'invitation' => 'envelope-paper', 'wedding' => 'envelope-heart', 'poster' => 'image',
+        'mug' => 'cup-hot', 'tshirt' => 'person', 't-shirt' => 'person', 'id' => 'person-badge',
+        'calendar' => 'calendar3', 'certificate' => 'award', 'menu' => 'card-list',
+    ];
+    foreach ($map as $kw => $icon) {
+        if (str_contains($name, $kw)) {
+            return $icon;
+        }
+    }
+    return 'box-seam';
+}
+
 function is_installed(): bool
 {
     return is_file(BASE_PATH . '/storage/installed.lock') && is_file(BASE_PATH . '/config/config.php');

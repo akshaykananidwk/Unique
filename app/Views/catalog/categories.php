@@ -15,6 +15,10 @@
           <span class="badge bg-secondary ms-2"><?= (int)$c['item_count'] ?> items</span>
         </div>
         <input name="description" class="form-control form-control-sm mb-2" placeholder="Description" value="<?= e($c['description']) ?>">
+        <div class="input-group input-group-sm mb-2">
+          <span class="input-group-text"><i class="bi bi-<?= e(category_icon($c)) ?>"></i></span>
+          <input name="icon" class="form-control" placeholder="Icon (e.g. person-vcard)" value="<?= e($c['icon'] ?? '') ?>">
+        </div>
         <div class="d-flex gap-2 align-items-center mb-2">
           <input type="number" name="sort_order" class="form-control form-control-sm" style="width:80px" value="<?= (int)$c['sort_order'] ?>" title="Sort order">
           <div class="form-check"><input class="form-check-input" type="checkbox" name="is_active" value="1" <?= (int)$c['is_active'] ? 'checked' : '' ?> id="ca<?= (int)$c['id'] ?>">
@@ -42,7 +46,9 @@
     <div class="modal-body">
       <div class="mb-2"><label class="form-label">Name *</label><input name="name" class="form-control" required></div>
       <div class="mb-2"><label class="form-label">Description</label><input name="description" class="form-control"></div>
-      <div class="mb-2"><label class="form-label">Image</label><input type="file" name="image" class="form-control" accept="image/*"></div>
+      <div class="mb-2"><label class="form-label">Icon <small class="text-muted">(optional Bootstrap Icon name, e.g. <code>person-vcard</code>, <code>flag</code>)</small></label>
+        <input name="icon" class="form-control" placeholder="auto-picked from the name if left blank"></div>
+      <div class="mb-2"><label class="form-label">Image <small class="text-muted">(shown instead of the icon when set)</small></label><input type="file" name="image" class="form-control" accept="image/*"></div>
       <div class="mb-2"><label class="form-label">Sort order</label><input type="number" name="sort_order" class="form-control" value="0"></div>
       <div class="form-check"><input class="form-check-input" type="checkbox" name="is_active" value="1" checked id="na">
         <label class="form-check-label" for="na">Active</label></div>

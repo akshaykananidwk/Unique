@@ -42,6 +42,7 @@ class CatalogController extends Controller
             'name' => $name,
             'slug' => $slug,
             'image' => $image,
+            'icon' => trim((string)($_POST['icon'] ?? '')) ?: null,
             'description' => trim((string)($_POST['description'] ?? '')) ?: null,
             'sort_order' => (int)($_POST['sort_order'] ?? 0),
             'is_active' => !empty($_POST['is_active']) ? 1 : 0,
@@ -63,6 +64,7 @@ class CatalogController extends Controller
         }
         $updates = [
             'name' => trim((string)($_POST['name'] ?? $category['name'])),
+            'icon' => trim((string)($_POST['icon'] ?? '')) ?: null,
             'description' => trim((string)($_POST['description'] ?? '')) ?: null,
             'sort_order' => (int)($_POST['sort_order'] ?? 0),
             'is_active' => !empty($_POST['is_active']) ? 1 : 0,

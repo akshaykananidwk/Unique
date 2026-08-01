@@ -145,6 +145,29 @@ class Status
         return [false, 'Only a Branch Manager or Super Admin can move a job backwards.'];
     }
 
+    /** Customer-facing progress percentage (0–100) for an order/item status. */
+    public static function progressPercent(string $status, bool $requiresDesign = true): int
+    {
+        if ($status === 'cancelled') {
+            return 0;
+        }
+        if (in_array($status, ['completed', 'delivered'], true)) {
+            return 100;
+        }
+        $path = $requiresDesign
+            ? ['pending', 'design_pending', 'design_in_progress', 'proof_sent', 'design_approved',
+               'ready_for_print', 'printing', 'post_press', 'quality_check', 'ready_for_delivery',
+               'out_for_delivery', 'delivered', 'completed']
+            : ['pending', 'ready_for_print', 'printing', 'post_press', 'quality_check',
+               'ready_for_delivery', 'out_for_delivery', 'delivered', 'completed'];
+        $index = array_search($status, $path, true);
+        if ($index === false) {
+            // on_hold etc. — approximate from rank
+            return max(5, (int)round(self::rank($status) / 14 * 100));
+        }
+        return (int)round(($index + 1) / count($path) * 100);
+    }
+
     public static function isOverdue(?string $dueDate, string $status): bool
     {
         if (!$dueDate || self::isFinal($status)) {

@@ -41,3 +41,4 @@ DB::init($config['db']);
 Crypt::init((string)$config['app_key']);
 Settings::load();
 date_default_timezone_set((string)Settings::get('timezone', 'Asia/Kolkata'));
+DB::syncTimezone();

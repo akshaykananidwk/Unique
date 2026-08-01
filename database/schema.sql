@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS `categories` (
   `name` VARCHAR(100) NOT NULL,
   `slug` VARCHAR(120) NOT NULL,
   `image` VARCHAR(255) NULL,
+  `icon` VARCHAR(40) NULL,
   `description` TEXT NULL,
   `sort_order` INT NOT NULL DEFAULT 0,
   `is_active` TINYINT(1) NOT NULL DEFAULT 1,

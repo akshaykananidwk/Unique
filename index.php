@@ -36,6 +36,12 @@ $router->get('/order-placed/{token}', 'CheckoutController@placed');
 
 $router->get('/track', 'TrackController@form');
 $router->post('/track', 'TrackController@lookup');
+
+$router->get('/my-orders', 'TrackController@myOrdersForm');
+$router->post('/my-orders', 'TrackController@myOrders');
+$router->post('/my-orders/verify', 'TrackController@verifyMyOrders');
+$router->get('/my-orders/exit', 'TrackController@exitMyOrders');
+
 $router->get('/track/{token}', 'TrackController@byToken');
 
 $router->get('/proof/{token}', 'ProofController@show');

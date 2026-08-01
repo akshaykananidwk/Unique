@@ -26,7 +26,40 @@ class WhatsappController extends Controller
             'wa_quiet_end' => (string)Settings::get('wa_quiet_end', ''),
             'wa_webhook_secret' => (string)Settings::get('wa_webhook_secret', ''),
         ];
-        $this->render('whatsapp/settings', compact('settings'));
+        $diagnostics = Whatsapp::diagnostics();
+        $this->render('whatsapp/settings', compact('settings', 'diagnostics'));
+    }
+
+    /** Manually flush the queue from the browser (fallback when cron isn't set up, and for testing). */
+    public function processNow(): void
+    {
+        Acl::require('whatsapp.settings');
+        if (!Whatsapp::enabled()) {
+            flash('danger', 'Turn on the master switch first — WhatsApp sending is disabled.');
+            redirect(admin_url('whatsapp/settings'));
+        }
+        // A manual flush should try everything pending now, ignoring retry backoff windows
+        DB::run('UPDATE `' . tbl('whatsapp_queue') . "` SET scheduled_at = NOW() WHERE status = 'pending' AND scheduled_at > NOW()");
+        $before = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('whatsapp_queue') . "` WHERE status = 'pending'");
+        set_time_limit(120);
+        // Send a decent batch regardless of the per-minute rate limit for a manual flush
+        $sent = Whatsapp::processQueue(50);
+        $pending = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('whatsapp_queue') . "` WHERE status = 'pending'");
+        $failed = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('whatsapp_queue') . "` WHERE status = 'failed'");
+        // The exact API error from the most recent attempt in this run
+        $lastError = DB::val('SELECT last_error FROM `' . tbl('whatsapp_queue') . "` WHERE last_error IS NOT NULL ORDER BY id DESC LIMIT 1");
+        Logger::activity('whatsapp', 'process_now', null, null, "Manual queue flush — sent $sent of $before");
+
+        if ($sent > 0) {
+            flash('success', "Sent $sent message(s)." . ($pending ? " $pending still waiting." : '') . ($failed ? " $failed failed — see the logs." : ''));
+        } elseif ($before === 0) {
+            flash('info', 'No pending messages were due to send right now.');
+        } else {
+            // Attempted but none succeeded — show the real reason (usually a wrong API key)
+            $hint = $lastError ? ' The API said: <code>' . e(mb_substr((string)$lastError, 0, 200)) . '</code>' : '';
+            flash('danger', "Tried to send $before message(s) but none went through — check the API key / session in the settings above." . $hint);
+        }
+        redirect(admin_url('whatsapp/settings'));
     }
 
     public function saveSettings(): void

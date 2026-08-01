@@ -42,6 +42,42 @@
     </form>
   </div>
   <div class="col-lg-5">
+    <!-- Diagnostics: "are my settings correct / why aren't messages going?" -->
+    <div class="card mb-3 border-<?= $diagnostics['ok'] ? 'success' : 'warning' ?>"><div class="card-body">
+      <h6 class="d-flex justify-content-between align-items-center">
+        <span>Status check</span>
+        <span class="badge bg-<?= $diagnostics['ok'] ? 'success' : 'warning text-dark' ?>">
+          <?= $diagnostics['ok'] ? 'Ready to send' : 'Needs attention' ?>
+        </span>
+      </h6>
+      <ul class="list-unstyled small mb-2">
+        <?php foreach ($diagnostics['checks'] as $c): ?>
+        <li class="mb-1">
+          <span class="text-<?= e($c['level']) ?>"><?= $c['ok'] ? '✔' : ($c['level'] === 'warning' ? '⚠' : '✖') ?></span>
+          <strong><?= e($c['label']) ?></strong>
+          <?php if ($c['detail']): ?><div class="text-muted ms-3"><?= e($c['detail']) ?></div><?php endif; ?>
+        </li>
+        <?php endforeach; ?>
+      </ul>
+      <div class="d-flex gap-2 flex-wrap small mb-2">
+        <span class="badge bg-secondary">Pending: <?= (int)$diagnostics['counts']['pending'] ?></span>
+        <span class="badge bg-success">Sent: <?= (int)$diagnostics['counts']['sent'] ?></span>
+        <span class="badge bg-danger">Failed: <?= (int)$diagnostics['counts']['failed'] ?></span>
+      </div>
+      <div class="d-flex gap-2">
+        <form method="post" action="<?= e(admin_url('whatsapp/process-now')) ?>">
+          <?= Csrf::field() ?>
+          <button class="btn btn-primary btn-sm"><i class="bi bi-send"></i> Send pending now</button>
+        </form>
+        <a class="btn btn-outline-secondary btn-sm" href="<?= e(admin_url('whatsapp/logs')) ?>">View logs</a>
+      </div>
+      <p class="small text-muted mt-2 mb-0">
+        Messages are queued and sent by the per-minute cron
+        (<code>cron/whatsapp_worker.php</code>). If the cron isn't set up yet, use
+        <strong>Send pending now</strong> to send them from here.
+      </p>
+    </div></div>
+
     <div class="card"><div class="card-body">
       <h6>Test Send</h6>
       <form method="post" action="<?= e(admin_url('whatsapp/test')) ?>" class="d-flex gap-2">
@@ -49,7 +85,7 @@
         <input name="test_number" class="form-control" placeholder="10-digit mobile" required>
         <button class="btn btn-success">Send Test</button>
       </form>
-      <p class="small text-muted mt-2">Sends immediately (bypasses the queue) and shows the raw API response.</p>
+      <p class="small text-muted mt-2">Sends immediately (bypasses the queue) and shows the raw API response — the quickest way to confirm the API key and session are correct.</p>
     </div></div>
     <div class="alert alert-warning mt-3 small">
       <strong>Security note:</strong> if your API key is the same as the phone number, anyone who knows the number can

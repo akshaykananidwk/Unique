@@ -104,6 +104,7 @@ $router->get('/reports/activity', 'ReportController@activity');
 $router->get('/whatsapp/settings', 'WhatsappController@settings');
 $router->post('/whatsapp/settings', 'WhatsappController@saveSettings');
 $router->post('/whatsapp/test', 'WhatsappController@testSend');
+$router->post('/whatsapp/process-now', 'WhatsappController@processNow');
 $router->get('/whatsapp/templates', 'WhatsappController@templates');
 $router->post('/whatsapp/templates/{id}', 'WhatsappController@saveTemplate');
 $router->get('/whatsapp/logs', 'WhatsappController@logs');

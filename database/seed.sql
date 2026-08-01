@@ -137,6 +137,8 @@ INSERT INTO `settings` (`group_key`,`setting_key`,`setting_value`,`is_encrypted`
 ('whatsapp','wa_quiet_start','22:00',0),
 ('whatsapp','wa_quiet_end','08:00',0),
 ('whatsapp','wa_webhook_secret','',0),
+('whatsapp','wa_last_worker_run','',0),
+('whatsapp','wa_last_worker_sent_at','',0),
 ('update','upd_repo_owner','',0),
 ('update','upd_repo_name','',0),
 ('update','upd_branch','main',0),

@@ -161,6 +161,8 @@ class Whatsapp
     /** Process pending queue rows. Returns number sent. Used by the cron worker. */
     public static function processQueue(int $maxRows = 0): int
     {
+        // Record every attempt to run — lets the UI detect whether the worker/cron is alive
+        Settings::set('wa_last_worker_run', now(), 'whatsapp');
         if (!self::enabled()) {
             return 0;
         }
@@ -214,7 +216,69 @@ class Whatsapp
             }
             usleep($delayMicro);
         }
+        if ($sent > 0) {
+            Settings::set('wa_last_worker_sent_at', now(), 'whatsapp');
+        }
         return $sent;
+    }
+
+    /**
+     * Health check for the WhatsApp pipeline — powers the Settings diagnostics panel
+     * and answers "are my settings correct / why aren't messages going?".
+     * @return array{ok:bool,checks:array<int,array{label:string,ok:bool,level:string,detail:string}>,counts:array}
+     */
+    public static function diagnostics(): array
+    {
+        $checks = [];
+        $add = function (string $label, bool $ok, string $detail = '', string $level = 'danger') use (&$checks): void {
+            $checks[] = ['label' => $label, 'ok' => $ok, 'level' => $ok ? 'success' : $level, 'detail' => $detail];
+        };
+
+        $enabled = self::enabled();
+        $add('Master switch is ON', $enabled,
+            $enabled ? 'WhatsApp sending is enabled.' : 'Turn on "Enable WhatsApp sending" above — nothing is queued or sent while it is off.');
+
+        $apiUrl = (string)Settings::get('wa_api_url', '');
+        $add('API URL is set', $apiUrl !== '', $apiUrl !== '' ? $apiUrl : 'Enter the API URL (default https://bulk.akdwk.in/api.php).');
+
+        $key = (string)Settings::get('wa_api_key', '');
+        $add('API key is saved', $key !== '', $key !== '' ? 'Saved (encrypted).' : 'Enter and save the API key.');
+
+        $session = (string)Settings::get('wa_session_id', '');
+        $add('Session ID / device is set', $session !== '',
+            $session !== '' ? '' : 'Some accounts need the session/device id — set it if your provider requires it.', 'warning');
+
+        // Queue health
+        $counts = [];
+        foreach (['pending', 'processing', 'sent', 'failed'] as $st) {
+            $counts[$st] = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('whatsapp_queue') . '` WHERE status = ?', [$st]);
+        }
+        $counts['total'] = array_sum($counts);
+
+        // Worker / cron alive?
+        $lastRun = (string)Settings::get('wa_last_worker_run', '');
+        $lastRunTs = $lastRun ? strtotime($lastRun) : 0;
+        $recent = $lastRunTs && (time() - $lastRunTs) < 600; // within 10 minutes
+        $add('Sending worker (cron) is running', $recent,
+            $lastRun
+                ? ('Last run: ' . fmt_date($lastRun, true) . ($recent ? '' : ' — that is more than 10 minutes ago. The per-minute cron for cron/whatsapp_worker.php is probably not set up on the server.'))
+                : 'The worker has never run. Add the per-minute cron for cron/whatsapp_worker.php (see Post-install checklist), or use "Send pending now" below to flush the queue manually.',
+            'warning');
+
+        // Stuck pending messages while the worker is dead
+        if ($counts['pending'] > 0 && !$recent) {
+            $add($counts['pending'] . ' message(s) waiting in the queue', false,
+                'They will only go out once the worker runs. Press "Send pending now" to send them immediately.', 'warning');
+        }
+
+        $lastError = DB::get('SELECT to_number, last_error, created_at FROM `' . tbl('whatsapp_queue') . "` WHERE status = 'failed' AND last_error IS NOT NULL ORDER BY id DESC LIMIT 1");
+        if ($lastError) {
+            $add('Last failure from the API', false,
+                'To ' . $lastError['to_number'] . ' — ' . mb_substr((string)$lastError['last_error'], 0, 300), 'warning');
+        }
+
+        $ok = $enabled && $apiUrl !== '' && $key !== '';
+        return ['ok' => $ok, 'checks' => $checks, 'counts' => $counts];
     }
 
     private static function resolveRecipients(array $tpl, array $ctx): array

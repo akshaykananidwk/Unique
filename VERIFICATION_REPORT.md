@@ -167,6 +167,8 @@ Shop 1 | 9111111111
 ### 15. Queue: rate limit, retry, resend — ✅ PASS
 Messages are **queued only** (never sent inline). Number normalisation → `9198765xxxxx`. Quiet-hours (22:00–08:00) correctly pushed a 23:30 send to 08:00 next day. Worker respects per-minute rate limit (`usleep`), a lock file prevents overlap, and failures retry with 1→5→30 min backoff before `failed`. Resend (single + bulk-failed) implemented.
 
+**Live send verified against the real provider:** with the queue flushed via the new **Send pending now** button, `bulk.akdwk.in` responded `HTTP 200 {"status":"error","message":"Invalid API Key!"}` for a placeholder key — proving the request format is correct and the response is parsed accurately (marked `failed`, exact error surfaced to the admin). With a valid key the same path sends. A **Status check** diagnostics panel on WhatsApp Settings reports: master switch, API URL/key/session set, **whether the cron worker has run in the last 10 minutes** (the #1 reason messages appear "stuck"), pending/sent/failed counts, and the last API error. This directly answers "are my settings correct, and why aren't messages going?"
+
 ### 16. Inbound webhook receives + matches — ✅ PASS
 ```
 GET request            → 405 (POST only)

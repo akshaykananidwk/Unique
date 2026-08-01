@@ -5,6 +5,8 @@ use App\Core\Settings;
 $businessName = (string)Settings::get('business_name', 'Krishna Print');
 $tagline = (string)Settings::get('business_tagline', 'Printing | Branding | Innovation');
 $logo = (string)Settings::get('business_logo', '');
+$loginImage = (string)Settings::get('login_image', '');
+$peopleUrl = $loginImage !== '' ? upload_url($loginImage) : asset_url('img/login-people.jpg');
 
 $title = 'Login';
 ?>
@@ -50,7 +52,7 @@ $title = 'Login';
 
       <!-- People shown here on phones/tablets (hidden on desktop where the side panel shows them) -->
       <div class="auth-people-mobile">
-        <img src="<?= e(asset_url('img/login-people.jpg')) ?>" alt="" loading="lazy">
+        <img src="<?= e($peopleUrl) ?>" alt="" loading="lazy">
       </div>
 
       <div class="auth-features">
@@ -72,8 +74,8 @@ $title = 'Login';
       </div>
     </div>
 
-    <!-- Right: the business's own Navratri banner models -->
-    <div class="auth-people" role="img" aria-label="<?= e($businessName) ?>"></div>
+    <!-- Right: the business's own Navratri banner models (configurable in Settings) -->
+    <div class="auth-people" role="img" aria-label="<?= e($businessName) ?>" style="background-image:url('<?= e($peopleUrl) ?>')"></div>
   </div>
 </div>
 

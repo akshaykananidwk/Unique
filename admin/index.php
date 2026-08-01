@@ -52,6 +52,7 @@ $router->get('/orders/{id}', 'OrderController@show');
 $router->get('/orders/{id}/edit', 'OrderController@edit');
 $router->post('/orders/{id}/update', 'OrderController@update');
 $router->post('/orders/{id}/cancel', 'OrderController@cancel');
+$router->post('/orders/{id}/delete', 'OrderController@delete');
 $router->post('/orders/{id}/confirm', 'OrderController@confirmPublic');
 $router->post('/order-items/{id}/status', 'OrderController@itemStatus');
 $router->post('/order-items/{id}/assign', 'OrderController@assignDesigner');

@@ -4,6 +4,19 @@
 
   // Public site is order-only — no prices are shown to customers.
 
+  // Scroll-reveal for premium sections (with a safety fallback so nothing stays hidden)
+  var reveals = document.querySelectorAll('.reveal');
+  if (reveals.length && 'IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold: 0.05, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(function (el) { io.observe(el); });
+    // Fallback: reveal everything after 1.5s regardless (covers no-scroll / slow devices)
+    setTimeout(function () { reveals.forEach(function (el) { el.classList.add('in'); }); }, 1500);
+  } else {
+    reveals.forEach(function (el) { el.classList.add('in'); });
+  }
+
   // ---------------------------------------------------------------- OTP box autofocus
   const otp = document.getElementById('otpInput');
   if (otp) otp.focus();

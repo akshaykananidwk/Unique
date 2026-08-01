@@ -36,6 +36,7 @@ $cartCount = count($_SESSION['cart'] ?? []);
           <?php if ($cartCount): ?><span class="badge bg-danger rounded-pill"><?= $cartCount ?></span><?php endif; ?>
         </a></li>
         <li class="nav-item"><a class="btn btn-primary btn-sm" href="<?= e(base_url('products')) ?>">Order Now</a></li>
+        <li class="nav-item"><a class="nav-link" href="<?= e(admin_url('login')) ?>" title="Staff login"><i class="bi bi-box-arrow-in-right"></i> Login</a></li>
       </ul>
     </div>
   </div>

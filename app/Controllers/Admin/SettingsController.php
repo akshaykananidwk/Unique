@@ -26,7 +26,7 @@ class SettingsController extends Controller
     {
         Acl::require('settings.manage');
         $values = [];
-        foreach (array_merge(self::GENERAL_KEYS, self::APP_KEYS, ['business_logo', 'business_favicon']) as $key) {
+        foreach (array_merge(self::GENERAL_KEYS, self::APP_KEYS, ['business_logo', 'business_favicon', 'login_image']) as $key) {
             $values[$key] = (string)Settings::get($key, '');
         }
         $this->render('settings/index', compact('values'));
@@ -59,6 +59,12 @@ class SettingsController extends Controller
             $stored = Uploader::store($_FILES['business_favicon'], 'logos', array_merge(Uploader::IMAGES, ['ico']), 2);
             if ($stored['ok']) {
                 Settings::set('business_favicon', $stored['path'], 'general');
+            }
+        }
+        if (!empty($_FILES['login_image']['name'])) {
+            $stored = Uploader::store($_FILES['login_image'], 'logos', Uploader::IMAGES, 8);
+            if ($stored['ok']) {
+                Settings::set('login_image', $stored['path'], 'general');
             }
         }
         Logger::activity('settings', 'save', null, null, 'Business/app settings updated');

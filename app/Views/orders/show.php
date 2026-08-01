@@ -226,6 +226,16 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
     <?php if ((int)$order['is_cancelled']): ?>
     <div class="alert alert-danger">Cancelled <?= e(fmt_date($order['cancelled_at'], true)) ?> — <?= e($order['cancelled_reason']) ?></div>
     <?php endif; ?>
+
+    <?php if ($user['role_slug'] === 'super_admin'): ?>
+    <div class="card border-danger mt-3"><div class="card-body">
+      <h6 class="text-danger">Delete order</h6>
+      <p class="small text-muted mb-2">Removes this order and its payments from all lists (soft delete, kept in the database for audit).</p>
+      <form method="post" action="<?= e(admin_url('orders/' . $order['id'] . '/delete')) ?>" data-confirm="Delete order <?= e($order['job_no']) ?> permanently from all screens?">
+        <?= Csrf::field() ?><button class="btn btn-danger btn-sm"><i class="bi bi-trash"></i> Delete Order</button>
+      </form>
+    </div></div>
+    <?php endif; ?>
   </div>
 </div>
 

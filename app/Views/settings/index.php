@@ -31,6 +31,9 @@
       <div class="col-md-3"><label class="form-label">Logo <?= $values['business_logo'] ? '<a target="_blank" href="' . e(upload_url($values['business_logo'])) . '">(current)</a>' : '' ?></label>
         <input type="file" name="business_logo" class="form-control" accept="image/*"></div>
       <div class="col-md-3"><label class="form-label">Favicon</label><input type="file" name="business_favicon" class="form-control" accept="image/*,.ico"></div>
+      <div class="col-md-6"><label class="form-label">Login page image <?= $values['login_image'] ? '<a target="_blank" href="' . e(upload_url($values['login_image'])) . '">(current)</a>' : '' ?>
+        <small class="text-muted">— the models/banner shown on the login page. Use a clear, high-resolution image (people on a white background work best).</small></label>
+        <input type="file" name="login_image" class="form-control" accept="image/*"></div>
     </div>
   </div></div>
 

@@ -278,6 +278,21 @@ class OrderController extends Controller
         redirect(admin_url('orders/' . $id));
     }
 
+    /** Hard(soft)-delete an order — Super Admin only. Reverses payments/balances via soft delete. */
+    public function delete(string $id): void
+    {
+        if ($this->user['role_slug'] !== 'super_admin') {
+            abort(403, 'Only the Super Admin can delete orders.');
+        }
+        Acl::require('order.delete');
+        $order = $this->findOrder((int)$id);
+        DB::update('orders', ['deleted_at' => now()], ['id' => (int)$id]);
+        DB::run('UPDATE `' . tbl('payments') . '` SET deleted_at = ? WHERE order_id = ? AND deleted_at IS NULL', [now(), (int)$id]);
+        Logger::activity('order', 'delete', 'order', (int)$id, 'Deleted order ' . $order['job_no'] . ' (soft)');
+        flash('success', 'Order ' . $order['job_no'] . ' deleted.');
+        redirect(admin_url('orders'));
+    }
+
     public function confirmPublic(string $id): void
     {
         Acl::require('order.edit');

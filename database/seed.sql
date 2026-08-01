@@ -128,6 +128,7 @@ INSERT INTO `settings` (`group_key`,`setting_key`,`setting_value`,`is_encrypted`
 ('app','proof_reminder_hours','24',0),
 ('app','feedback_stale_hours','48',0),
 ('whatsapp','wa_enabled','0',0),
+('whatsapp','wa_auto_send','1',0),
 ('whatsapp','wa_api_url','https://bulk.akdwk.in/api.php',0),
 ('whatsapp','wa_api_key','',1),
 ('whatsapp','wa_session_id','',0),

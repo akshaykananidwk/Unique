@@ -10,6 +10,11 @@
           <input class="form-check-input" type="checkbox" name="wa_enabled" value="1" id="wae" <?= $settings['wa_enabled'] === '1' ? 'checked' : '' ?>>
           <label class="form-check-label fw-semibold" for="wae">Enable WhatsApp sending (master switch)</label>
         </div>
+        <div class="col-12 form-check form-switch ms-2">
+          <input class="form-check-input" type="checkbox" name="wa_auto_send" value="1" id="waauto" <?= $settings['wa_auto_send'] === '1' ? 'checked' : '' ?>>
+          <label class="form-check-label fw-semibold" for="waauto">Send messages immediately (recommended — no cron needed)</label>
+          <div class="form-text ms-1">When on, every message goes out right after the action — you never press “Send pending now”. Leave it on unless you specifically want cron-only sending.</div>
+        </div>
         <div class="col-md-8"><label class="form-label">API URL</label>
           <input name="wa_api_url" class="form-control" value="<?= e($settings['wa_api_url']) ?>"></div>
         <div class="col-md-4"><label class="form-label">Session ID / Device</label>

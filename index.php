@@ -18,6 +18,9 @@ if (maintenance_active()) {
 
 start_session();
 
+// Send any queued WhatsApp messages right after this response — no cron needed
+App\Core\Whatsapp::registerAutoFlush();
+
 $router = new Router('App\\Controllers\\Site\\');
 
 $router->get('/', 'HomeController@index');

@@ -29,6 +29,9 @@ if (maintenance_active() && !preg_match('#^/(login|logout|system/update|system/u
 
 Csrf::check();
 
+// Send any queued WhatsApp messages right after this response — no cron needed
+App\Core\Whatsapp::registerAutoFlush();
+
 $router = new Router('App\\Controllers\\Admin\\');
 
 // Auth

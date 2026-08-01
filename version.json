@@ -1,12 +1,9 @@
 {
-    "version": "1.0.3",
+    "version": "1.0.4",
     "released_at": "2026-08-02",
     "changelog": [
-        "Public website redesigned: modern hero, category tiles with icons/photos, graphic product cards, features and steps — looks great on mobile and desktop",
-        "Public site is now order-only — no prices shown anywhere to customers",
-        "Track by mobile number on the homepage: enter your number (WhatsApp OTP when enabled) to see all your orders with live status, progress %, dates, balance and a full timeline",
-        "Categories can have an icon (auto-picked from the name when not set) shown on the public site",
-        "Fixed a timezone mismatch so 'overdue' and 'today' figures are correct even when the database server runs in UTC",
-        "Automatic WhatsApp confirmation is queued the moment a public order is placed"
+        "WhatsApp messages now send immediately on their own — no cron and no 'Send pending now' needed. A new 'Send messages immediately' switch (on by default) flushes the queue right after each action, so order confirmations, OTPs and status updates go instantly.",
+        "WhatsApp Status-check panel updated to show Auto-send is on and no longer warns about the cron when it isn't needed.",
+        "Public website redesign, order-only (no prices), track-by-mobile, category icons and the UTC-database timezone fix (from 1.0.3)."
     ]
 }

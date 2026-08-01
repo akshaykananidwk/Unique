@@ -5,9 +5,69 @@ namespace App\Core;
 
 class Whatsapp
 {
+    private static bool $autoFlushRegistered = false;
+
     public static function enabled(): bool
     {
         return Settings::getBool('wa_enabled', false);
+    }
+
+    /** Auto-send messages the moment they are queued, without waiting for the cron. */
+    public static function autoSendEnabled(): bool
+    {
+        return self::enabled() && Settings::getBool('wa_auto_send', true);
+    }
+
+    /**
+     * Register a once-per-request shutdown hook that flushes pending messages AFTER the
+     * response is sent (via fastcgi_finish_request when available, so the user never waits).
+     * This makes messages go out immediately even when no cron job is configured.
+     * Call it early (before dispatch) in the front controllers.
+     */
+    public static function registerAutoFlush(): void
+    {
+        if (self::$autoFlushRegistered) {
+            return;
+        }
+        self::$autoFlushRegistered = true;
+        register_shutdown_function(static function (): void {
+            if (!self::autoSendEnabled()) {
+                return;
+            }
+            // Anything actually due to send right now?
+            try {
+                $due = (int)DB::val(
+                    'SELECT COUNT(*) FROM `' . tbl('whatsapp_queue') . "` WHERE status = 'pending'
+                     AND (scheduled_at IS NULL OR scheduled_at <= ?)",
+                    [now()]
+                );
+            } catch (\Throwable) {
+                return;
+            }
+            if ($due < 1) {
+                return;
+            }
+            // Flush the HTTP response first so the user isn't kept waiting
+            if (function_exists('fastcgi_finish_request')) {
+                @fastcgi_finish_request();
+            }
+            // Guard against overlapping flushes (other requests / the cron worker)
+            $lock = @fopen(BASE_PATH . '/storage/wa_autoflush.lock', 'c');
+            if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+                if ($lock) {
+                    fclose($lock);
+                }
+                return;
+            }
+            try {
+                self::processQueue(30);
+            } catch (\Throwable $e) {
+                Logger::file('whatsapp', 'auto-flush error: ' . $e->getMessage());
+            } finally {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
+        });
     }
 
     /** Render a template body by substituting {placeholders}. */
@@ -248,6 +308,13 @@ class Whatsapp
         $add('Session ID / device is set', $session !== '',
             $session !== '' ? '' : 'Some accounts need the session/device id — set it if your provider requires it.', 'warning');
 
+        $autoSend = self::autoSendEnabled();
+        $add('Auto-send is ON (no cron needed)', $autoSend,
+            $autoSend
+                ? 'Messages are sent immediately, right after each action — you never need to press "Send pending now".'
+                : 'Auto-send is off, so messages wait for the cron worker. Turn it on above for instant sending, or set up the per-minute cron.',
+            'warning');
+
         // Queue health
         $counts = [];
         foreach (['pending', 'processing', 'sent', 'failed'] as $st) {
@@ -255,20 +322,20 @@ class Whatsapp
         }
         $counts['total'] = array_sum($counts);
 
-        // Worker / cron alive?
+        // Worker / cron alive? (only relevant as a backstop — auto-send covers the common case)
         $lastRun = (string)Settings::get('wa_last_worker_run', '');
         $lastRunTs = $lastRun ? strtotime($lastRun) : 0;
         $recent = $lastRunTs && (time() - $lastRunTs) < 600; // within 10 minutes
-        $add('Sending worker (cron) is running', $recent,
-            $lastRun
-                ? ('Last run: ' . fmt_date($lastRun, true) . ($recent ? '' : ' — that is more than 10 minutes ago. The per-minute cron for cron/whatsapp_worker.php is probably not set up on the server.'))
-                : 'The worker has never run. Add the per-minute cron for cron/whatsapp_worker.php (see Post-install checklist), or use "Send pending now" below to flush the queue manually.',
-            'warning');
-
-        // Stuck pending messages while the worker is dead
-        if ($counts['pending'] > 0 && !$recent) {
-            $add($counts['pending'] . ' message(s) waiting in the queue', false,
-                'They will only go out once the worker runs. Press "Send pending now" to send them immediately.', 'warning');
+        if (!$autoSend) {
+            $add('Sending worker (cron) is running', $recent,
+                $lastRun
+                    ? ('Last run: ' . fmt_date($lastRun, true) . ($recent ? '' : ' — more than 10 minutes ago. Either turn on Auto-send above, or set up the per-minute cron for cron/whatsapp_worker.php.'))
+                    : 'The worker has never run. Turn on Auto-send above (recommended), or add the per-minute cron for cron/whatsapp_worker.php.',
+                'warning');
+            if ($counts['pending'] > 0 && !$recent) {
+                $add($counts['pending'] . ' message(s) waiting in the queue', false,
+                    'Turn on Auto-send, or press "Send pending now" to send them immediately.', 'warning');
+            }
         }
 
         $lastError = DB::get('SELECT to_number, last_error, created_at FROM `' . tbl('whatsapp_queue') . "` WHERE status = 'failed' AND last_error IS NOT NULL ORDER BY id DESC LIMIT 1");

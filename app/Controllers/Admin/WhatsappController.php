@@ -16,6 +16,7 @@ class WhatsappController extends Controller
         Acl::require('whatsapp.settings');
         $settings = [
             'wa_enabled' => Settings::getBool('wa_enabled') ? '1' : '0',
+            'wa_auto_send' => Settings::getBool('wa_auto_send', true) ? '1' : '0',
             'wa_api_url' => (string)Settings::get('wa_api_url', 'https://bulk.akdwk.in/api.php'),
             'wa_api_key' => (string)Settings::get('wa_api_key', ''),
             'wa_session_id' => (string)Settings::get('wa_session_id', ''),
@@ -66,6 +67,7 @@ class WhatsappController extends Controller
     {
         Acl::require('whatsapp.settings');
         Settings::set('wa_enabled', !empty($_POST['wa_enabled']) ? '1' : '0', 'whatsapp');
+        Settings::set('wa_auto_send', !empty($_POST['wa_auto_send']) ? '1' : '0', 'whatsapp');
         Settings::set('wa_api_url', trim((string)($_POST['wa_api_url'] ?? '')), 'whatsapp');
         // Masked key field: only overwrite when the admin typed a new value
         $key = trim((string)($_POST['wa_api_key'] ?? ''));

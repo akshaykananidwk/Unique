@@ -1,0 +1,18 @@
+/* Print stylesheets: A5 job card / receipt + 80mm thermal */
+body.print-body { background: #fff; color: #000; font-family: system-ui, sans-serif; }
+.print-a5 { width: 148mm; margin: 0 auto; padding: 8mm; font-size: 11pt; }
+.print-thermal { width: 72mm; margin: 0 auto; padding: 2mm; font-size: 9pt; }
+.print-a5 table, .print-thermal table { width: 100%; border-collapse: collapse; }
+.print-a5 th, .print-a5 td { border-bottom: 1px dashed #999; padding: 3px 4px; text-align: left; font-size: 10pt; }
+.print-thermal th, .print-thermal td { padding: 1px 2px; font-size: 8.5pt; }
+.print-head { text-align: center; margin-bottom: 6px; }
+.print-head h4 { margin: 0; }
+.print-muted { color: #444; font-size: 9pt; }
+.qr-box { text-align: center; margin-top: 8px; }
+.qr-box img { width: 90px; height: 90px; }
+.totals td { border: 0; }
+.totals .grand { font-weight: 700; font-size: 12pt; border-top: 2px solid #000; }
+@media print {
+  .no-print { display: none !important; }
+  @page { margin: 5mm; }
+}

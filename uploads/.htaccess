@@ -1,0 +1,11 @@
+# No PHP execution, no directory listing inside uploads
+php_flag engine off
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+Options -Indexes
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phar
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .phar
+<FilesMatch "\.(php|phtml|php\d|phar|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,8 @@
+# Paths never touched by the auto-updater (one pattern per line).
+# Supports trailing /** for whole trees. Lines starting with # are comments.
+config/config.php
+.env
+uploads/**
+storage/**
+backups/**
+.htaccess

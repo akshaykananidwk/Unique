@@ -1,0 +1,13 @@
+{
+    "version": "1.0.0",
+    "released_at": "2026-08-01",
+    "changelog": [
+        "Initial release: multi-branch order & job management",
+        "Staff + public order entry with dynamic item options",
+        "WhatsApp queue, templates, worker and inbound webhook",
+        "Design proof loop with voice feedback and double-confirm approval",
+        "Payments, receipts, ledgers and outstanding reports",
+        "Dashboard, staff performance and full report suite",
+        "One-click installer and GitHub auto-update engine with rollback"
+    ]
+}

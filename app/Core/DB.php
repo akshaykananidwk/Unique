@@ -93,6 +93,10 @@ class DB
 
     public static function transaction(callable $fn): mixed
     {
+        // Re-entrant: nested calls join the outer transaction
+        if (self::$pdo->inTransaction()) {
+            return $fn();
+        }
         self::$pdo->beginTransaction();
         try {
             $result = $fn();

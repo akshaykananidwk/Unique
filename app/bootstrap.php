@@ -27,8 +27,10 @@ use App\Core\Settings;
 
 if (!is_installed()) {
     // Not installed yet — send everything to the installer.
-    if (!str_contains((string)($_SERVER['REQUEST_URI'] ?? ''), '/install')) {
-        header('Location: ' . rtrim(dirname((string)($_SERVER['SCRIPT_NAME'] ?? '/')), '/admin') . '/install/');
+    if (!str_contains((string)($_SERVER['REQUEST_URI'] ?? ''), '/install') && PHP_SAPI !== 'cli') {
+        $script = rtrim(str_replace('\\', '/', dirname((string)($_SERVER['SCRIPT_NAME'] ?? '/index.php'))), '/');
+        $base = preg_replace('#/(admin|api(/v1)?)$#', '', $script) ?? '';
+        header('Location: ' . $base . '/install/');
         exit;
     }
     return;

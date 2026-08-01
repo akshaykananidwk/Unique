@@ -1,0 +1,36 @@
+# Runtime files — created on the server, never committed
+
+# Secrets / install state
+config/config.php
+storage/installed.lock
+storage/maintenance.flag
+storage/*.lock
+
+# Ignore runtime dir contents but keep the folders (via .gitkeep / .htaccess)
+storage/logs/*
+storage/cache/*
+storage/tmp/*
+!storage/logs/.gitkeep
+!storage/cache/.gitkeep
+!storage/tmp/.gitkeep
+
+backups/*
+!backups/.gitkeep
+
+uploads/*
+!uploads/.htaccess
+uploads/proofs/*
+uploads/artwork/*
+uploads/logos/*
+uploads/receipts/*
+uploads/voice/*
+!uploads/proofs/
+!uploads/artwork/
+!uploads/logos/
+!uploads/receipts/
+!uploads/voice/
+!uploads/proofs/.gitkeep
+!uploads/artwork/.gitkeep
+!uploads/logos/.gitkeep
+!uploads/receipts/.gitkeep
+!uploads/voice/.gitkeep

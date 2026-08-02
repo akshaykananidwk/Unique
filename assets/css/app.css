@@ -253,9 +253,11 @@ tr.row-amber td { background: rgba(255, 193, 7, .12) !important; }
 .cat-tile .cat-count { font-size: .75rem; color: var(--bs-secondary-color); }
 
 /* Product cards */
-.prod-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
-@media (min-width: 768px) { .prod-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 1200px) { .prod-grid { grid-template-columns: repeat(4, 1fr); } }
+/* Adapts to any item count and stays centred, so 2 items don't stick to the left
+   with a big empty right, and many items fill the page evenly. */
+.prod-grid { display: grid; gap: 1rem; justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 240px)); }
+@media (min-width: 768px) { .prod-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 260px)); } }
 .prod-card {
   background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 1rem;
   overflow: hidden; display: flex; flex-direction: column; transition: transform .15s ease, box-shadow .15s ease;

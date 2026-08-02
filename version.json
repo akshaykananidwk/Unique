@@ -1,10 +1,8 @@
 {
-    "version": "1.0.8",
+    "version": "1.0.9",
     "released_at": "2026-08-02",
     "changelog": [
-        "Premium, 3D public website: animated hero with a floating fan of 3D product cards, a trust strip, 3D tilt category tiles, product cards with a shine effect, a 'Why choose us' section, a bold Track-order band, and smooth scroll reveals — the kind of site that wins orders.",
-        "Added a Login button to the public site header for quick staff sign-in from any phone.",
-        "Super Admin can now delete an order from its page (soft delete; the order and its payments leave every list but stay in the database for audit).",
-        "The login-page image is now set from Settings — upload a clear, high-resolution version any time."
+        "Delete order is now a one-tap red button on every row of the Orders list (Super Admin) as well as on the order page — quick to find everywhere.",
+        "Products page: items are now centred and balanced across the page for any count, instead of sticking to the left with an empty right side on desktop."
     ]
 }

@@ -1,4 +1,4 @@
-<?php use App\Models\Status; $title = 'Orders'; ?>
+<?php use App\Core\Csrf; use App\Models\Status; $title = 'Orders'; ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <h4 class="mb-0">Orders <span class="text-muted fs-6">(<?= (int)$total ?>)</span></h4>
   <a href="<?= e(admin_url('orders/create')) ?>" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New Order</a>
@@ -58,6 +58,11 @@
           <a class="btn btn-outline-secondary" title="Open" href="<?= e(admin_url('orders/' . $o['id'])) ?>"><i class="bi bi-eye"></i></a>
           <a class="btn btn-outline-secondary" title="Job card" target="_blank" href="<?= e(admin_url('orders/' . $o['id'] . '/job-card')) ?>"><i class="bi bi-printer"></i></a>
           <a class="btn btn-outline-success" title="WhatsApp customer" target="_blank" href="https://wa.me/<?= e(normalize_phone($o['customer_phone']) ?? '') ?>"><i class="bi bi-whatsapp"></i></a>
+          <?php if ($user['role_slug'] === 'super_admin'): ?>
+          <form method="post" class="d-inline" action="<?= e(admin_url('orders/' . $o['id'] . '/delete')) ?>" data-confirm="Delete order <?= e($o['job_no']) ?>? It will be removed from all lists.">
+            <?= Csrf::field() ?><button class="btn btn-outline-danger" title="Delete order"><i class="bi bi-trash"></i></button>
+          </form>
+          <?php endif; ?>
         </div>
       </td>
     </tr>

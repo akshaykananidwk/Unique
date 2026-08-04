@@ -1,10 +1,9 @@
 {
-    "version": "1.0.14",
+    "version": "1.0.15",
     "released_at": "2026-08-04",
     "changelog": [
-        "Your full product list is now in the system — 200 items across 18 categories (Visiting Card, Paper Bag, Letter Head, Rough Pad, Pamphlet, Envelope, Bill Book, UV DTF, Doctor File, Display, Solvent Printing, Eco Solvent, UV Special, LED Signage, Sun Pack, Paper Wristband, ID Card, Garment Tag).",
-        "Each product now asks the right questions when taking an order: visiting cards ask Single Side or Double Side, banners ask width and height in feet and price per square foot automatically, and bill books ask 2 Copy or 3 Copy and Full Colour or Single Colour, with numbering.",
-        "All imported items start at ₹0 and are kept off the public website until you enter a real price, so no customer can ever be quoted zero. Counter staff can use them straight away and type the rate.",
-        "The public website no longer shows a category that has nothing in it — a category appears the moment one of its items is priced and made public."
+        "Every item now has a Delete button right next to Edit on the Items page.",
+        "Deleting a category now deletes the items inside it too, instead of refusing. The confirmation tells you exactly how many items will go, and past orders keep their own record of what was sold.",
+        "Orders list: Status is now a dropdown — change a job's stage straight from the list without opening the order. It applies to every job in that order, and if something cannot move (for example the customer has not approved the design yet) it says so and moves the rest."
     ]
 }

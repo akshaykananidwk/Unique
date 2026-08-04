@@ -373,6 +373,59 @@ class OrderController extends Controller
         redirect(admin_url('orders/' . $item['order_id']));
     }
 
+    /** Quick status change straight from the orders list — applies to every live job in the order. */
+    public function orderStatus(string $id): void
+    {
+        Acl::require('order.change_status');
+        $order = $this->findOrder((int)$id);
+        // Return to the list the user came from, but never follow an off-site URL.
+        $back = (string)($_POST['back'] ?? '');
+        $back = str_starts_with($back, admin_url('orders')) ? $back : admin_url('orders');
+        $to = (string)($_POST['status'] ?? '');
+        if ($to === '' || $to === (string)$order['status']) {
+            redirect($back);
+        }
+        $note = trim((string)($_POST['note'] ?? ''));
+        $override = !empty($_POST['approval_override']) && Acl::can('order.override_approval');
+        $items = DB::all(
+            'SELECT id FROM `' . tbl('order_items') . "` WHERE order_id = ? AND status <> 'cancelled' ORDER BY sort_order, id",
+            [(int)$id]
+        );
+
+        $done = 0;
+        $already = 0;
+        $reasons = [];
+        foreach ($items as $item) {
+            $result = OrderService::changeItemStatus(
+                (int)$item['id'], $to, (int)$this->user['id'], $note, false, $this->isManager(), $override
+            );
+            if ($result['ok']) {
+                $done++;
+            } elseif (str_starts_with((string)($result['error'] ?? ''), 'Status is already')) {
+                $already++;
+            } else {
+                $reason = (string)($result['error'] ?? 'Could not update.');
+                if (($result['code'] ?? '') === 'needs_approval' && Acl::can('order.override_approval')) {
+                    $reason .= ' Open the order and tick “Customer approved in person” to push it through.';
+                }
+                $reasons[$reason] = true;
+            }
+        }
+
+        if ($done > 0) {
+            Logger::activity('order', 'status', 'order', (int)$id,
+                $order['job_no'] . ': ' . $done . ' job(s) → ' . $to . ' (from the orders list)');
+            flash($reasons ? 'warning' : 'success',
+                $order['job_no'] . ' moved to ' . Status::label($to) . ' (' . $done . ' job' . ($done === 1 ? '' : 's') . ').'
+                . ($reasons ? ' Not everything moved: ' . implode(' ', array_keys($reasons)) : ''));
+        } elseif ($already > 0 && !$reasons) {
+            flash('info', $order['job_no'] . ' is already at ' . Status::label($to) . '.');
+        } else {
+            flash('danger', $reasons ? implode(' ', array_keys($reasons)) : 'Nothing to update on this order.');
+        }
+        redirect($back);
+    }
+
     public function assignDesigner(string $id): void
     {
         Acl::require('order.assign');

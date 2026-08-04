@@ -41,6 +41,17 @@
     }
   });
 
+  // Selects that save the moment you pick (e.g. the status column on the orders list).
+  // requestSubmit keeps any data-confirm on the form working; plain .submit() would skip it.
+  document.addEventListener('change', e => {
+    const el = e.target;
+    if (!el.matches || !el.matches('[data-auto-submit]') || !el.form) return;
+    if (el.dataset.submitting) return;          // guard a double fire; never disable the
+    el.dataset.submitting = '1';                // control itself or its value is not posted
+    if (el.form.requestSubmit) el.form.requestSubmit();
+    else el.form.submit();
+  });
+
   // ---------------------------------------------------------------- global search
   const search = document.getElementById('globalSearch');
   const results = document.getElementById('globalSearchResults');

@@ -1,4 +1,4 @@
-<?php $title = 'Items'; ?>
+<?php use App\Core\Csrf; $title = 'Items'; ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4 class="mb-0">Items</h4>
   <a class="btn btn-primary btn-sm" href="<?= e(admin_url('items/create')) ?>"><i class="bi bi-plus-lg"></i> Add Item</a>
@@ -18,7 +18,15 @@
       <td data-label="Design?"><?= (int)$i['requires_design'] ? '✔' : '—' ?></td>
       <td data-label="Public?"><?= (int)$i['show_on_public'] ? '✔' : '—' ?></td>
       <td data-label="Options"><?= (int)$i['option_count'] ?></td>
-      <td data-label=""><a class="btn btn-sm btn-outline-primary" href="<?= e(admin_url('items/' . $i['id'] . '/edit')) ?>"><i class="bi bi-pencil"></i></a></td>
+      <td data-label="">
+        <div class="btn-group btn-group-sm">
+          <a class="btn btn-outline-primary" title="Edit" href="<?= e(admin_url('items/' . $i['id'] . '/edit')) ?>"><i class="bi bi-pencil"></i></a>
+          <form method="post" class="d-inline" action="<?= e(admin_url('items/' . $i['id'] . '/delete')) ?>"
+                data-confirm="Delete “<?= e($i['name']) ?>”? It will be removed from the order forms. Past orders keep their record.">
+            <?= Csrf::field() ?><button class="btn btn-outline-danger" title="Delete item"><i class="bi bi-trash"></i></button>
+          </form>
+        </div>
+      </td>
     </tr>
   <?php endforeach; ?>
   </tbody>

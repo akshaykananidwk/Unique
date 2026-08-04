@@ -1,4 +1,7 @@
-<?php use App\Core\Csrf; use App\Models\Status; $title = 'Orders'; ?>
+<?php use App\Core\Acl; use App\Core\Csrf; use App\Models\Status;
+$title = 'Orders';
+$backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
+?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <h4 class="mb-0">Orders <span class="text-muted fs-6">(<?= (int)$total ?>)</span></h4>
   <a href="<?= e(admin_url('orders/create')) ?>" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New Order</a>
@@ -50,7 +53,26 @@
       <td data-label="Customer"><?= e($o['customer_name']) ?><div class="small text-muted"><?= e($o['customer_phone']) ?></div></td>
       <td data-label="Date / Due"><span class="small"><?= e(fmt_date($o['order_date'])) ?></span>
         <div class="small <?= $overdue ? 'text-overdue fw-bold' : 'text-muted' ?>">Due <?= e(fmt_date($o['due_date'], true)) ?></div></td>
-      <td data-label="Status"><span class="badge bg-<?= e(Status::color((string)$o['status'])) ?>"><?= e(Status::label((string)$o['status'])) ?></span></td>
+      <td data-label="Status">
+        <?php if (Acl::can('order.change_status') && !in_array($o['status'], ['completed', 'cancelled'], true)): ?>
+          <form method="post" action="<?= e(admin_url('orders/' . $o['id'] . '/status')) ?>" class="d-inline">
+            <?= Csrf::field() ?>
+            <input type="hidden" name="back" value="<?= e($backUrl) ?>">
+            <select name="status" data-auto-submit
+                    class="form-select form-select-sm kp-status-pick text-bg-<?= e(Status::color((string)$o['status'])) ?>"
+                    title="Change status — applies to every job in this order">
+              <?php foreach (array_keys(Status::RANKS) as $s): ?>
+                <option value="<?= e($s) ?>" <?= $o['status'] === $s ? 'selected' : '' ?>><?= e(Status::label($s)) ?></option>
+              <?php endforeach; ?>
+              <?php if (!isset(Status::RANKS[$o['status']])): ?>
+                <option value="<?= e($o['status']) ?>" selected><?= e(Status::label((string)$o['status'])) ?></option>
+              <?php endif; ?>
+            </select>
+          </form>
+        <?php else: ?>
+          <span class="badge bg-<?= e(Status::color((string)$o['status'])) ?>"><?= e(Status::label((string)$o['status'])) ?></span>
+        <?php endif; ?>
+      </td>
       <td data-label="Total"><?= e(fmt_money($o['total'])) ?></td>
       <td data-label="Balance" class="<?= (float)$o['balance_amount'] > 0 ? 'text-danger fw-semibold' : 'text-success' ?>"><?= e(fmt_money($o['balance_amount'])) ?></td>
       <td data-label="Actions">

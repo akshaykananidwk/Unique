@@ -86,14 +86,27 @@ class CatalogController extends Controller
     public function deleteCategory(string $id): void
     {
         Acl::require('category.manage');
-        $count = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('items') . '` WHERE category_id = ? AND deleted_at IS NULL', [(int)$id]);
-        if ($count > 0) {
-            flash('danger', 'Move or delete the items in this category first.');
-        } else {
-            DB::delete('categories', ['id' => (int)$id]);
-            Logger::activity('catalog', 'delete', 'category', (int)$id, 'Category deleted');
-            flash('success', 'Category deleted.');
+        $category = DB::get('SELECT * FROM `' . tbl('categories') . '` WHERE id = ?', [(int)$id]);
+        if (!$category) {
+            abort(404, 'Category not found.');
         }
+        // Deleting a category takes its items with it. Items are soft-deleted so past orders
+        // (which keep their own name/price snapshots) stay intact and reports still add up.
+        $count = (int)DB::val(
+            'SELECT COUNT(*) FROM `' . tbl('items') . '` WHERE category_id = ? AND deleted_at IS NULL',
+            [(int)$id]
+        );
+        DB::transaction(function () use ($id) {
+            DB::run(
+                'UPDATE `' . tbl('items') . '` SET deleted_at = ?, updated_at = ? WHERE category_id = ? AND deleted_at IS NULL',
+                [now(), now(), (int)$id]
+            );
+            DB::delete('categories', ['id' => (int)$id]);
+        });
+        Logger::activity('catalog', 'delete', 'category', (int)$id,
+            'Category ' . $category['name'] . ' deleted with ' . $count . ' item(s)');
+        flash('success', 'Category “' . $category['name'] . '” deleted'
+            . ($count > 0 ? ' along with ' . $count . ' item' . ($count === 1 ? '' : 's') . '.' : '.'));
         redirect(admin_url('categories'));
     }
 

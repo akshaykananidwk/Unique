@@ -30,8 +30,11 @@
         <div class="d-flex gap-2">
           <button class="btn btn-sm btn-outline-primary">Save</button>
       </form>
-          <form method="post" action="<?= e(admin_url('categories/' . $c['id'] . '/delete')) ?>" data-confirm="Delete this category?">
-            <?= Csrf::field() ?><button class="btn btn-sm btn-outline-danger">Delete</button>
+          <form method="post" action="<?= e(admin_url('categories/' . $c['id'] . '/delete')) ?>"
+                data-confirm="Delete “<?= e($c['name']) ?>”<?= (int)$c['item_count'] > 0
+                    ? ' and all ' . (int)$c['item_count'] . ' item' . ((int)$c['item_count'] === 1 ? '' : 's') . ' inside it'
+                    : '' ?>? Past orders keep their record.">
+            <?= Csrf::field() ?><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
           </form>
         </div>
     </div></div>

@@ -16,6 +16,138 @@ class ReportController extends Controller
     }
 
     /** Staff performance — the core report. */
+    /**
+     * User performance — what each person brought in and what they collected.
+     * Orders taken (count + value) · advance taken · still pending on their orders · recovered.
+     */
+    public function users(): void
+    {
+        Acl::require('report.staff');
+        [$from, $to] = $this->dateRange();
+        $ot = tbl('orders');
+        $pt = tbl('payments');
+        $ut = tbl('users');
+
+        $rows = DB::all(
+            "SELECT u.id, u.name, r.name AS role_name,
+
+                -- Orders this user TOOK in the period
+                (SELECT COUNT(*) FROM `$ot` o WHERE o.taken_by_user_id = u.id
+                   AND o.deleted_at IS NULL AND o.is_cancelled = 0
+                   AND o.order_date BETWEEN ? AND ?) AS orders_taken,
+                (SELECT COALESCE(SUM(o.total),0) FROM `$ot` o WHERE o.taken_by_user_id = u.id
+                   AND o.deleted_at IS NULL AND o.is_cancelled = 0
+                   AND o.order_date BETWEEN ? AND ?) AS order_value,
+
+                -- Orders this user ACCEPTED in the period
+                (SELECT COUNT(*) FROM `$ot` o WHERE o.accepted_by_user_id = u.id
+                   AND o.deleted_at IS NULL AND o.is_cancelled = 0
+                   AND o.order_date BETWEEN ? AND ?) AS orders_accepted,
+
+                -- Money this user took at the counter
+                (SELECT COALESCE(SUM(p.amount),0) FROM `$pt` p WHERE p.received_by_user_id = u.id
+                   AND p.deleted_at IS NULL AND p.type = 'advance'
+                   AND p.paid_at BETWEEN ? AND ?) AS advance_taken,
+                (SELECT COALESCE(SUM(p.amount),0) FROM `$pt` p WHERE p.received_by_user_id = u.id
+                   AND p.deleted_at IS NULL AND p.type <> 'advance'
+                   AND p.paid_at BETWEEN ? AND ?) AS recovered,
+                (SELECT COALESCE(SUM(p.amount),0) FROM `$pt` p WHERE p.received_by_user_id = u.id
+                   AND p.deleted_at IS NULL
+                   AND p.paid_at BETWEEN ? AND ?) AS collected_total,
+
+                -- Still owed on the orders this user took (live figure, not period-bound)
+                (SELECT COALESCE(SUM(o.balance_amount),0) FROM `$ot` o WHERE o.taken_by_user_id = u.id
+                   AND o.deleted_at IS NULL AND o.is_cancelled = 0) AS pending_amount
+
+             FROM `$ut` u JOIN `" . tbl('roles') . "` r ON r.id = u.role_id
+             WHERE u.deleted_at IS NULL
+             ORDER BY order_value DESC, u.name",
+            [$from, $to, $from, $to, $from, $to, $from, $to, $from, $to, $from, $to]
+        );
+        $rows = array_values(array_filter($rows, fn($r) =>
+            (int)$r['orders_taken'] || (int)$r['orders_accepted'] || (float)$r['collected_total'] || (float)$r['pending_amount']));
+
+        $totals = [
+            'orders_taken' => array_sum(array_column($rows, 'orders_taken')),
+            'order_value' => array_sum(array_map('floatval', array_column($rows, 'order_value'))),
+            'advance_taken' => array_sum(array_map('floatval', array_column($rows, 'advance_taken'))),
+            'recovered' => array_sum(array_map('floatval', array_column($rows, 'recovered'))),
+            'collected_total' => array_sum(array_map('floatval', array_column($rows, 'collected_total'))),
+            'pending_amount' => array_sum(array_map('floatval', array_column($rows, 'pending_amount'))),
+        ];
+
+        if (($_GET['export'] ?? '') === 'csv') {
+            $this->csv('user-performance',
+                ['User', 'Role', 'Orders Taken', 'Order Value', 'Orders Accepted', 'Advance Taken', 'Recovered', 'Total Collected', 'Pending'],
+                array_map(fn($r) => [$r['name'], $r['role_name'], $r['orders_taken'], $r['order_value'],
+                    $r['orders_accepted'], $r['advance_taken'], $r['recovered'], $r['collected_total'], $r['pending_amount']], $rows));
+        }
+        $this->render('reports/users', compact('rows', 'totals', 'from', 'to'));
+    }
+
+    /**
+     * Designer performance — how much design work each person actually did.
+     * Designs made (proof versions) · jobs worked on · orders touched · value handled.
+     */
+    public function designers(): void
+    {
+        Acl::require('report.staff');
+        [$from, $to] = $this->dateRange();
+        $ot = tbl('orders');
+        $oit = tbl('order_items');
+        $dpt = tbl('design_proofs');
+
+        $rows = DB::all(
+            "SELECT u.id, u.name,
+
+                -- Proof versions this designer uploaded in the period
+                (SELECT COUNT(*) FROM `$dpt` dp WHERE dp.uploaded_by_user_id = u.id
+                   AND dp.created_at BETWEEN ? AND ?) AS designs_made,
+
+                -- Of those, how many were approved by the customer
+                (SELECT COUNT(*) FROM `$dpt` dp WHERE dp.uploaded_by_user_id = u.id
+                   AND dp.status = 'approved' AND dp.created_at BETWEEN ? AND ?) AS designs_approved,
+
+                -- Jobs and orders assigned to this designer in the period
+                (SELECT COUNT(*) FROM `$oit` oi JOIN `$ot` o ON o.id = oi.order_id
+                   WHERE oi.assigned_designer_id = u.id AND o.deleted_at IS NULL AND o.is_cancelled = 0
+                   AND o.order_date BETWEEN ? AND ?) AS jobs_handled,
+                (SELECT COUNT(DISTINCT oi.order_id) FROM `$oit` oi JOIN `$ot` o ON o.id = oi.order_id
+                   WHERE oi.assigned_designer_id = u.id AND o.deleted_at IS NULL AND o.is_cancelled = 0
+                   AND o.order_date BETWEEN ? AND ?) AS orders_handled,
+
+                -- Value of the lines this designer handled
+                (SELECT COALESCE(SUM(oi.line_total),0) FROM `$oit` oi JOIN `$ot` o ON o.id = oi.order_id
+                   WHERE oi.assigned_designer_id = u.id AND o.deleted_at IS NULL AND o.is_cancelled = 0
+                   AND oi.status <> 'cancelled' AND o.order_date BETWEEN ? AND ?) AS value_handled,
+
+                -- Still on their desk right now
+                (SELECT COUNT(*) FROM `$oit` oi JOIN `$ot` o ON o.id = oi.order_id
+                   WHERE oi.assigned_designer_id = u.id AND o.deleted_at IS NULL
+                   AND oi.status IN ('design_pending','design_in_progress','proof_sent','change_requested')) AS open_now
+
+             FROM `" . tbl('users') . "` u JOIN `" . tbl('roles') . "` r ON r.id = u.role_id
+             WHERE u.deleted_at IS NULL AND r.slug = 'designer'
+             ORDER BY value_handled DESC, u.name",
+            [$from, $to, $from, $to, $from, $to, $from, $to, $from, $to]
+        );
+
+        $totals = [
+            'designs_made' => array_sum(array_column($rows, 'designs_made')),
+            'jobs_handled' => array_sum(array_column($rows, 'jobs_handled')),
+            'orders_handled' => array_sum(array_column($rows, 'orders_handled')),
+            'value_handled' => array_sum(array_map('floatval', array_column($rows, 'value_handled'))),
+        ];
+
+        if (($_GET['export'] ?? '') === 'csv') {
+            $this->csv('designer-performance',
+                ['Designer', 'Designs Made', 'Approved', 'Jobs Handled', 'Orders Handled', 'Value Handled', 'Open Now'],
+                array_map(fn($r) => [$r['name'], $r['designs_made'], $r['designs_approved'], $r['jobs_handled'],
+                    $r['orders_handled'], $r['value_handled'], $r['open_now']], $rows));
+        }
+        $this->render('reports/designers', compact('rows', 'totals', 'from', 'to'));
+    }
+
     public function staff(): void
     {
         Acl::require('report.staff');

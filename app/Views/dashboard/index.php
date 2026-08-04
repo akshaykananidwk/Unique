@@ -1,7 +1,7 @@
 <?php use App\Models\Status; $title = 'Dashboard'; ?>
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
   <h4 class="mb-0">Dashboard</h4>
-  <?php if (count($branches) > 1): ?>
+  <?php if (false && count($branches) > 1): // single shop — no branch selector ?>
   <form method="get" class="d-flex gap-2">
     <select name="branch_id" class="form-select form-select-sm" onchange="this.form.submit()">
       <option value="">All Branches</option>
@@ -95,7 +95,77 @@
   </div>
 </div>
 
-<?php if ($branchComparison): ?>
+<!-- ------------------------------------------------ Overall money & work -->
+<div class="row g-2 mb-3">
+  <div class="col-6 col-lg-3"><div class="stat-card">
+    <div class="text-muted small">Pending Payment</div>
+    <div class="fs-4 fw-bold text-danger"><?= e(fmt_money($overall['pending_payment'])) ?></div></div></div>
+  <div class="col-6 col-lg-3"><div class="stat-card">
+    <div class="text-muted small">Received This Month</div>
+    <div class="fs-4 fw-bold text-success"><?= e(fmt_money($overall['received_payment'])) ?></div></div></div>
+  <div class="col-6 col-lg-3"><div class="stat-card">
+    <div class="text-muted small">Running Orders</div>
+    <div class="fs-4 fw-bold"><?= (int)$overall['running_orders'] ?></div></div></div>
+  <div class="col-6 col-lg-3"><div class="stat-card">
+    <div class="text-muted small">Completed Orders</div>
+    <div class="fs-4 fw-bold"><?= (int)$overall['completed_orders'] ?></div></div></div>
+</div>
+
+<div class="row g-3">
+  <!-- User-wise this month -->
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0">User performance — this month</h6>
+        <a class="small" href="<?= e(admin_url('reports/users')) ?>">Full report →</a>
+      </div>
+      <?php if (!$userWise): ?><div class="empty-state"><i class="bi bi-person-badge"></i>No orders or collections yet this month.</div><?php else: ?>
+      <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+        <thead><tr><th>User</th><th class="text-end">Orders</th><th class="text-end">Value</th>
+          <th class="text-end">Advance</th><th class="text-end">Collection</th><th class="text-end">Pending</th></tr></thead>
+        <tbody>
+        <?php foreach ($userWise as $u): ?>
+          <tr>
+            <td class="fw-semibold"><?= e($u['name']) ?></td>
+            <td class="text-end"><?= (int)$u['orders'] ?></td>
+            <td class="text-end"><?= e(fmt_money($u['order_value'])) ?></td>
+            <td class="text-end"><?= e(fmt_money($u['advance'])) ?></td>
+            <td class="text-end text-success"><?= e(fmt_money($u['collection'])) ?></td>
+            <td class="text-end <?= (float)$u['pending'] > 0 ? 'text-danger' : 'text-muted' ?>"><?= e(fmt_money($u['pending'])) ?></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table></div>
+      <?php endif; ?>
+    </div></div>
+  </div>
+
+  <!-- Designer-wise this month -->
+  <div class="col-lg-5">
+    <div class="card"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0">Designer performance — this month</h6>
+        <a class="small" href="<?= e(admin_url('reports/designers')) ?>">Full report →</a>
+      </div>
+      <?php if (!$designerWise): ?><div class="empty-state"><i class="bi bi-palette2"></i>No designers yet.</div><?php else: ?>
+      <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+        <thead><tr><th>Designer</th><th class="text-end">Designs</th><th class="text-end">Value Handled</th></tr></thead>
+        <tbody>
+        <?php foreach ($designerWise as $d): ?>
+          <tr>
+            <td class="fw-semibold"><?= e($d['name']) ?></td>
+            <td class="text-end"><?= (int)$d['designs'] ?></td>
+            <td class="text-end"><?= e(fmt_money($d['value_handled'])) ?></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table></div>
+      <?php endif; ?>
+    </div></div>
+  </div>
+</div>
+
+<?php if (false && $branchComparison): // single shop — nothing to compare ?>
 <div class="card mb-4"><div class="card-body">
   <h6>Branch comparison — this month</h6>
   <canvas id="branchChart" height="90"></canvas>
@@ -117,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
     data: { labels: stages.map(r => r.s), datasets: [{ data: stages.map(r => r.c), backgroundColor: '#6ea8fe' }] },
     options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { precision: 0 } } } }
   });
-  <?php if ($branchComparison): ?>
+  <?php if (false && $branchComparison): // single shop — nothing to compare ?>
   const branches = <?= json_encode(array_map(fn($r) => ['n' => $r['name'], 'v' => (float)$r['value']], $branchComparison)) ?>;
   new Chart(document.getElementById('branchChart'), {
     type: 'bar',

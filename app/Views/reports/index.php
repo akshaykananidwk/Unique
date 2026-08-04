@@ -3,7 +3,9 @@
 <div class="row g-3">
 <?php
 $reports = [
-    ['report.staff', 'reports/staff', 'people', 'Staff Performance', 'Orders, collections, design turnaround, revisions, on-time %'],
+    ['report.staff', 'reports/users', 'person-badge', 'User Performance', 'Orders taken and their value, advance, recovered and pending per user'],
+    ['report.staff', 'reports/designers', 'palette2', 'Designer Performance', 'Designs made, jobs and orders handled, total value handled'],
+    ['report.staff', 'reports/staff', 'people', 'Staff Performance (detailed)', 'Turnaround, revisions, first-time approval and on-time %'],
     ['report.sales', 'reports/sales', 'graph-up', 'Sales Register', 'Order-wise, item-wise and category-wise sales'],
     ['report.outstanding', 'reports/outstanding', 'cash-coin', 'Outstanding', 'Pending balances by age bucket, bulk WhatsApp reminders'],
     ['payment.view', 'cashbook', 'cash-stack', 'Daily Cash Book', 'Opening, collections by mode, day list'],

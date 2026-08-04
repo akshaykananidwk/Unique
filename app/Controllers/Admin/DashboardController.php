@@ -118,9 +118,61 @@ class DashboardController extends Controller
 
         $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active=1 ORDER BY sort_order');
 
+        // ---- Performance panels: this month, user-wise and designer-wise ----
+        $monthStart = date('Y-m-01 00:00:00');
+        $pt = tbl('payments');
+
+        $userWise = DB::all(
+            "SELECT u.name,
+                (SELECT COUNT(*) FROM `$ot` o WHERE o.taken_by_user_id=u.id AND o.deleted_at IS NULL
+                   AND o.is_cancelled=0 AND o.order_date >= ?) AS orders,
+                (SELECT COALESCE(SUM(o.total),0) FROM `$ot` o WHERE o.taken_by_user_id=u.id AND o.deleted_at IS NULL
+                   AND o.is_cancelled=0 AND o.order_date >= ?) AS order_value,
+                (SELECT COALESCE(SUM(p.amount),0) FROM `$pt` p WHERE p.received_by_user_id=u.id
+                   AND p.deleted_at IS NULL AND p.type='advance' AND p.paid_at >= ?) AS advance,
+                (SELECT COALESCE(SUM(p.amount),0) FROM `$pt` p WHERE p.received_by_user_id=u.id
+                   AND p.deleted_at IS NULL AND p.paid_at >= ?) AS collection,
+                (SELECT COALESCE(SUM(o.balance_amount),0) FROM `$ot` o WHERE o.taken_by_user_id=u.id
+                   AND o.deleted_at IS NULL AND o.is_cancelled=0) AS pending
+             FROM `" . tbl('users') . "` u
+             WHERE u.deleted_at IS NULL AND u.is_active=1
+             HAVING orders > 0 OR collection > 0 OR pending > 0
+             ORDER BY order_value DESC LIMIT 10",
+            [$monthStart, $monthStart, $monthStart, $monthStart]
+        );
+
+        $designerWise = DB::all(
+            "SELECT u.name,
+                (SELECT COUNT(*) FROM `" . tbl('design_proofs') . "` dp WHERE dp.uploaded_by_user_id=u.id
+                   AND dp.created_at >= ?) AS designs,
+                (SELECT COALESCE(SUM(oi.line_total),0) FROM `$oit` oi JOIN `$ot` o ON o.id=oi.order_id
+                   WHERE oi.assigned_designer_id=u.id AND o.deleted_at IS NULL AND o.is_cancelled=0
+                   AND oi.status <> 'cancelled' AND o.order_date >= ?) AS value_handled
+             FROM `" . tbl('users') . "` u JOIN `" . tbl('roles') . "` r ON r.id=u.role_id
+             WHERE u.deleted_at IS NULL AND u.is_active=1 AND r.slug='designer'
+             ORDER BY value_handled DESC LIMIT 10",
+            [$monthStart, $monthStart]
+        );
+
+        $overall = [
+            'pending_payment' => (float)DB::val(
+                "SELECT COALESCE(SUM(o.balance_amount),0) FROM `$ot` o
+                 WHERE $bw AND o.deleted_at IS NULL AND o.is_cancelled=0", $bp),
+            'received_payment' => (float)DB::val(
+                "SELECT COALESCE(SUM(p.amount),0) FROM `$pt` p JOIN `$ot` o ON o.id=p.order_id
+                 WHERE $bw AND p.deleted_at IS NULL AND p.paid_at >= ?", [...$bp, $monthStart]),
+            'running_orders' => (int)DB::val(
+                "SELECT COUNT(*) FROM `$ot` o WHERE $bw AND o.deleted_at IS NULL AND o.is_cancelled=0
+                 AND o.status NOT IN ('delivered','completed')", $bp),
+            'completed_orders' => (int)DB::val(
+                "SELECT COUNT(*) FROM `$ot` o WHERE $bw AND o.deleted_at IS NULL AND o.is_cancelled=0
+                 AND o.status IN ('delivered','completed')", $bp),
+        ];
+
         $this->render('dashboard/index', compact(
             'cards', 'byStage', 'trend', 'topItems', 'branchComparison',
-            'attention', 'designerLoad', 'branches', 'selectedBranch'
+            'attention', 'designerLoad', 'branches', 'selectedBranch',
+            'userWise', 'designerWise', 'overall'
         ));
     }
 }

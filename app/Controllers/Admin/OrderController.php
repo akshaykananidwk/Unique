@@ -215,7 +215,20 @@ class OrderController extends Controller
             'SELECT u.id, u.name FROM `' . tbl('users') . '` u JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
              WHERE r.slug = 'designer' AND u.is_active = 1 AND u.deleted_at IS NULL ORDER BY u.name"
         );
-        $this->render('orders/show', compact('order', 'items', 'payments', 'history', 'attachments', 'customer', 'branch', 'designers'));
+        // Who owns this order end to end.
+        $people = [
+            'taken_by' => $order['taken_by_user_id']
+                ? DB::val('SELECT name FROM `' . tbl('users') . '` WHERE id = ?', [(int)$order['taken_by_user_id']]) : null,
+            'accepted_by' => !empty($order['accepted_by_user_id'])
+                ? DB::val('SELECT name FROM `' . tbl('users') . '` WHERE id = ?', [(int)$order['accepted_by_user_id']]) : null,
+            'designers' => array_column(DB::all(
+                'SELECT DISTINCT u.name FROM `' . tbl('order_items') . '` oi
+                 JOIN `' . tbl('users') . '` u ON u.id = oi.assigned_designer_id
+                 WHERE oi.order_id = ? ORDER BY u.name',
+                [(int)$id]
+            ), 'name'),
+        ];
+        $this->render('orders/show', compact('order', 'items', 'payments', 'history', 'attachments', 'customer', 'branch', 'designers', 'people'));
     }
 
     public function edit(string $id): void

@@ -96,6 +96,8 @@ $router->get('/cashbook', 'PaymentController@cashbook');
 
 // Reports
 $router->get('/reports', 'ReportController@index');
+$router->get('/reports/users', 'ReportController@users');
+$router->get('/reports/designers', 'ReportController@designers');
 $router->get('/reports/staff', 'ReportController@staff');
 $router->get('/reports/sales', 'ReportController@sales');
 $router->get('/reports/outstanding', 'ReportController@outstanding');

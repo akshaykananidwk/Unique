@@ -163,6 +163,23 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
       </div>
     </div></div>
 
+    <!-- Who is on this order -->
+    <div class="card mb-3"><div class="card-body">
+      <h6>Order team</h6>
+      <div class="d-flex justify-content-between border-bottom py-1 small">
+        <span class="text-muted">Order taken by</span>
+        <strong><?= e($people['taken_by'] ?? '—') ?></strong>
+      </div>
+      <div class="d-flex justify-content-between border-bottom py-1 small">
+        <span class="text-muted">Accepted by</span>
+        <strong><?= e($people['accepted_by'] ?? '—') ?></strong>
+      </div>
+      <div class="d-flex justify-content-between py-1 small">
+        <span class="text-muted">Designing</span>
+        <strong><?= $people['designers'] ? e(implode(', ', $people['designers'])) : '— not assigned —' ?></strong>
+      </div>
+    </div></div>
+
     <!-- Money -->
     <div class="card mb-3"><div class="card-body">
       <h6>Amounts</h6>

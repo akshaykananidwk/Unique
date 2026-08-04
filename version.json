@@ -1,15 +1,12 @@
 {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "released_at": "2026-08-05",
     "changelog": [
-        "Item Master is gone from order entry. Pick a Category, then type any item name you like — Flex Banner, Star Flex, Vinyl, Sunboard, PVC, anything. Names you have used before are offered as suggestions.",
-        "Each Category now carries its own questions: banners ask Pipe, Frame and Eyelets; visiting cards ask Single/Double Side, Paper Type and Lamination; bill books ask Duplicate/Triplicate, Four Colour/Single Colour and Numbering.",
-        "Foot x foot items now work as Quantity → Width → Height → Total Sq. Ft. → Rate → Amount, calculated as you type. Example: 2 pieces of 5ft x 2ft at ₹30 = 20 sq.ft = ₹600.",
-        "Rate is always typed in by hand at order time — no price is stored on the category.",
-        "All the total calculation bugs are fixed. New Order, Edit Order and the printed bill now run through one single calculation, so changing quantity, width, height or rate always gives the same correct answer everywhere.",
-        "Edit Order: every field on every line is editable and the amount and grand total update the moment you change anything.",
-        "Reference files can be attached when taking an order — one or many at once (PDF, JPG, PNG, CDR, AI, PSD, EPS, ZIP, RAR).",
-        "Discount has been removed from the order screens, and the branch selector is gone — one shop, many users.",
-        "Every order now records who took it and who accepted it, ready for the performance reports coming next."
+        "Every order now shows an Order Team box: who took the order, who accepted it, and who is designing it.",
+        "New User Performance report: how many orders each person took and for how much, plus advance taken, money recovered, total collected and what is still pending on their orders. Downloadable as CSV.",
+        "New Designer Performance report: designs made, how many were approved, jobs and orders handled, total value handled, and what is open on their desk right now. Downloadable as CSV.",
+        "Dashboard now shows Pending Payment, Received This Month, Running Orders and Completed Orders at a glance, with user-wise and designer-wise performance panels underneath.",
+        "The last branch selectors are gone from the Dashboard — one shop throughout.",
+        "Commission is not switched on, but every order already carries commission percent, amount and user columns so the module can be added later without touching existing data."
     ]
 }

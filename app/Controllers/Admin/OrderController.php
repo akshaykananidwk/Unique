@@ -86,8 +86,8 @@ class OrderController extends Controller
             }
             $columns[$statusKey] = [];
         }
-        $columns['on_hold'] = [];
         foreach ($items as $item) {
+            // Retired legacy stages fall back to their own column so nothing silently disappears.
             $columns[$item['status']][] = $item;
         }
         $this->render('orders/kanban', compact('columns'));
@@ -355,7 +355,13 @@ class OrderController extends Controller
         $order = $this->findOrder((int)$item['order_id']);
         $to = (string)($_POST['status'] ?? '');
         $note = trim((string)($_POST['note'] ?? ''));
-        $result = OrderService::changeItemStatus((int)$id, $to, (int)$this->user['id'], $note, false, $this->isManager());
+        // "Customer approved in person" — only staff who hold the override permission may skip
+        // the online proof approval (e.g. the customer OK'd the design across the counter).
+        $override = !empty($_POST['approval_override']) && Acl::can('order.override_approval');
+        $result = OrderService::changeItemStatus((int)$id, $to, (int)$this->user['id'], $note, false, $this->isManager(), $override);
+        if (!$result['ok'] && ($result['code'] ?? '') === 'needs_approval' && Acl::can('order.override_approval')) {
+            $result['error'] .= ' If they approved it in person, tick “Customer approved in person” and try again.';
+        }
         if ($result['ok']) {
             Logger::activity('order', 'status', 'order_item', (int)$id,
                 $order['job_no'] . ': ' . $item['status'] . ' → ' . $to . ($note !== '' ? " ($note)" : ''));

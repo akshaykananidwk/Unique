@@ -186,6 +186,29 @@ function local_phone(?string $raw): ?string
     return strlen($digits) === 10 ? $digits : null;
 }
 
+/**
+ * Colour-coded priority badge: urgent/rush are RED so hot jobs jump off the screen,
+ * normal is GREEN. Used on every list, board and order page so the code reads the same everywhere.
+ */
+function priority_badge(?string $priority, bool $small = true): string
+{
+    $p = strtolower(trim((string)$priority)) ?: 'normal';
+    $map = [
+        'rush' => ['kp-prio-rush', '⚡ RUSH'],
+        'urgent' => ['kp-prio-urgent', 'URGENT'],
+        'normal' => ['kp-prio-normal', 'NORMAL'],
+    ];
+    [$cls, $label] = $map[$p] ?? ['kp-prio-normal', strtoupper($p)];
+    return '<span class="badge ' . $cls . ($small ? ' badge-status' : '') . '">' . e($label) . '</span>';
+}
+
+/** Row/card modifier class for a priority — only hot jobs get tinted, so lists stay readable. */
+function priority_class(?string $priority): string
+{
+    $p = strtolower(trim((string)$priority));
+    return in_array($p, ['urgent', 'rush'], true) ? 'prio-hot' : '';
+}
+
 /** Decorative screen-print CMYK 3D cube cluster as an inline SVG string. */
 function kp_cubes_svg(string $class = 'kp-cubes'): string
 {

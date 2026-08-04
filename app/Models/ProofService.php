@@ -42,6 +42,9 @@ class ProofService
             'UPDATE `' . tbl('design_proofs') . '` SET status = ? WHERE order_item_id = ? AND status IN (?,?)',
             ['superseded', $orderItemId, 'pending', 'change_requested']
         );
+        // A new artwork version invalidates any earlier "approved in person" — the customer
+        // vouched for the OLD design, so this one needs approving again.
+        OrderService::clearCounterApproval($orderItemId);
 
         $ext = strtolower(pathinfo((string)$stored['path'], PATHINFO_EXTENSION));
         $watermarked = null;

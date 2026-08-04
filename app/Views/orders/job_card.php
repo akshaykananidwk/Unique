@@ -17,7 +17,8 @@ $wrapClass = $format === 'thermal' ? 'print-thermal' : 'print-a5';
   <table>
     <tr><td><strong>Customer:</strong> <?= e($customer['name']) ?> (<?= e($customer['phone']) ?>)</td>
         <td><strong>Date:</strong> <?= e(fmt_date($order['order_date'], true)) ?></td></tr>
-    <tr><td><strong>Priority:</strong> <?= e(strtoupper((string)$order['priority'])) ?></td>
+    <tr><td><strong>Priority:</strong> <?php $hot = in_array(strtolower((string)$order['priority']), ['urgent', 'rush'], true); ?>
+        <span style="<?= $hot ? 'color:#dc3545;font-weight:700;font-size:1.1em' : '' ?>"><?= e(strtoupper((string)$order['priority'])) ?><?= $hot ? ' ⚡' : '' ?></span></td>
         <td><strong>Due:</strong> <?= e(fmt_date($order['due_date'], true)) ?></td></tr>
     <tr><td colspan="2"><strong>Delivery:</strong> <?= e(ucfirst((string)$order['delivery_type'])) ?>
       <?= $order['delivery_address'] ? '— ' . e($order['delivery_address']) : '' ?></td></tr>

@@ -9,9 +9,9 @@
     </h6>
     <?php foreach ($cards as $card):
         $overdue = Status::isOverdue($card['due_date'], (string)$card['status']); ?>
-    <div class="kanban-card <?= $overdue ? 'overdue' : '' ?>">
+    <div class="kanban-card <?= $overdue ? 'overdue' : '' ?> <?= e(priority_class($card['priority'])) ?>">
       <a href="<?= e(admin_url('orders/' . $card['order_id'])) ?>" class="fw-semibold"><?= e($card['job_no']) ?></a>
-      <?php if ($card['priority'] !== 'normal'): ?><span class="badge bg-danger badge-status"><?= e(strtoupper((string)$card['priority'])) ?></span><?php endif; ?>
+      <?= priority_badge($card['priority']) ?>
       <div><?= e($card['item_name_snapshot']) ?></div>
       <div class="text-muted"><?= e($card['customer_name']) ?></div>
       <?php if ($card['designer_name']): ?><div class="text-muted"><i class="bi bi-palette"></i> <?= e($card['designer_name']) ?></div><?php endif; ?>

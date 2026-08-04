@@ -29,7 +29,8 @@
     <tbody>
     <?php foreach ($orders as $o): ?>
       <tr>
-        <td data-label="Job No"><a href="<?= e(admin_url('orders/' . $o['id'])) ?>"><?= e($o['job_no']) ?></a></td>
+        <td data-label="Job No"><a href="<?= e(admin_url('orders/' . $o['id'])) ?>"><?= e($o['job_no']) ?></a>
+          <?= isset($o['priority']) ? priority_badge($o['priority']) : '' ?></td>
         <td data-label="Date"><?= e(fmt_date($o['order_date'])) ?></td>
         <td data-label="Branch"><?= e($o['branch_name']) ?></td>
         <td data-label="Status"><span class="badge bg-<?= e(Status::color((string)$o['status'])) ?>"><?= e(Status::label((string)$o['status'])) ?></span></td>

@@ -23,6 +23,7 @@ INSERT INTO `permissions` (`code`,`module`,`label`) VALUES
 ('order.delete','order','Delete orders'),
 ('order.cancel','order','Cancel orders'),
 ('order.change_status','order','Change order status'),
+('order.override_approval','order','Mark design approved in person (skip online approval)'),
 ('order.assign','order','Assign designer / production'),
 ('customer.create','customer','Create customers'),
 ('customer.view','customer','View customers'),
@@ -62,7 +63,7 @@ SELECT r.id, p.id FROM `roles` r, `permissions` p WHERE r.slug='super_admin';
 -- Branch Manager
 INSERT INTO `role_permissions` (`role_id`,`permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p WHERE r.slug='branch_manager' AND p.code IN
-('dashboard.view','order.create','order.view','order.edit','order.cancel','order.change_status','order.assign',
+('dashboard.view','order.create','order.view','order.edit','order.cancel','order.change_status','order.override_approval','order.assign',
  'customer.create','customer.view','customer.edit','design.view','design.approve_internal',
  'payment.create','payment.view','payment.refund','report.staff','report.branch','report.sales',
  'report.outstanding','report.export','whatsapp.logs','whatsapp.resend','log.view');

@@ -84,6 +84,14 @@
 #globalSearchResults.show { display: block; }
 #globalSearchResults .dropdown-item { white-space: normal; font-size: .85rem; }
 
+/* Priority — urgent/rush shout in red, normal sits calm in green.
+   Declared before the overdue rules so an overdue row still wins its red tint. */
+.kp-prio-rush { background: #a51d2a !important; color: #fff !important; }
+.kp-prio-urgent { background: #dc3545 !important; color: #fff !important; }
+.kp-prio-normal { background: #198754 !important; color: #fff !important; }
+tr.prio-hot td { background: rgba(220, 53, 69, .10) !important; }
+.kanban-card.prio-hot { background: rgba(220, 53, 69, .07); }
+
 /* Colour semantics */
 .row-overdue, .text-overdue { color: #dc3545 !important; }
 tr.row-overdue td { background: rgba(220, 53, 69, .08) !important; }

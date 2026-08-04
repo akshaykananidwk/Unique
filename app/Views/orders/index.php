@@ -40,11 +40,11 @@
   <tbody>
   <?php foreach ($orders as $o):
       $overdue = Status::isOverdue($o['due_date'], (string)$o['status']); ?>
-    <tr class="<?= $overdue ? 'row-overdue' : '' ?>">
+    <tr class="<?= $overdue ? 'row-overdue' : e(priority_class($o['priority'])) ?>">
       <td data-label="Job No">
         <a href="<?= e(admin_url('orders/' . $o['id'])) ?>" class="fw-semibold"><?= e($o['job_no']) ?></a>
         <?php if ((int)$o['needs_review']): ?><span class="badge bg-info badge-status">New — needs review</span><?php endif; ?>
-        <?php if ($o['priority'] !== 'normal'): ?><span class="badge bg-danger badge-status"><?= e(strtoupper($o['priority'])) ?></span><?php endif; ?>
+        <?= priority_badge($o['priority']) ?>
         <div class="small text-muted d-md-none"><?= e($o['branch_name']) ?></div>
       </td>
       <td data-label="Customer"><?= e($o['customer_name']) ?><div class="small text-muted"><?= e($o['customer_phone']) ?></div></td>

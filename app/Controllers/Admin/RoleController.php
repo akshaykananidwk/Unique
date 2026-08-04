@@ -6,6 +6,7 @@ namespace App\Controllers\Admin;
 use App\Core\Acl;
 use App\Core\DB;
 use App\Core\Logger;
+use App\Core\Settings;
 
 class RoleController extends Controller
 {
@@ -68,6 +69,8 @@ class RoleController extends Controller
                 }
             }
         });
+        // Invalidate every signed-in user's cached permission list.
+        Settings::set('acl_version', (string)(Settings::getInt('acl_version', 1) + 1), 'app');
         Logger::activity('role', 'permissions', 'role', (int)$id, 'Permissions updated for ' . $role['name']);
         flash('success', 'Permissions saved. Users get them on their next page load.');
         redirect(admin_url('roles'));

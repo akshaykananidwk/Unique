@@ -13,7 +13,12 @@ class Acl
             return [];
         }
         $cacheKey = 'acl_permissions';
-        if (isset($_SESSION[$cacheKey]) && ($_SESSION['acl_role_id'] ?? 0) === (int)$user['role_id']) {
+        // acl_version is bumped whenever role permissions change (updates, role edits), so a
+        // user already signed in picks up new permissions without having to log out first.
+        $aclVersion = Settings::getInt('acl_version', 1);
+        if (isset($_SESSION[$cacheKey])
+            && ($_SESSION['acl_role_id'] ?? 0) === (int)$user['role_id']
+            && ($_SESSION['acl_version'] ?? null) === $aclVersion) {
             return $_SESSION[$cacheKey];
         }
         $rows = DB::all(
@@ -25,6 +30,7 @@ class Acl
         $codes = array_column($rows, 'code');
         $_SESSION[$cacheKey] = $codes;
         $_SESSION['acl_role_id'] = (int)$user['role_id'];
+        $_SESSION['acl_version'] = $aclVersion;
         return $codes;
     }
 

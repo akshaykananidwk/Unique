@@ -118,7 +118,7 @@ class OrderService
                 'taken_by_user_id' => $userId,
                 'order_date' => now(),
                 'priority' => $payload['priority'] ?? 'normal',
-                'status' => 'pending',
+                'status' => 'design_pending', // recomputed from the item lines below
                 'needs_review' => ($source === 'public' && !Settings::getBool('public_order_auto_confirm')) ? 1 : 0,
                 'delivery_type' => $payload['delivery_type'] ?? 'pickup',
                 'delivery_address' => $payload['delivery_address'] ?? null,
@@ -562,7 +562,8 @@ class OrderService
         ?int $userId,
         string $note = '',
         bool $byCustomer = false,
-        bool $isManager = false
+        bool $isManager = false,
+        bool $approvalOverride = false
     ): array {
         $item = DB::get('SELECT * FROM `' . tbl('order_items') . '` WHERE id = ?', [$itemId]);
         if (!$item) {
@@ -579,20 +580,87 @@ class OrderService
         // Gate: past design_approved requires a confirmed approved proof
         if ((bool)$item['requires_design'] && Status::rank($to) > Status::rank('design_approved')
             && !in_array($to, Status::SPECIAL, true)) {
-            $approved = DB::val(
+            $approved = !empty($item['counter_approved_at']) || DB::val(
                 'SELECT id FROM `' . tbl('design_proofs') . '`
                  WHERE order_item_id = ? AND status = ? AND approval_confirmed = 1',
                 [$itemId, 'approved']
             );
             if (!$approved) {
-                return ['ok' => false, 'error' => 'Cannot move past Design Approved — the customer has not given final approval yet.'];
+                if (!$approvalOverride) {
+                    // 'code' lets the controller add the "tick the box" hint only for staff who may override.
+                    return ['ok' => false, 'code' => 'needs_approval',
+                        'error' => 'The customer has not approved the design yet.'];
+                }
+                // Approved at the counter with the customer standing there: record it so the
+                // proof list and the audit trail match what actually happened.
+                self::recordCounterApproval($itemId, $userId);
+                $note = trim($note) !== ''
+                    ? trim($note) . ' — approved in person at the counter'
+                    : 'Approved in person at the counter';
             }
         }
 
         DB::update('order_items', ['status' => $to, 'updated_at' => now()], ['id' => $itemId]);
+        // Pulled back into the design loop → the artwork is being reworked, so a previous
+        // in-person approval no longer covers it and must be taken again.
+        if (Status::isDesignStage($to) && Status::rank($to) < Status::rank($from)) {
+            self::clearCounterApproval($itemId);
+        }
         self::history((int)$item['order_id'], $itemId, $from, $to, $userId, $byCustomer, $note);
         self::recomputeOrderStatus((int)$item['order_id']);
         return ['ok' => true];
+    }
+
+    /**
+     * Staff confirmed the customer approved the design face-to-face at the counter.
+     * Marks the newest live proof approved (so the proof list is not left saying "pending")
+     * and always writes an activity entry naming the staff member who vouched for it.
+     */
+    private static function recordCounterApproval(int $itemId, ?int $userId): void
+    {
+        // Both writes together: never leave a proof marked approved without the item stamp,
+        // which would lock the customer out of approving online while the job stayed blocked.
+        $proof = DB::transaction(function () use ($itemId, $userId) {
+            $proof = DB::get(
+                'SELECT * FROM `' . tbl('design_proofs') . "` WHERE order_item_id = ? AND status <> 'superseded'
+                 ORDER BY version DESC, id DESC LIMIT 1",
+                [$itemId]
+            );
+            // Stamp the item first so every later stage flows without asking again.
+            DB::update('order_items', [
+                'counter_approved_at' => now(),
+                'counter_approved_by' => $userId,
+                'updated_at' => now(),
+            ], ['id' => $itemId]);
+            if ($proof) {
+                DB::update('design_proofs', [
+                    'status' => 'approved',
+                    'approval_confirmed' => 1,
+                    'responded_at' => now(),
+                    'response_ip' => request_ip(),
+                    'response_user_agent' => 'Approved in person at the counter (staff-confirmed)',
+                ], ['id' => (int)$proof['id']]);
+            }
+            return $proof;
+        });
+        Logger::activity('order', 'counter_approval', 'order_item', $itemId,
+            'Customer approval taken in person at the counter'
+            . ($proof ? ' (proof v' . (int)$proof['version'] . ')' : ' (no proof on file)'));
+    }
+
+    /**
+     * Drop a previous "approved in person" stamp. Called whenever the artwork changes
+     * (new proof version) or the job is pulled back into the design loop — the customer
+     * vouched for the old design, so the new one must be approved again.
+     */
+    public static function clearCounterApproval(int $itemId): void
+    {
+        DB::run(
+            'UPDATE `' . tbl('order_items') . '`
+             SET counter_approved_at = NULL, counter_approved_by = NULL, updated_at = ?
+             WHERE id = ? AND counter_approved_at IS NOT NULL',
+            [now(), $itemId]
+        );
     }
 
     /** Order status = lowest stage among active items (+ delivered/cancelled edge cases). */
@@ -610,8 +678,6 @@ class OrderService
         $active = array_filter($statuses, fn($s) => $s !== 'cancelled');
         if (!$active) {
             $new = 'cancelled';
-        } elseif (in_array('on_hold', $active, true)) {
-            $new = 'on_hold';
         } else {
             $new = null;
             $minRank = PHP_INT_MAX;
@@ -659,9 +725,6 @@ class OrderService
             'designer_assigned_at' => now(),
             'updated_at' => now(),
         ], ['id' => $itemId]);
-        if (in_array($item['status'], ['pending'], true)) {
-            self::changeItemStatus($itemId, 'design_pending', $userId, 'Designer assigned');
-        }
         Logger::activity('order', 'assign', 'order_item', $itemId, 'Assigned designer ' . $designer['name']);
         WaEvents::designerAssigned($itemId);
         return ['ok' => true];

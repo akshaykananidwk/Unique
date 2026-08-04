@@ -2,11 +2,11 @@
 use App\Models\Status;
 
 $title = 'Track ' . $order['job_no'];
-$stages = ['pending' => 'Order Received', 'design_pending' => 'Design Queue', 'design_in_progress' => 'Designing',
+$stages = ['design_pending' => 'Order Received', 'design_in_progress' => 'Designing',
     'proof_sent' => 'Proof Sent — Your Approval Needed', 'design_approved' => 'Design Approved',
     'ready_for_print' => 'Ready for Print', 'printing' => 'Printing', 'post_press' => 'Finishing',
-    'quality_check' => 'Quality Check', 'ready_for_delivery' => 'Ready for ' . ($order['delivery_type'] === 'delivery' ? 'Delivery' : 'Pickup'),
-    'out_for_delivery' => 'Out for Delivery', 'delivered' => 'Delivered', 'completed' => 'Completed'];
+    'ready_for_delivery' => 'Ready for ' . ($order['delivery_type'] === 'delivery' ? 'Delivery' : 'Pickup'),
+    'delivered' => 'Delivered', 'completed' => 'Completed'];
 $currentRank = Status::rank((string)$order['status']);
 $isCancelled = (int)$order['is_cancelled'] === 1;
 $anyDesign = array_reduce($items, fn($c, $i) => $c || (int)$i['requires_design'] === 1, false);
@@ -35,7 +35,7 @@ $waNumber = normalize_phone((string)($branch['whatsapp'] ?: $branch['phone'])) ?
     <ul class="timeline">
       <?php foreach ($stages as $key => $label):
           $rank = Status::rank($key);
-          if (!$anyDesign && $rank >= 2 && $rank <= 6) continue;
+          if (!$anyDesign && Status::isDesignStage($key)) continue;
           $done = $currentRank > $rank || in_array($order['status'], ['delivered', 'completed'], true) && $rank <= $currentRank;
           $current = $order['status'] === $key; ?>
       <li class="<?= $current ? 'current' : ($done ? 'done' : '') ?>">

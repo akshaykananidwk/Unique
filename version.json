@@ -1,10 +1,9 @@
 {
-    "version": "1.0.11",
+    "version": "1.0.12",
     "released_at": "2026-08-04",
     "changelog": [
-        "Edit Order is now a full editor: add an item that was missed, remove a wrong line, or change any item's quantity and rate — using the same Add Item builder as New Order. Discount, delivery and notes are editable too, and totals, tax and balance recalculate on save.",
-        "Removing a line that has no design work deletes it cleanly; a line that already has proofs is safely marked cancelled to keep the job history intact.",
-        "Order entry now accepts phone numbers in any format — spaces, +91, or a leading 0 are cleaned automatically and only the 10-digit number is kept.",
-        "When saving a new order a Yes/No popup asks whether to WhatsApp the customer the confirmation message; choose No to save silently (staff and designers are still notified either way)."
+        "Ready for Print can now be set by hand when the customer approves the design in person at the counter — tick “Customer approved in person” on the job's status box instead of waiting for them to approve the online proof. The job then flows through every later stage without asking again, and who vouched for it is recorded.",
+        "Priority is now colour-coded everywhere: URGENT and RUSH show in red with the row tinted, NORMAL shows in green — on the orders list, Job Board, My Jobs, customer page, order page and the printed job card.",
+        "Simplified the job stages: Pending, Quality Check, Out for Delivery and On Hold have been removed. Orders now start straight at Design Pending and run through to Completed. Existing jobs on a removed stage were moved to the nearest matching stage automatically."
     ]
 }

@@ -8,26 +8,27 @@ class Status
 {
     /** Stage ranks — the order status is the LOWEST rank among its items. */
     public const RANKS = [
-        'pending' => 1,
-        'design_pending' => 2,
-        'design_in_progress' => 3,
-        'proof_sent' => 4,
-        'change_requested' => 5,
-        'design_approved' => 6,
-        'ready_for_print' => 7,
-        'printing' => 8,
-        'post_press' => 9,
-        'quality_check' => 10,
-        'ready_for_delivery' => 11,
-        'out_for_delivery' => 12,
-        'delivered' => 13,
-        'completed' => 14,
+        'design_pending' => 1,
+        'design_in_progress' => 2,
+        'proof_sent' => 3,
+        'change_requested' => 4,
+        'design_approved' => 5,
+        'ready_for_print' => 6,
+        'printing' => 7,
+        'post_press' => 8,
+        'ready_for_delivery' => 9,
+        'delivered' => 10,
+        'completed' => 11,
     ];
 
-    public const SPECIAL = ['on_hold', 'cancelled'];
+    public const SPECIAL = ['cancelled'];
+
+    /** The design loop — items that need no design skip these entirely. */
+    public const DESIGN_STAGES = [
+        'design_pending', 'design_in_progress', 'proof_sent', 'change_requested', 'design_approved',
+    ];
 
     public const LABELS = [
-        'pending' => 'Pending',
         'design_pending' => 'Design Pending',
         'design_in_progress' => 'Design In Progress',
         'proof_sent' => 'Proof Sent',
@@ -36,18 +37,14 @@ class Status
         'ready_for_print' => 'Ready for Print',
         'printing' => 'Printing',
         'post_press' => 'Post-press',
-        'quality_check' => 'Quality Check',
         'ready_for_delivery' => 'Ready for Delivery',
-        'out_for_delivery' => 'Out for Delivery',
         'delivered' => 'Delivered',
         'completed' => 'Completed',
-        'on_hold' => 'On Hold',
         'cancelled' => 'Cancelled',
     ];
 
     /** Bootstrap-ish badge colors. */
     public const COLORS = [
-        'pending' => 'secondary',
         'design_pending' => 'info',
         'design_in_progress' => 'primary',
         'proof_sent' => 'warning',
@@ -56,14 +53,17 @@ class Status
         'ready_for_print' => 'primary',
         'printing' => 'primary',
         'post_press' => 'primary',
-        'quality_check' => 'info',
         'ready_for_delivery' => 'success',
-        'out_for_delivery' => 'info',
         'delivered' => 'success',
         'completed' => 'success',
-        'on_hold' => 'dark',
         'cancelled' => 'danger',
     ];
+
+    /** Is this one of the design-loop stages? (replaces fragile rank-range checks) */
+    public static function isDesignStage(string $status): bool
+    {
+        return in_array($status, self::DESIGN_STAGES, true);
+    }
 
     public static function label(string $status): string
     {
@@ -89,11 +89,9 @@ class Status
     public static function next(string $status, bool $requiresDesign): ?string
     {
         $path = $requiresDesign
-            ? ['pending', 'design_pending', 'design_in_progress', 'proof_sent', 'design_approved',
-               'ready_for_print', 'printing', 'post_press', 'quality_check', 'ready_for_delivery',
-               'out_for_delivery', 'delivered', 'completed']
-            : ['pending', 'ready_for_print', 'printing', 'post_press', 'quality_check',
-               'ready_for_delivery', 'out_for_delivery', 'delivered', 'completed'];
+            ? ['design_pending', 'design_in_progress', 'proof_sent', 'design_approved',
+               'ready_for_print', 'printing', 'post_press', 'ready_for_delivery', 'delivered', 'completed']
+            : ['ready_for_print', 'printing', 'post_press', 'ready_for_delivery', 'delivered', 'completed'];
         $index = array_search($status, $path, true);
         if ($index === false || $index + 1 >= count($path)) {
             return null;
@@ -116,16 +114,16 @@ class Status
         if ($from === 'cancelled') {
             return [false, 'A cancelled item cannot change status.'];
         }
-        if (in_array($to, ['on_hold', 'cancelled'], true)) {
+        if ($to === 'cancelled') {
             return [true, ''];
         }
-        if ($from === 'on_hold') {
-            return [true, '']; // resume to any stage; controller records a note
-        }
         // Items that skip the design loop must not enter design stages
-        if (!$requiresDesign && self::rank($to) >= 2 && self::rank($to) <= 6) {
+        if (!$requiresDesign && self::isDesignStage($to)) {
             return [false, 'This item does not require design.'];
         }
+        // A row still sitting on a retired stage (pending / on_hold / quality_check /
+        // out_for_delivery) ranks 0, so the forward-move rule below lets it rejoin the flow
+        // on its own — without handing out a free pass around the backward-move rules.
         // change_requested loops back to design_in_progress
         if ($from === 'change_requested' && $to === 'design_in_progress') {
             return [true, ''];
@@ -155,15 +153,13 @@ class Status
             return 100;
         }
         $path = $requiresDesign
-            ? ['pending', 'design_pending', 'design_in_progress', 'proof_sent', 'design_approved',
-               'ready_for_print', 'printing', 'post_press', 'quality_check', 'ready_for_delivery',
-               'out_for_delivery', 'delivered', 'completed']
-            : ['pending', 'ready_for_print', 'printing', 'post_press', 'quality_check',
-               'ready_for_delivery', 'out_for_delivery', 'delivered', 'completed'];
+            ? ['design_pending', 'design_in_progress', 'proof_sent', 'design_approved',
+               'ready_for_print', 'printing', 'post_press', 'ready_for_delivery', 'delivered', 'completed']
+            : ['ready_for_print', 'printing', 'post_press', 'ready_for_delivery', 'delivered', 'completed'];
         $index = array_search($status, $path, true);
         if ($index === false) {
-            // on_hold etc. — approximate from rank
-            return max(5, (int)round(self::rank($status) / 14 * 100));
+            // change_requested / retired legacy stages — approximate from rank
+            return max(5, (int)round(self::rank($status) / max(1, count(self::RANKS)) * 100));
         }
         return (int)round(($index + 1) / count($path) * 100);
     }

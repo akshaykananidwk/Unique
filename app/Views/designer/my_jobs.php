@@ -9,10 +9,10 @@
     </h6>
     <?php foreach ($col['jobs'] as $job):
         $overdue = Status::isOverdue($job['due_date'], (string)$job['status']); ?>
-    <div class="kanban-card <?= $overdue ? 'overdue' : '' ?>">
+    <div class="kanban-card <?= $overdue ? 'overdue' : '' ?> <?= e(priority_class($job['priority'])) ?>">
       <div class="d-flex justify-content-between">
         <a href="<?= e(admin_url('orders/' . $job['order_id'])) ?>" class="fw-semibold"><?= e($job['job_no']) ?></a>
-        <?php if ($job['priority'] !== 'normal'): ?><span class="badge bg-danger badge-status"><?= e(strtoupper((string)$job['priority'])) ?></span><?php endif; ?>
+        <?= priority_badge($job['priority']) ?>
       </div>
       <div><?= e($job['item_name_snapshot']) ?> × <?= e(rtrim(rtrim((string)$job['qty'], '0'), '.')) ?></div>
       <div class="text-muted"><?= e($job['customer_name']) ?> (<?= e($job['customer_phone']) ?>)</div>

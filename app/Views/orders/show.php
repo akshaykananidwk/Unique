@@ -10,6 +10,7 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
   <div>
     <h4 class="mb-0"><?= e($order['job_no']) ?>
       <span class="badge bg-<?= e(Status::color((string)$order['status'])) ?>"><?= e(Status::label((string)$order['status'])) ?></span>
+      <?= priority_badge($order['priority'], false) ?>
       <?php if ((int)$order['needs_review']): ?><span class="badge bg-info">New — needs review</span><?php endif; ?>
       <?php if ($overdue): ?><span class="badge bg-danger">OVERDUE</span><?php endif; ?>
     </h4>
@@ -46,6 +47,7 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
           <strong><?= e($item['item_name_snapshot']) ?></strong>
           <span class="badge bg-<?= e(Status::color((string)$item['status'])) ?>"><?= e(Status::label((string)$item['status'])) ?></span>
           <?php if ((int)$item['revision_count'] >= 3): ?><span class="badge bg-warning text-dark">Rev #<?= (int)$item['revision_count'] ?></span><?php endif; ?>
+          <?php if (!empty($item['counter_approved_at'])): ?><span class="badge bg-success" title="Approved face-to-face at the counter on <?= e(fmt_date($item['counter_approved_at'], true)) ?>">✔ Approved in person</span><?php endif; ?>
           <div class="small text-muted">
             <?= e($item['category_name_snapshot']) ?> · Qty <?= e(rtrim(rtrim((string)$item['qty'], '0'), '.')) ?> <?= e($item['unit']) ?>
             · Rate <?= e(fmt_money($item['rate'])) ?><?= (int)$item['rate_overridden'] ? ' <span class="badge bg-secondary">edited</span>' : '' ?>
@@ -71,17 +73,34 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
             </form>
             <?php endif; ?>
           <?php endif; ?>
-          <?php if (Acl::can('order.change_status') && !in_array($item['status'], ['completed', 'cancelled'], true)): ?>
-          <form method="post" action="<?= e(admin_url('order-items/' . $item['id'] . '/status')) ?>" class="d-flex gap-1">
+          <?php if (Acl::can('order.change_status') && !in_array($item['status'], ['completed', 'cancelled'], true)):
+              // Design jobs are normally held until the customer approves the proof online.
+              // When they approve face-to-face, staff can vouch for it with this tick box.
+              $hasApproval = !empty($item['counter_approved_at']);
+              foreach ($item['proofs'] as $pf) {
+                  if ($pf['status'] === 'approved' && (int)$pf['approval_confirmed'] === 1) { $hasApproval = true; break; }
+              }
+              $canOverride = (int)$item['requires_design'] === 1 && !$hasApproval && Acl::can('order.override_approval'); ?>
+          <form method="post" action="<?= e(admin_url('order-items/' . $item['id'] . '/status')) ?>">
             <?= Csrf::field() ?>
-            <select name="status" class="form-select form-select-sm" required>
-              <option value="">Change status…</option>
-              <?php foreach (array_merge(array_keys(Status::RANKS), Status::SPECIAL) as $s): if ($s === $item['status']) continue; ?>
-                <option value="<?= e($s) ?>"><?= e(Status::label($s)) ?></option>
-              <?php endforeach; ?>
-            </select>
-            <input name="note" class="form-control form-control-sm" placeholder="Note / reason" style="max-width:130px">
-            <button class="btn btn-sm btn-outline-primary">Go</button>
+            <div class="d-flex gap-1">
+              <select name="status" class="form-select form-select-sm" required>
+                <option value="">Change status…</option>
+                <?php foreach (array_merge(array_keys(Status::RANKS), Status::SPECIAL) as $s): if ($s === $item['status']) continue; ?>
+                  <option value="<?= e($s) ?>"><?= e(Status::label($s)) ?></option>
+                <?php endforeach; ?>
+              </select>
+              <input name="note" class="form-control form-control-sm" placeholder="Note / reason" style="max-width:130px">
+              <button class="btn btn-sm btn-outline-primary">Go</button>
+            </div>
+            <?php if ($canOverride): ?>
+            <div class="form-check form-check-sm text-start mt-1">
+              <input class="form-check-input" type="checkbox" value="1" name="approval_override" id="ovr<?= (int)$item['id'] ?>">
+              <label class="form-check-label small text-muted" for="ovr<?= (int)$item['id'] ?>">
+                Customer approved in person — allow Ready for Print without the online approval
+              </label>
+            </div>
+            <?php endif; ?>
           </form>
           <?php endif; ?>
         </div>

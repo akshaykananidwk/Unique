@@ -76,6 +76,11 @@ class CatalogController extends Controller
             'sort_order' => (int)($_POST['sort_order'] ?? 0),
             'is_active' => !empty($_POST['is_active']) ? 1 : 0,
             'show_on_public' => !empty($_POST['show_on_public']) ? 1 : 0,
+            // How this category's lines are worked out, and what GST they carry.
+            'calc_mode' => in_array($_POST['calc_mode'] ?? '', ['simple', 'sqft', 'mixed'], true)
+                ? $_POST['calc_mode'] : ($category['calc_mode'] ?? 'simple'),
+            'tax_percent' => max(0, min(100, (float)($_POST['tax_percent'] ?? 0))),
+            'requires_design' => !empty($_POST['requires_design']) ? 1 : 0,
             'updated_at' => now(),
         ];
         if (!empty($_FILES['image']['name'])) {

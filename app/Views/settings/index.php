@@ -28,6 +28,11 @@
       <div class="col-md-3"><label class="form-label">WhatsApp</label><input name="business_whatsapp" class="form-control" value="<?= e($values['business_whatsapp']) ?>"></div>
       <div class="col-md-3"><label class="form-label">Email</label><input name="business_email" class="form-control" value="<?= e($values['business_email']) ?>"></div>
       <div class="col-md-3"><label class="form-label">GSTIN</label><input name="business_gstin" class="form-control" value="<?= e($values['business_gstin']) ?>"></div>
+      <div class="col-md-3"><label class="form-label">Default GST %</label>
+        <input type="number" step="0.01" min="0" max="100" name="default_gst_percent" class="form-control"
+               value="<?= e($values['default_gst_percent'] ?? '') ?>" placeholder="e.g. 18">
+        <div class="form-text">Applied to every new order line unless the category or the line itself says otherwise.
+          Leave blank or 0 for no GST.</div></div>
       <div class="col-md-3"><label class="form-label">Logo <?= $values['business_logo'] ? '<a target="_blank" href="' . e(upload_url($values['business_logo'])) . '">(current)</a>' : '' ?></label>
         <input type="file" name="business_logo" class="form-control" accept="image/*"></div>
       <div class="col-md-3"><label class="form-label">Favicon</label><input type="file" name="business_favicon" class="form-control" accept="image/*,.ico"></div>

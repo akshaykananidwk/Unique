@@ -1,12 +1,11 @@
 {
-    "version": "1.3.0",
+    "version": "1.4.0",
     "released_at": "2026-08-06",
     "changelog": [
-        "New Light Board category, built up component by component: Acrylic, ACP Sheet, Steel Letter, SS Letter, LED Module, Power Supply, Wire, Pipe & Frame, MS Frame, Installation / Fitting, Transport and Labour.",
-        "One order can now mix both kinds of line. Acrylic and ACP are asked as Quantity, Width, Height, Total Sq. Ft., Rate, Amount, while Steel Letter, LED Module, Power Supply, Wire and Labour just ask Quantity, Unit, Rate, Amount — in the same order.",
-        "Every component keeps its own unit (pcs, sqft, ft, mtr, job), shown on the order line and on the printed bill.",
-        "Not on the list? Choose Custom and type any component name you like.",
-        "The grand total updates the moment a component is added, edited or deleted — the same single calculation used everywhere.",
-        "Components are fully manageable from the Categories screen: add, rename, reorder, change a component between Qty × Rate and ft × ft, or remove it. No programming needed, and it applies to any category, not just Light Board."
+        "Settings now has a Default GST % box. Put 18 in it and every new order line picks up 18% GST automatically, added on top of the amount.",
+        "GST is never forced. A category can carry its own GST %, and any single line can be given its own — most specific wins: the line, then the category, then the Settings default. Leave everything blank or 0 and no GST is charged.",
+        "The Add Item box and every order line now have a GST % field you can type into, with the GST amount shown under the line amount and rolled into the grand total as you type.",
+        "The Categories screen is now the one place to set everything up: name, icon, description, sort order, Active / Public, Needs design, the calculation type (Qty × Rate, ft × ft, or Mixed) and the GST % — plus the component list.",
+        "The printed bill now says GST instead of Tax."
     ]
 }

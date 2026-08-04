@@ -49,7 +49,7 @@ $wrapClass = $format === 'thermal' ? 'print-thermal' : 'print-a5';
   <table class="totals" style="margin-top:6px">
     <tr><td>Subtotal</td><td style="text-align:right"><?= e(number_format((float)$order['subtotal'], 2)) ?></td></tr>
     <?php if ((float)$order['discount_amount'] > 0): ?><tr><td>Discount</td><td style="text-align:right">− <?= e(number_format((float)$order['discount_amount'], 2)) ?></td></tr><?php endif; ?>
-    <?php if ((float)$order['tax_amount'] > 0): ?><tr><td>Tax</td><td style="text-align:right"><?= e(number_format((float)$order['tax_amount'], 2)) ?></td></tr><?php endif; ?>
+    <?php if ((float)$order['tax_amount'] > 0): ?><tr><td>GST</td><td style="text-align:right"><?= e(number_format((float)$order['tax_amount'], 2)) ?></td></tr><?php endif; ?>
     <?php if ((float)$order['delivery_charge'] > 0): ?><tr><td>Delivery</td><td style="text-align:right"><?= e(number_format((float)$order['delivery_charge'], 2)) ?></td></tr><?php endif; ?>
     <tr class="grand"><td>TOTAL</td><td style="text-align:right">₹<?= e(number_format((float)$order['total'], 2)) ?></td></tr>
     <tr><td>Advance Paid</td><td style="text-align:right">₹<?= e(number_format((float)$order['paid_amount'], 2)) ?></td></tr>

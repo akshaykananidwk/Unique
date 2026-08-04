@@ -372,7 +372,7 @@ class OrderService
             'width_ft'    => $line['width_ft'] ?? 0,
             'height_ft'   => $line['height_ft'] ?? 0,
             'rate'        => $line['rate'] ?? 0,
-            'tax_percent' => $line['tax_percent'] ?? ($category['tax_percent'] ?? 0),
+            'tax_percent' => self::gstPercent($line, $category),
         ]);
 
         $requiresDesign = array_key_exists('requires_design', $line)
@@ -410,6 +410,24 @@ class OrderService
             'created_at' => now(),
             'updated_at' => now(),
         ];
+    }
+
+    /**
+     * GST for a line, most specific wins:
+     *   1. what was typed on the line itself
+     *   2. the category's own GST %
+     *   3. the shop-wide Default GST % from Settings
+     * Nothing set anywhere means no GST — it is never forced on.
+     */
+    public static function gstPercent(array $line, ?array $category = null): float
+    {
+        if (isset($line['tax_percent']) && $line['tax_percent'] !== '' && $line['tax_percent'] !== null) {
+            return max(0.0, min(100.0, (float)$line['tax_percent']));
+        }
+        if ($category !== null && (float)($category['tax_percent'] ?? 0) > 0) {
+            return max(0.0, min(100.0, (float)$category['tax_percent']));
+        }
+        return max(0.0, min(100.0, (float)Settings::get('default_gst_percent', 0)));
     }
 
     /** Best-effort category for an existing line: its catalogue item, else the snapshot name. */

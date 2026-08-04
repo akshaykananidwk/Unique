@@ -13,7 +13,7 @@ class SettingsController extends Controller
     private const GENERAL_KEYS = [
         'business_name', 'business_tagline', 'business_address', 'business_city', 'business_state',
         'business_pincode', 'business_phone', 'business_whatsapp', 'business_email', 'business_gstin',
-        'currency_symbol', 'timezone', 'date_format', 'brand_color',
+        'currency_symbol', 'timezone', 'date_format', 'brand_color', 'default_gst_percent',
     ];
 
     private const APP_KEYS = [

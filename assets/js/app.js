@@ -184,7 +184,7 @@
     if (!tbody) return;
     tbody.innerHTML = '';
     if (!state.items.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-muted small text-center py-3">No items yet — tap “Add Item”.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="text-muted small text-center py-3">No items yet — tap “Add Item”.</td></tr>';
       recalcTotals();
       return;
     }
@@ -204,7 +204,9 @@
         '<td data-label="Height ft">' + (sq ? num('kp-h', line.height_ft) : '<span class="text-muted">—</span>') + '</td>' +
         '<td data-label="Sq. Ft." class="kp-sqft fw-semibold">' + (sq ? (line.total_sqft ?? 0) : '—') + '</td>' +
         '<td data-label="Rate ₹">' + num('kp-rate', line.rate) + '</td>' +
-        '<td data-label="Amount" class="kp-amt fw-semibold text-end">' + money(line.amount || 0) + '</td>' +
+        '<td data-label="GST %">' + num('kp-gst', line.tax_percent) + '</td>' +
+        '<td data-label="Amount" class="kp-amt fw-semibold text-end">' + money(line.amount || 0) +
+          '<div class="small text-muted kp-gstamt">' + (line.tax_amount ? '+ ' + money(line.tax_amount) + ' GST' : '') + '</div></td>' +
         '<td data-label=""><button type="button" class="btn btn-sm btn-outline-danger" data-rm="' + i + '"><i class="bi bi-trash"></i></button></td>';
       tbody.appendChild(tr);
     });
@@ -215,7 +217,7 @@
   const itemsBody = document.getElementById('itemsBody');
   if (itemsBody) {
     itemsBody.addEventListener('input', e => {
-      const field = e.target.closest('.kp-qty, .kp-w, .kp-h, .kp-rate');
+      const field = e.target.closest('.kp-qty, .kp-w, .kp-h, .kp-rate, .kp-gst');
       if (!field) return;
       const i = parseInt(field.dataset.i, 10);
       const line = state.items[i];
@@ -223,6 +225,7 @@
       const val = cls => { const el = itemsBody.querySelector('.' + cls + '[data-i="' + i + '"]'); return el ? el.value : 0; };
       line.qty = val('kp-qty');
       line.rate = val('kp-rate');
+      line.tax_percent = parseFloat(val('kp-gst')) || 0;
       if (line.calc_mode === 'sqft') { line.width_ft = val('kp-w'); line.height_ft = val('kp-h'); }
       const c = calcLine(line);
       line.total_sqft = c.sqft; line.amount = c.amount; line.tax_amount = c.tax;
@@ -230,7 +233,9 @@
       const sqCell = tr.querySelector('.kp-sqft');
       if (sqCell && line.calc_mode === 'sqft') sqCell.textContent = c.sqft;
       const amtCell = tr.querySelector('.kp-amt');
-      if (amtCell) amtCell.textContent = money(c.amount);
+      if (amtCell) amtCell.childNodes[0].nodeValue = money(c.amount);
+      const gstCell = tr.querySelector('.kp-gstamt');
+      if (gstCell) gstCell.textContent = c.tax ? '+ ' + money(c.tax) + ' GST' : '';
       recalcTotals();
     });
     itemsBody.addEventListener('click', e => {
@@ -308,7 +313,7 @@
       calc_mode: activeMode(),
       qty: el('modalQty').value, rate: el('modalRate').value,
       width_ft: el('modalWidth').value, height_ft: el('modalHeight').value,
-      tax_percent: currentCategory.tax_percent
+      tax_percent: el('modalGst') ? el('modalGst').value : currentCategory.tax_percent
     };
     const c = calcLine(line);
     if (el('modalSqft')) el('modalSqft').value = c.sqft == null ? '0' : c.sqft;
@@ -325,6 +330,8 @@
     currentComponent = null;
     optionsBox.innerHTML = data.html;
     paintComponents(currentCategory._components);
+    // Prefill GST from the category (which already falls back to the shop default).
+    if (el('modalGst')) el('modalGst').value = currentCategory.tax_percent || 0;
     showSqftFields(activeMode() === 'sqft');
     const dw = el('modalDesignerWrap');
     if (dw) dw.style.display = currentCategory.requires_design == 1 ? '' : 'none';
@@ -383,7 +390,7 @@
       width_ft: mode === 'sqft' ? round2(el('modalWidth').value) : null,
       height_ft: mode === 'sqft' ? round2(el('modalHeight').value) : null,
       rate: round2(el('modalRate').value) || 0,
-      tax_percent: currentCategory.tax_percent,
+      tax_percent: el('modalGst') ? (parseFloat(el('modalGst').value) || 0) : (currentCategory.tax_percent || 0),
       spec: spec,
       spec_text: specSummary(spec),
       due_date: el('modalDue').value,

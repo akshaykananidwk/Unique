@@ -19,12 +19,26 @@
           <span class="input-group-text"><i class="bi bi-<?= e(category_icon($c)) ?>"></i></span>
           <input name="icon" class="form-control" placeholder="Icon (e.g. person-vcard)" value="<?= e($c['icon'] ?? '') ?>">
         </div>
-        <div class="d-flex gap-2 align-items-center mb-2">
-          <input type="number" name="sort_order" class="form-control form-control-sm" style="width:80px" value="<?= (int)$c['sort_order'] ?>" title="Sort order">
+        <div class="row g-2 mb-2">
+          <div class="col-7"><label class="form-label small mb-0">Calculation</label>
+            <select name="calc_mode" class="form-select form-select-sm">
+              <?php foreach (['simple' => 'Qty × Rate', 'sqft' => 'ft × ft (all lines)', 'mixed' => 'Mixed — component decides'] as $v => $l): ?>
+                <option value="<?= $v ?>" <?= ($c['calc_mode'] ?? 'simple') === $v ? 'selected' : '' ?>><?= $l ?></option>
+              <?php endforeach; ?>
+            </select></div>
+          <div class="col-5"><label class="form-label small mb-0">GST %</label>
+            <input type="number" step="0.01" min="0" max="100" name="tax_percent" class="form-control form-control-sm"
+                   value="<?= e(rtrim(rtrim(number_format((float)($c['tax_percent'] ?? 0), 2, '.', ''), '0'), '.')) ?>"
+                   placeholder="blank = default"></div>
+        </div>
+        <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
+          <input type="number" name="sort_order" class="form-control form-control-sm" style="width:70px" value="<?= (int)$c['sort_order'] ?>" title="Sort order">
           <div class="form-check"><input class="form-check-input" type="checkbox" name="is_active" value="1" <?= (int)$c['is_active'] ? 'checked' : '' ?> id="ca<?= (int)$c['id'] ?>">
             <label class="form-check-label small" for="ca<?= (int)$c['id'] ?>">Active</label></div>
           <div class="form-check"><input class="form-check-input" type="checkbox" name="show_on_public" value="1" <?= (int)$c['show_on_public'] ? 'checked' : '' ?> id="cp<?= (int)$c['id'] ?>">
             <label class="form-check-label small" for="cp<?= (int)$c['id'] ?>">Public</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="requires_design" value="1" <?= (int)($c['requires_design'] ?? 1) ? 'checked' : '' ?> id="cd<?= (int)$c['id'] ?>">
+            <label class="form-check-label small" for="cd<?= (int)$c['id'] ?>">Needs design</label></div>
         </div>
         <input type="file" name="image" class="form-control form-control-sm mb-2" accept="image/*">
         <div class="d-flex gap-2">

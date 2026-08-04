@@ -60,7 +60,8 @@
           <th style="width:90px">Height ft</th>
           <th style="width:95px">Sq. Ft.</th>
           <th style="width:105px">Rate ₹</th>
-          <th style="width:110px" class="text-end">Amount</th>
+          <th style="width:85px">GST %</th>
+          <th style="width:120px" class="text-end">Amount</th>
           <th style="width:44px"></th>
         </tr></thead>
         <tbody id="itemsBody"></tbody>
@@ -75,7 +76,7 @@
       <div class="col-md-5">
         <table class="table table-sm mb-0">
           <tr><td>Subtotal</td><td class="text-end" id="sumSubtotal">₹0.00</td></tr>
-          <tr><td>Tax</td><td class="text-end" id="sumTax">₹0.00</td></tr>
+          <tr><td>GST</td><td class="text-end" id="sumTax">₹0.00</td></tr>
           <tr><td>Delivery</td><td class="text-end" id="sumDelivery">₹0.00</td></tr>
           <tr class="fw-bold fs-5"><td>Total</td><td class="text-end" id="sumTotal">₹0.00</td></tr>
           <tr><td>Already Paid</td><td class="text-end text-success"><?= e(fmt_money($order['paid_amount'])) ?></td></tr>
@@ -130,6 +131,9 @@
             <input id="modalSqft" class="form-control-plaintext fw-semibold ps-2" readonly value="0"></div>
           <div class="col-4 col-md-2"><label class="form-label">Rate ₹ *</label>
             <input type="number" step="any" min="0" id="modalRate" class="form-control" value="0"></div>
+          <div class="col-4 col-md-2"><label class="form-label">GST %</label>
+            <input type="number" step="any" min="0" max="100" id="modalGst" class="form-control" value="0"
+                   title="Optional — leave 0 for no GST"></div>
           <div class="col-4 col-md-2"><label class="form-label">Due Date</label>
             <input type="datetime-local" id="modalDue" class="form-control"></div>
           <div class="col-12 col-md-6" id="modalDesignerWrap"><label class="form-label">Designer (optional)</label>

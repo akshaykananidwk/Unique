@@ -65,7 +65,8 @@ class ApiController extends Controller
             'id' => (int)$category['id'],
             'name' => $category['name'],
             'calc_mode' => $category['calc_mode'] ?? 'simple',
-            'tax_percent' => (float)($category['tax_percent'] ?? 0),
+            // What GST this category's lines get by default: its own, else the shop default.
+            'tax_percent' => \App\Models\OrderService::gstPercent([], $category),
             'requires_design' => (int)($category['requires_design'] ?? 1),
         ], 'components' => array_map(fn($c) => [
             'id' => (int)$c['id'],

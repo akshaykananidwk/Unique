@@ -150,6 +150,7 @@ $router->get('/system/update-history', 'UpdateController@history');
 $router->get('/notifications', 'NotificationController@index');
 $router->post('/notifications/read', 'NotificationController@markRead');
 $router->get('/api/customer-lookup', 'ApiController@customerLookup');
+$router->get('/api/category-options/{id}', 'ApiController@categoryOptions');
 $router->get('/api/item-options/{id}', 'ApiController@itemOptions');
 $router->post('/api/calc-price', 'ApiController@calcPrice');
 $router->get('/api/search', 'ApiController@search');

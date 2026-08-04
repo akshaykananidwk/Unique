@@ -33,7 +33,13 @@ $wrapClass = $format === 'thermal' ? 'print-thermal' : 'print-a5';
           <?php if ($item['spec_text']): ?><br><small><?= e($item['spec_text']) ?></small><?php endif; ?>
           <?php if ($item['special_instructions']): ?><br><small>📌 <?= e($item['special_instructions']) ?></small><?php endif; ?>
           <br><small>Status: <?= e(Status::label((string)$item['status'])) ?></small></td>
-        <td><?= e(rtrim(rtrim((string)$item['qty'], '0'), '.')) ?> <?= e($item['unit']) ?></td>
+        <td><?php $n = fn($v) => rtrim(rtrim(number_format((float)$v, 2, '.', ''), '0'), '.');
+            if ($item['total_sqft'] !== null && (float)$item['total_sqft'] > 0): ?>
+              <?= e($n($item['qty'])) ?> × <?= e($n($item['width_ft'])) ?>×<?= e($n($item['height_ft'])) ?>ft<br>
+              <strong><?= e($n($item['total_sqft'])) ?> sq.ft</strong>
+            <?php else: ?>
+              <?= e($n($item['qty'])) ?> <?= e($item['unit']) ?>
+            <?php endif; ?></td>
         <td><?= e(number_format((float)$item['rate'], 2)) ?></td>
         <td><?= e(number_format((float)$item['line_total'], 2)) ?></td>
       </tr>

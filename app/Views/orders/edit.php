@@ -1,6 +1,6 @@
 <?php use App\Core\Csrf; $title = 'Edit ' . $order['job_no']; ?>
 <h4 class="mb-1">Edit <?= e($order['job_no']) ?> <small class="text-muted fs-6"><?= e($customer['name']) ?> · <?= e($customer['phone']) ?></small></h4>
-<p class="text-muted small">Add missed items, change quantity or rate, or remove a line — the whole order is editable. Totals, tax and balance are recalculated when you save.</p>
+<p class="text-muted small">Every field is editable — add or remove items, change the name, quantity, size or rate. Amounts and the grand total update as you type, and are recalculated on the server when you save.</p>
 
 <form id="orderEditForm" method="post" action="<?= e(admin_url('orders/' . $order['id'] . '/update')) ?>">
   <?= Csrf::field() ?>
@@ -14,23 +14,22 @@
     <div class="col-md-3"><label class="form-label">Order Date</label>
       <input type="datetime-local" name="order_date" class="form-control"
              value="<?= e($order['order_date'] ? date('Y-m-d\TH:i', strtotime($order['order_date'])) : '') ?>"></div>
+    <div class="col-md-3"><label class="form-label">Due Date</label>
+      <input type="datetime-local" name="due_date" class="form-control"
+             value="<?= e($order['due_date'] ? date('Y-m-d\TH:i', strtotime($order['due_date'])) : '') ?>"></div>
     <div class="col-md-3"><label class="form-label">Priority</label>
       <select name="priority" class="form-select">
         <?php foreach (['normal', 'urgent', 'rush'] as $p): ?>
           <option value="<?= $p ?>" <?= $order['priority'] === $p ? 'selected' : '' ?>><?= ucfirst($p) ?></option>
         <?php endforeach; ?>
       </select></div>
-    <div class="col-md-3"><label class="form-label">Due Date</label>
-      <input type="datetime-local" name="due_date" class="form-control"
-             value="<?= e($order['due_date'] ? date('Y-m-d\TH:i', strtotime($order['due_date'])) : '') ?>"></div>
-    <div class="col-md-3"><label class="form-label">Discount Type</label>
-      <select id="discount_type" name="discount_type" class="form-select">
-        <option value="">None</option>
-        <option value="flat" <?= $order['discount_type'] === 'flat' ? 'selected' : '' ?>>Flat ₹</option>
-        <option value="percent" <?= $order['discount_type'] === 'percent' ? 'selected' : '' ?>>Percent %</option>
+    <div class="col-md-3"><label class="form-label">Accepted By</label>
+      <select name="accepted_by_user_id" class="form-select">
+        <option value="">— not set —</option>
+        <?php foreach ($staff as $s): ?>
+          <option value="<?= (int)$s['id'] ?>" <?= (int)($order['accepted_by_user_id'] ?? 0) === (int)$s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?></option>
+        <?php endforeach; ?>
       </select></div>
-    <div class="col-md-3"><label class="form-label">Discount Value</label>
-      <input type="number" step="0.01" min="0" id="discount_value" name="discount_value" class="form-control" value="<?= e($order['discount_value']) ?>"></div>
     <div class="col-md-3"><label class="form-label">Delivery Charge</label>
       <input type="number" step="0.01" min="0" id="delivery_charge" name="delivery_charge" class="form-control" value="<?= e($order['delivery_charge']) ?>"></div>
     <div class="col-md-3"><label class="form-label">Delivery Type</label>
@@ -38,7 +37,7 @@
         <option value="pickup" <?= $order['delivery_type'] === 'pickup' ? 'selected' : '' ?>>Pickup</option>
         <option value="delivery" <?= $order['delivery_type'] === 'delivery' ? 'selected' : '' ?>>Delivery</option>
       </select></div>
-    <div class="col-md-6"><label class="form-label">Delivery Address</label>
+    <div class="col-md-3"><label class="form-label">Delivery Address</label>
       <input name="delivery_address" class="form-control" value="<?= e($order['delivery_address']) ?>"></div>
     <div class="col-md-6"><label class="form-label">Customer Note</label>
       <input name="customer_note" class="form-control" value="<?= e($order['customer_note']) ?>"></div>
@@ -49,16 +48,25 @@
   <!-- Items -->
   <div class="card mb-3"><div class="card-body">
     <div class="d-flex justify-content-between align-items-center">
-      <h6 class="text-uppercase text-muted small mb-0">Items &amp; Prices</h6>
+      <h6 class="text-uppercase text-muted small mb-0">Items</h6>
       <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#itemModal"><i class="bi bi-plus-lg"></i> Add Item</button>
     </div>
     <div class="table-responsive mt-2">
-      <table class="table table-sm align-middle table-mobile">
-        <thead><tr><th>Item</th><th style="width:110px">Qty</th><th style="width:130px">Rate ₹</th><th>Amount</th><th></th></tr></thead>
+      <table class="table table-sm align-middle table-mobile kp-lines">
+        <thead><tr>
+          <th style="min-width:190px">Item</th>
+          <th style="width:90px">Qty</th>
+          <th style="width:90px">Width ft</th>
+          <th style="width:90px">Height ft</th>
+          <th style="width:95px">Sq. Ft.</th>
+          <th style="width:105px">Rate ₹</th>
+          <th style="width:110px" class="text-end">Amount</th>
+          <th style="width:44px"></th>
+        </tr></thead>
         <tbody id="itemsBody"></tbody>
       </table>
     </div>
-    <div class="text-muted small">Rate and quantity can be fine-tuned inline. To change an item's options, remove the line and add it again. Final totals are confirmed on save.</div>
+    <div class="form-text">Foot × foot items: Qty × Width × Height = Sq. Ft., then × Rate = Amount.</div>
   </div></div>
 
   <!-- Totals -->
@@ -67,10 +75,11 @@
       <div class="col-md-5">
         <table class="table table-sm mb-0">
           <tr><td>Subtotal</td><td class="text-end" id="sumSubtotal">₹0.00</td></tr>
-          <tr><td>Discount</td><td class="text-end" id="sumDiscount">− ₹0.00</td></tr>
           <tr><td>Tax</td><td class="text-end" id="sumTax">₹0.00</td></tr>
+          <tr><td>Delivery</td><td class="text-end" id="sumDelivery">₹0.00</td></tr>
           <tr class="fw-bold fs-5"><td>Total</td><td class="text-end" id="sumTotal">₹0.00</td></tr>
           <tr><td>Already Paid</td><td class="text-end text-success"><?= e(fmt_money($order['paid_amount'])) ?></td></tr>
+          <tr class="fw-semibold"><td>Balance</td><td class="text-end" id="sumDue">₹0.00</td></tr>
         </table>
       </div>
     </div>
@@ -82,42 +91,49 @@
   </div>
 </form>
 
-<!-- Add Item modal (same builder as the New Order page) -->
+<!-- Add Item modal (identical to New Order) -->
 <div class="modal fade" id="itemModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-fullscreen-md-down">
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title">Add Item</h5>
         <button class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <div class="row g-2 mb-3">
-          <div class="col-md-6"><label class="form-label">Category</label>
+        <div class="row g-2 mb-2">
+          <div class="col-md-5"><label class="form-label">Category *</label>
             <select id="modalCategory" class="form-select">
               <option value="">— Select category —</option>
               <?php foreach ($categories as $c): ?>
-                <option value="<?= (int)$c['id'] ?>"><?= e($c['name']) ?> (<?= (int)$c['item_count'] ?>)</option>
+                <option value="<?= (int)$c['id'] ?>" data-mode="<?= e($c['calc_mode'] ?? 'simple') ?>"><?= e($c['name']) ?></option>
               <?php endforeach; ?>
             </select></div>
-          <div class="col-md-6"><label class="form-label">Item</label>
-            <select id="modalItem" class="form-select"><option value="">— Select item —</option></select></div>
+          <div class="col-md-7"><label class="form-label">Item Name *</label>
+            <input id="modalItemName" class="form-control" list="itemNameSuggest" autocomplete="off"
+                   placeholder="e.g. Flex Banner, Star Flex, Vinyl, Sunboard, PVC…">
+            <datalist id="itemNameSuggest"></datalist></div>
         </div>
-        <div id="modalOptions"></div>
-        <div class="row g-2 border-top pt-3">
-          <div class="col-4 col-md-2"><label class="form-label">Qty</label>
-            <input type="number" id="modalQty" class="form-control" value="1" min="1"></div>
-          <div class="col-4 col-md-2"><label class="form-label">Rate ₹</label>
-            <input type="number" step="0.01" id="modalRate" class="form-control"></div>
-          <div class="col-4 col-md-3"><label class="form-label">Due Date</label>
+        <div id="modalOptions" class="border-top pt-2"></div>
+        <div class="row g-2 border-top pt-3 align-items-end">
+          <div class="col-4 col-md-2"><label class="form-label">Qty *</label>
+            <input type="number" step="any" min="0" id="modalQty" class="form-control" value="1"></div>
+          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Width ft</label>
+            <input type="number" step="any" min="0" id="modalWidth" class="form-control" value="0"></div>
+          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Height ft</label>
+            <input type="number" step="any" min="0" id="modalHeight" class="form-control" value="0"></div>
+          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Sq. Ft.</label>
+            <input id="modalSqft" class="form-control-plaintext fw-semibold ps-2" readonly value="0"></div>
+          <div class="col-4 col-md-2"><label class="form-label">Rate ₹ *</label>
+            <input type="number" step="any" min="0" id="modalRate" class="form-control" value="0"></div>
+          <div class="col-4 col-md-2"><label class="form-label">Due Date</label>
             <input type="datetime-local" id="modalDue" class="form-control"></div>
-          <div class="col-12 col-md-5" id="modalDesignerWrap"><label class="form-label">Designer (optional)</label>
+          <div class="col-12 col-md-6" id="modalDesignerWrap"><label class="form-label">Designer (optional)</label>
             <select id="modalDesigner" class="form-select">
               <option value="">— Assign later / auto —</option>
               <?php foreach ($designers as $d): ?>
-                <option value="<?= (int)$d['id'] ?>"><?= e($d['name']) ?> (<?= (int)$d['open_jobs'] ?> open)</option>
+                <option value="<?= (int)$d['id'] ?>"><?= e($d['name']) ?></option>
               <?php endforeach; ?>
             </select></div>
-          <div class="col-12" id="modalFileWrap" style="display:none"></div>
-          <div class="col-12"><label class="form-label">Special instructions</label>
-            <textarea id="modalInstructions" class="form-control" rows="2"></textarea></div>
+          <div class="col-12 col-md-6"><label class="form-label">Special instructions</label>
+            <input id="modalInstructions" class="form-control"></div>
         </div>
       </div>
       <div class="modal-footer justify-content-between">
@@ -129,23 +145,25 @@
 </div>
 
 <script>
-window.KP_ITEMS = <?= json_encode(array_map(fn($i) => [
-    'id' => (int)$i['id'], 'category_id' => (int)$i['category_id'], 'name' => $i['name'],
-    'unit' => $i['unit'], 'base_price' => $i['base_price'], 'pricing_type' => $i['pricing_type'], 'min_qty' => (int)$i['min_qty'],
-], $catalog), JSON_UNESCAPED_UNICODE) ?>;
+window.KP_ALREADY_PAID = <?= (float)$order['paid_amount'] ?>;
+window.KP_NAME_SUGGESTIONS = <?= json_encode($nameSuggestions ?? [], JSON_UNESCAPED_UNICODE) ?>;
 window.KP_EDIT_ITEMS = <?= json_encode(array_map(function ($oi) {
     $spec = json_decode((string)($oi['spec_json'] ?? '[]'), true);
     return [
         'id' => (int)$oi['id'],
-        'item_id' => (int)$oi['item_id'],
-        'name' => $oi['item_name_snapshot'],
-        'fixed' => ($oi['pricing_type'] ?? '') === 'fixed',
+        'category_id' => (int)($oi['category_id'] ?? 0),
+        'category_name' => (string)$oi['category_name_snapshot'],
+        'calc_mode' => (string)($oi['calc_mode'] ?? 'simple'),
+        'item_name' => (string)$oi['item_name_snapshot'],
         'qty' => (float)$oi['qty'],
+        'width_ft' => $oi['width_ft'] !== null ? (float)$oi['width_ft'] : null,
+        'height_ft' => $oi['height_ft'] !== null ? (float)$oi['height_ft'] : null,
+        'total_sqft' => $oi['total_sqft'] !== null ? (float)$oi['total_sqft'] : null,
         'rate' => (float)$oi['rate'],
+        'tax_percent' => (float)$oi['tax_percent'],
+        'amount' => (float)$oi['amount'],
         'spec' => is_array($spec) ? $spec : [],
         'spec_text' => (string)$oi['spec_text'],
-        'amount' => (float)$oi['amount'],
-        'tax_percent' => (float)$oi['tax_percent'],
         'requires_design' => (int)$oi['requires_design'],
         'due_date' => $oi['due_date'] ? date('Y-m-d\TH:i', strtotime((string)$oi['due_date'])) : '',
         'designer_id' => $oi['assigned_designer_id'] ? (int)$oi['assigned_designer_id'] : null,

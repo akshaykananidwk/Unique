@@ -18,9 +18,10 @@ $navGroups = [
         ['order.view', 'orders/kanban', 'kanban', 'Job Board'],
         ['design.view', 'my-jobs', 'palette2', 'My Jobs'],
     ],
+    // Item Master is gone — item names are typed free-hand and the CATEGORY carries the
+    // question set, so Categories is the only catalogue screen that matters now.
     'Customers & Catalog' => [
         ['customer.view', 'customers', 'people', 'Customers'],
-        ['item.manage', 'items', 'box-seam', 'Items'],
         ['category.manage', 'categories', 'tags', 'Categories'],
     ],
     'Money & Reports' => [
@@ -30,10 +31,10 @@ $navGroups = [
     'Communication' => [
         [$waPerm, $waPath, 'whatsapp', 'WhatsApp'],
     ],
+    // Single shop, many users — no branch switching.
     'Administration' => [
         ['user.manage', 'users', 'person-gear', 'Users'],
         ['role.manage', 'roles', 'shield-lock', 'Roles'],
-        ['branch.manage', 'branches', 'shop', 'Branches'],
     ],
     'System' => [
         ['settings.manage', 'settings', 'gear', 'Settings'],

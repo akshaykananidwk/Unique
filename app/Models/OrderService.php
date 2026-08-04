@@ -95,14 +95,7 @@ class OrderService
 
             // 1. Customer
             $customerId = self::upsertCustomer($payload['customer'], $branchId, $userId, $source);
-            $customer = DB::get('SELECT * FROM `' . tbl('customers') . '` WHERE id = ?', [$customerId]);
-            $groupDiscount = 0.0;
-            if ($customer['price_group_id']) {
-                $groupDiscount = (float)(DB::val(
-                    'SELECT discount_percent FROM `' . tbl('price_groups') . '` WHERE id = ?',
-                    [(int)$customer['price_group_id']]
-                ) ?? 0);
-            }
+            // Rate is always typed in by hand now, so no price list or group discount applies.
 
             // 2. Job number + tracking token. A number typed by hand wins (e.g. to match a
             //    GST bill); otherwise take the next one from the branch sequence.
@@ -130,6 +123,7 @@ class OrderService
                 'customer_id' => $customerId,
                 'source' => $source,
                 'taken_by_user_id' => $userId,
+                'accepted_by_user_id' => $payload['accepted_by_user_id'] ?? $userId,
                 'order_date' => $orderDate,
                 'priority' => $payload['priority'] ?? 'normal',
                 'status' => 'design_pending', // recomputed from the item lines below
@@ -138,8 +132,8 @@ class OrderService
                 'delivery_address' => $payload['delivery_address'] ?? null,
                 'customer_note' => $payload['customer_note'] ?? null,
                 'internal_note' => $payload['internal_note'] ?? null,
-                'discount_type' => $payload['discount_type'] ?? null,
-                'discount_value' => (float)($payload['discount_value'] ?? 0),
+                'discount_type' => null, // this shop does not give a discount
+                'discount_value' => 0,
                 'delivery_charge' => (float)($payload['delivery_charge'] ?? 0),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -147,75 +141,18 @@ class OrderService
 
             $orderDue = null;
             foreach (array_values($payload['items']) as $index => $line) {
-                $item = DB::get(
-                    'SELECT i.*, c.name AS category_name FROM `' . tbl('items') . '` i
-                     JOIN `' . tbl('categories') . '` c ON c.id = i.category_id
-                     WHERE i.id = ? AND i.is_active = 1 AND i.deleted_at IS NULL',
-                    [(int)$line['item_id']]
-                );
-                if (!$item) {
-                    throw new \RuntimeException('Item not found or inactive.');
-                }
-                $qty = max((float)$item['min_qty'], (float)($line['qty'] ?? 1));
-                $spec = is_array($line['spec'] ?? null) ? $line['spec'] : [];
-                $calc = Pricing::calculate($item, $qty, $spec, $groupDiscount);
-
-                $rate = $calc['rate'];
-                $overridden = 0;
-                if ($source === 'counter' && isset($line['rate']) && $line['rate'] !== ''
-                    && abs((float)$line['rate'] - $rate) > 0.009) {
-                    $rate = round((float)$line['rate'], 2);
-                    $overridden = 1;
-                }
-                $amount = $item['pricing_type'] === 'fixed' ? $rate : round($rate * $calc['billed_qty'], 2);
-                $taxPercent = (float)$item['tax_percent'];
-                $taxAmount = round($amount * $taxPercent / 100, 2);
-
-                $dueDate = !empty($line['due_date'])
-                    ? date('Y-m-d H:i:s', (int)strtotime((string)$line['due_date']))
-                    : date('Y-m-d H:i:s', $baseTs + (int)$item['default_turnaround_hours'] * 3600);
+                $row = self::buildLine($line, $baseTs, $index);
+                $dueDate = $row['due_date'];
                 if ($orderDue === null || $dueDate > $orderDue) {
                     $orderDue = $dueDate;
                 }
+                $designerId = $row['assigned_designer_id'];
+                $requiresDesign = (int)$row['requires_design'];
 
-                $requiresDesign = (int)$item['requires_design'];
-                $designerId = !empty($line['designer_id']) ? (int)$line['designer_id'] : null;
-                $status = $requiresDesign
-                    ? ($designerId ? 'design_pending' : 'design_pending')
-                    : 'ready_for_print';
+                $itemRowId = DB::insert('order_items', ['order_id' => $orderId] + $row);
+                self::history($orderId, $itemRowId, null, $row['status'], $userId, $source === 'public', 'Order created');
 
-                $itemRowId = DB::insert('order_items', [
-                    'order_id' => $orderId,
-                    'item_id' => (int)$item['id'],
-                    'item_name_snapshot' => $item['name'],
-                    'category_name_snapshot' => $item['category_name'],
-                    'qty' => $calc['billed_qty'],
-                    'unit' => $item['unit'],
-                    'rate' => $rate,
-                    'rate_overridden' => $overridden,
-                    'spec_json' => json_encode($spec, JSON_UNESCAPED_UNICODE),
-                    'spec_text' => $calc['spec_text'],
-                    'amount' => $amount,
-                    'tax_percent' => $taxPercent,
-                    'tax_amount' => $taxAmount,
-                    'line_total' => round($amount + $taxAmount, 2),
-                    'requires_design' => $requiresDesign,
-                    'assigned_designer_id' => $requiresDesign ? $designerId : null,
-                    'designer_assigned_at' => ($requiresDesign && $designerId) ? now() : null,
-                    'status' => $status,
-                    'due_date' => $dueDate,
-                    'special_instructions' => $line['special_instructions'] ?? null,
-                    'sort_order' => $index,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                self::history($orderId, $itemRowId, null, $status, $userId, $source === 'public', 'Order created');
-
-                if ($overridden) {
-                    Logger::activity('order', 'rate_override', 'order_item', $itemRowId,
-                        "Rate overridden on $jobNo: system ₹{$calc['rate']} → entered ₹$rate");
-                }
-                // 5. Auto-assign designer when enabled and none picked
+                // Auto-assign designer when enabled and none picked
                 if ($requiresDesign && !$designerId && Settings::getBool('auto_assign_designer')) {
                     self::autoAssignDesigner($itemRowId, $branchId, $userId);
                 }
@@ -271,10 +208,6 @@ class OrderService
                 throw new \RuntimeException('Order not found.');
             }
             $branchId = (int)$order['branch_id'];
-            $customer = DB::get('SELECT price_group_id FROM `' . tbl('customers') . '` WHERE id = ?', [(int)$order['customer_id']]);
-            $groupDiscount = ($customer && $customer['price_group_id'])
-                ? (float)(DB::val('SELECT discount_percent FROM `' . tbl('price_groups') . '` WHERE id = ?', [(int)$customer['price_group_id']]) ?? 0)
-                : 0.0;
 
             $existing = DB::all('SELECT * FROM `' . tbl('order_items') . '` WHERE order_id = ?', [$orderId]);
             $existingById = [];
@@ -287,93 +220,54 @@ class OrderService
             foreach (array_values($items) as $index => $line) {
                 $lineId = isset($line['id']) ? (int)$line['id'] : 0;
 
+                $baseTs = time();
                 if ($lineId && isset($existingById[$lineId])) {
-                    // Manual correction of an existing line — respect the entered qty/rate as-is.
                     $ex = $existingById[$lineId];
                     if ($ex['status'] === 'cancelled') {
                         $keptIds[] = $lineId; // leave cancelled lines untouched
                         continue;
                     }
-                    $qty = max(0.01, (float)($line['qty'] ?? $ex['qty']));
-                    $rate = isset($line['rate']) && $line['rate'] !== '' ? round((float)$line['rate'], 2) : (float)$ex['rate'];
-                    $isFixed = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('items') . "` WHERE id = ? AND pricing_type = 'fixed'", [(int)$ex['item_id']]) > 0;
-                    $amount = $isFixed ? $rate : round($rate * $qty, 2);
-                    $taxPercent = (float)$ex['tax_percent'];
-                    $taxAmount = round($amount * $taxPercent / 100, 2);
-                    $changed = abs($rate - (float)$ex['rate']) > 0.009 || abs($qty - (float)$ex['qty']) > 0.0001;
-                    DB::update('order_items', [
-                        'qty' => $qty,
-                        'rate' => $rate,
-                        'rate_overridden' => $changed ? 1 : (int)$ex['rate_overridden'],
-                        'amount' => $amount,
-                        'tax_amount' => $taxAmount,
-                        'line_total' => round($amount + $taxAmount, 2),
-                        'sort_order' => $index,
-                        'updated_at' => now(),
-                    ], ['id' => $lineId]);
+                    // Recalculate through the SAME builder New Order uses, so every field on the
+                    // line — name, category answers, qty, width, height, rate — is editable and
+                    // the money always comes out identical to a freshly-taken order.
+                    $row = self::buildLine($line + [
+                        'category_id' => $line['category_id'] ?? self::categoryIdFor($ex),
+                        'item_name' => $line['item_name'] ?? $ex['item_name_snapshot'],
+                        'item_id' => $line['item_id'] ?? $ex['item_id'],
+                        'unit' => $ex['unit'],
+                        'requires_design' => $ex['requires_design'],
+                    ], $baseTs, $index);
+
+                    $changed = abs((float)$row['rate'] - (float)$ex['rate']) > 0.009
+                        || abs((float)$row['qty'] - (float)$ex['qty']) > 0.0001
+                        || abs((float)($row['width_ft'] ?? 0) - (float)($ex['width_ft'] ?? 0)) > 0.0001
+                        || abs((float)($row['height_ft'] ?? 0) - (float)($ex['height_ft'] ?? 0)) > 0.0001;
+
+                    // Keep the line's own life-cycle: status, designer and dates are not reset.
+                    unset($row['status'], $row['assigned_designer_id'], $row['designer_assigned_at'],
+                          $row['due_date'], $row['created_at'], $row['requires_design'], $row['item_id']);
+                    if (!isset($line['special_instructions'])) {
+                        $row['special_instructions'] = $ex['special_instructions'];
+                    }
+                    DB::update('order_items', $row, ['id' => $lineId]);
                     if ($changed) {
                         Logger::activity('order', 'edit_item', 'order_item', $lineId,
-                            $order['job_no'] . ': line edited → qty ' . rtrim(rtrim(number_format($qty, 2, '.', ''), '0'), '.') . ' × ₹' . $rate);
+                            $order['job_no'] . ': line edited → ' . $row['item_name_snapshot']
+                            . ' ' . rtrim(rtrim(number_format((float)$row['qty'], 2, '.', ''), '0'), '.')
+                            . ' × ₹' . $row['rate'] . ' = ₹' . $row['amount']);
                     }
                     $keptIds[] = $lineId;
                     continue;
                 }
 
-                // Brand-new line — price it the same way createOrder() does.
-                $item = DB::get(
-                    'SELECT i.*, c.name AS category_name FROM `' . tbl('items') . '` i
-                     JOIN `' . tbl('categories') . '` c ON c.id = i.category_id
-                     WHERE i.id = ? AND i.is_active = 1 AND i.deleted_at IS NULL',
-                    [(int)($line['item_id'] ?? 0)]
-                );
-                if (!$item) {
-                    throw new \RuntimeException('Item not found or inactive.');
-                }
-                $qty = max((float)$item['min_qty'], (float)($line['qty'] ?? 1));
-                $spec = is_array($line['spec'] ?? null) ? $line['spec'] : [];
-                $calc = Pricing::calculate($item, $qty, $spec, $groupDiscount);
-                $rate = $calc['rate'];
-                $overridden = 0;
-                if (isset($line['rate']) && $line['rate'] !== '' && abs((float)$line['rate'] - $rate) > 0.009) {
-                    $rate = round((float)$line['rate'], 2);
-                    $overridden = 1;
-                }
-                $amount = $item['pricing_type'] === 'fixed' ? $rate : round($rate * $calc['billed_qty'], 2);
-                $taxPercent = (float)$item['tax_percent'];
-                $taxAmount = round($amount * $taxPercent / 100, 2);
-                $dueDate = !empty($line['due_date'])
-                    ? date('Y-m-d H:i:s', (int)strtotime((string)$line['due_date']))
-                    : date('Y-m-d H:i:s', time() + (int)$item['default_turnaround_hours'] * 3600);
-                $requiresDesign = (int)$item['requires_design'];
-                $designerId = !empty($line['designer_id']) ? (int)$line['designer_id'] : null;
-                $status = $requiresDesign ? 'design_pending' : 'ready_for_print';
-                $newId = DB::insert('order_items', [
-                    'order_id' => $orderId,
-                    'item_id' => (int)$item['id'],
-                    'item_name_snapshot' => $item['name'],
-                    'category_name_snapshot' => $item['category_name'],
-                    'qty' => $calc['billed_qty'],
-                    'unit' => $item['unit'],
-                    'rate' => $rate,
-                    'rate_overridden' => $overridden,
-                    'spec_json' => json_encode($spec, JSON_UNESCAPED_UNICODE),
-                    'spec_text' => $calc['spec_text'],
-                    'amount' => $amount,
-                    'tax_percent' => $taxPercent,
-                    'tax_amount' => $taxAmount,
-                    'line_total' => round($amount + $taxAmount, 2),
-                    'requires_design' => $requiresDesign,
-                    'assigned_designer_id' => $requiresDesign ? $designerId : null,
-                    'designer_assigned_at' => ($requiresDesign && $designerId) ? now() : null,
-                    'status' => $status,
-                    'due_date' => $dueDate,
-                    'special_instructions' => $line['special_instructions'] ?? null,
-                    'sort_order' => $index,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                self::history($orderId, $newId, null, $status, $userId, false, 'Item added on edit');
-                Logger::activity('order', 'add_item', 'order_item', $newId, $order['job_no'] . ': line added — ' . $item['name']);
+                // Brand-new line — exactly the same builder as New Order.
+                $row = self::buildLine($line, $baseTs, $index);
+                $requiresDesign = (int)$row['requires_design'];
+                $designerId = $row['assigned_designer_id'];
+                $newId = DB::insert('order_items', ['order_id' => $orderId] + $row);
+                self::history($orderId, $newId, null, $row['status'], $userId, false, 'Item added on edit');
+                Logger::activity('order', 'add_item', 'order_item', $newId,
+                    $order['job_no'] . ': line added — ' . $row['item_name_snapshot']);
                 if ($requiresDesign && $designerId) {
                     $newDesigner[] = $newId;
                 } elseif ($requiresDesign && !$designerId && Settings::getBool('auto_assign_designer')) {
@@ -413,6 +307,136 @@ class OrderService
         foreach ($newDesignerItemIds as $iid) {
             WaEvents::designerAssigned((int)$iid);
         }
+    }
+
+    /**
+     * Build one order_items row from a submitted line. The single place a line is turned into
+     * stored numbers — used by both createOrder() and syncOrderItems(), so a line saved from
+     * New Order and the same line re-saved from Edit Order can never come out different.
+     *
+     * A line carries either category_id + item_name (typed by hand at the counter) or, for the
+     * public website which still orders from the catalogue, an item_id we resolve those from.
+     *
+     * @return array order_items columns, minus order_id
+     */
+    private static function buildLine(array $line, int $baseTs, int $index): array
+    {
+        $categoryId = (int)($line['category_id'] ?? 0);
+        $name = trim((string)($line['item_name'] ?? ''));
+        $unit = trim((string)($line['unit'] ?? ''));
+        $catalogItemId = !empty($line['item_id']) ? (int)$line['item_id'] : null;
+        $turnaround = 24;
+
+        // Public-site path: fill category and name from the catalogue item.
+        if ($catalogItemId && ($categoryId === 0 || $name === '')) {
+            $item = DB::get(
+                'SELECT i.*, c.name AS category_name FROM `' . tbl('items') . '` i
+                 JOIN `' . tbl('categories') . '` c ON c.id = i.category_id
+                 WHERE i.id = ? AND i.deleted_at IS NULL',
+                [$catalogItemId]
+            );
+            if (!$item) {
+                throw new \RuntimeException('Item not found.');
+            }
+            $categoryId = $categoryId ?: (int)$item['category_id'];
+            $name = $name !== '' ? $name : (string)$item['name'];
+            $unit = $unit !== '' ? $unit : (string)$item['unit'];
+            $turnaround = (int)$item['default_turnaround_hours'];
+            if (!isset($line['rate']) || $line['rate'] === '') {
+                $line['rate'] = $item['base_price'];
+            }
+        }
+
+        $category = DB::get('SELECT * FROM `' . tbl('categories') . '` WHERE id = ?', [$categoryId]);
+        if (!$category) {
+            throw new \RuntimeException('Every item needs a category.');
+        }
+        if ($name === '') {
+            throw new \RuntimeException('Every item needs a name.');
+        }
+
+        $spec = is_array($line['spec'] ?? null) ? $line['spec'] : [];
+        $calc = OrderCalc::line([
+            'calc_mode'   => $category['calc_mode'] ?? 'simple',
+            'qty'         => $line['qty'] ?? 1,
+            'width_ft'    => $line['width_ft'] ?? 0,
+            'height_ft'   => $line['height_ft'] ?? 0,
+            'rate'        => $line['rate'] ?? 0,
+            'tax_percent' => $line['tax_percent'] ?? ($category['tax_percent'] ?? 0),
+        ]);
+
+        $requiresDesign = array_key_exists('requires_design', $line)
+            ? (int)(bool)$line['requires_design']
+            : (int)($category['requires_design'] ?? 1);
+        $designerId = !empty($line['designer_id']) ? (int)$line['designer_id'] : null;
+
+        return [
+            'item_id' => $catalogItemId,
+            'item_name_snapshot' => mb_substr($name, 0, 150),
+            'category_name_snapshot' => (string)$category['name'],
+            'qty' => $calc['qty'],
+            'width_ft' => $calc['width_ft'],
+            'height_ft' => $calc['height_ft'],
+            'total_sqft' => $calc['total_sqft'],
+            'unit' => $unit !== '' ? $unit : ($calc['calc_mode'] === 'sqft' ? 'sqft' : 'pcs'),
+            'rate' => $calc['rate'],
+            'rate_overridden' => 0,
+            'spec_json' => json_encode($spec, JSON_UNESCAPED_UNICODE),
+            'spec_text' => self::specText($categoryId, $spec, $calc),
+            'amount' => $calc['amount'],
+            'tax_percent' => $calc['tax_percent'],
+            'tax_amount' => $calc['tax_amount'],
+            'line_total' => $calc['line_total'],
+            'requires_design' => $requiresDesign,
+            'assigned_designer_id' => $requiresDesign ? $designerId : null,
+            'designer_assigned_at' => ($requiresDesign && $designerId) ? now() : null,
+            'status' => $requiresDesign ? 'design_pending' : 'ready_for_print',
+            'due_date' => !empty($line['due_date'])
+                ? date('Y-m-d H:i:s', (int)strtotime((string)$line['due_date']))
+                : date('Y-m-d H:i:s', $baseTs + $turnaround * 3600),
+            'special_instructions' => $line['special_instructions'] ?? null,
+            'sort_order' => $index,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+    }
+
+    /** Best-effort category for an existing line: its catalogue item, else the snapshot name. */
+    private static function categoryIdFor(array $existingRow): int
+    {
+        if (!empty($existingRow['item_id'])) {
+            $id = DB::val('SELECT category_id FROM `' . tbl('items') . '` WHERE id = ?', [(int)$existingRow['item_id']]);
+            if ($id) {
+                return (int)$id;
+            }
+        }
+        $id = DB::val('SELECT id FROM `' . tbl('categories') . '` WHERE name = ?', [(string)$existingRow['category_name_snapshot']]);
+        return (int)($id ?? 0);
+    }
+
+    /** Readable summary of the category answers plus the size, for job cards and bills. */
+    private static function specText(int $categoryId, array $spec, array $calc): string
+    {
+        $parts = [];
+        $size = OrderCalc::sizeText($calc);
+        if ($size !== '') {
+            $parts[] = $size;
+        }
+        if ($spec) {
+            $options = DB::all(
+                'SELECT label, field_key FROM `' . tbl('category_options') . '` WHERE category_id = ? ORDER BY sort_order, id',
+                [$categoryId]
+            );
+            foreach ($options as $option) {
+                $value = $spec[$option['field_key']] ?? null;
+                if ($value === null || $value === '' || $value === []) {
+                    continue;
+                }
+                $flat = is_array($value) ? implode(', ', array_map('strval', $value)) : (string)$value;
+                $parts[] = $option['label'] . ': ' . mb_substr($flat, 0, 300);
+            }
+        }
+        return implode(' | ', $parts);
     }
 
     private static function upsertCustomer(array $c, int $branchId, ?int $userId, string $source): int
@@ -468,31 +492,20 @@ class OrderService
     public static function recalcTotals(int $orderId): void
     {
         $order = DB::get('SELECT * FROM `' . tbl('orders') . '` WHERE id = ?', [$orderId]);
-        $sums = DB::get(
-            "SELECT COALESCE(SUM(amount),0) AS subtotal, COALESCE(SUM(tax_amount),0) AS tax
-             FROM `" . tbl('order_items') . "` WHERE order_id = ? AND status <> 'cancelled'",
+        $lines = DB::all(
+            "SELECT amount, tax_amount FROM `" . tbl('order_items') . "` WHERE order_id = ? AND status <> 'cancelled'",
             [$orderId]
         );
-        $subtotal = (float)$sums['subtotal'];
-        $discount = 0.0;
-        if ($order['discount_type'] === 'percent') {
-            $discount = round($subtotal * (float)$order['discount_value'] / 100, 2);
-        } elseif ($order['discount_type'] === 'flat') {
-            $discount = min($subtotal, (float)$order['discount_value']);
-        }
-        $tax = (float)$sums['tax'];
-        $delivery = (float)$order['delivery_charge'];
-        $raw = $subtotal - $discount + $tax + $delivery;
-        $total = round($raw);
-        $roundOff = round($total - $raw, 2);
+        // Same roll-up the browser previews and the printed bill use.
+        $totals = OrderCalc::totals($lines, (float)$order['delivery_charge']);
 
         DB::update('orders', [
-            'subtotal' => $subtotal,
-            'discount_amount' => $discount,
-            'tax_amount' => $tax,
-            'total' => $total,
-            'round_off' => $roundOff,
-            'balance_amount' => $total - (float)$order['paid_amount'],
+            'subtotal' => $totals['subtotal'],
+            'discount_amount' => 0,
+            'tax_amount' => $totals['tax_amount'],
+            'total' => $totals['total'],
+            'round_off' => $totals['round_off'],
+            'balance_amount' => OrderCalc::money($totals['total'] - (float)$order['paid_amount']),
             'updated_at' => now(),
         ], ['id' => $orderId]);
     }

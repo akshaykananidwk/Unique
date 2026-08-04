@@ -102,12 +102,7 @@ class OrderController extends Controller
             ? DB::all('SELECT * FROM `' . tbl('branches') . "` WHERE id IN ($marks) AND is_active = 1 ORDER BY sort_order", $branchIds)
             : [];
         $categories = DB::all(
-            'SELECT c.*, (SELECT COUNT(*) FROM `' . tbl('items') . '` i WHERE i.category_id = c.id AND i.is_active = 1 AND i.deleted_at IS NULL) AS item_count
-             FROM `' . tbl('categories') . '` c WHERE c.is_active = 1 ORDER BY c.sort_order'
-        );
-        $items = DB::all(
-            'SELECT id, category_id, name, unit, base_price, pricing_type, min_qty FROM `' . tbl('items') . '`
-             WHERE is_active = 1 AND deleted_at IS NULL ORDER BY sort_order, name'
+            'SELECT * FROM `' . tbl('categories') . '` WHERE is_active = 1 ORDER BY sort_order, name'
         );
         $designers = DB::all(
             'SELECT u.id, u.name,
@@ -116,7 +111,14 @@ class OrderController extends Controller
              FROM `" . tbl('users') . '` u JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
              WHERE r.slug = 'designer' AND u.is_active = 1 AND u.deleted_at IS NULL ORDER BY u.name"
         );
-        $this->render('orders/create', compact('branches', 'categories', 'items', 'designers'));
+        $staff = DB::all(
+            'SELECT id, name FROM `' . tbl('users') . '` WHERE is_active = 1 AND deleted_at IS NULL ORDER BY name'
+        );
+        // Item names are free text now; offer what has been typed before as suggestions.
+        $nameSuggestions = array_column(DB::all(
+            'SELECT DISTINCT item_name_snapshot AS n FROM `' . tbl('order_items') . '` ORDER BY n LIMIT 400'
+        ), 'n');
+        $this->render('orders/create', compact('branches', 'categories', 'designers', 'staff', 'nameSuggestions'));
     }
 
     public function store(): void
@@ -153,8 +155,8 @@ class OrderController extends Controller
                 'delivery_address' => $_POST['delivery_address'] ?? null,
                 'customer_note' => $_POST['customer_note'] ?? null,
                 'internal_note' => $_POST['internal_note'] ?? null,
-                'discount_type' => in_array($_POST['discount_type'] ?? '', ['flat', 'percent'], true) ? $_POST['discount_type'] : null,
-                'discount_value' => (float)($_POST['discount_value'] ?? 0),
+                'accepted_by_user_id' => !empty($_POST['accepted_by_user_id'])
+                    ? (int)$_POST['accepted_by_user_id'] : (int)$this->user['id'],
                 'delivery_charge' => (float)($_POST['delivery_charge'] ?? 0),
                 'items' => $itemsRaw,
                 'advance' => [
@@ -170,29 +172,7 @@ class OrderController extends Controller
             redirect(admin_url('orders/create'));
         }
 
-        // Per-item file uploads arrive as item_file_{index}
-        foreach (array_keys($_FILES) as $fileKey) {
-            if (preg_match('/^item_file_(\d+)$/', (string)$fileKey, $m)) {
-                $stored = Uploader::store($_FILES[$fileKey], 'artwork/' . date('Y/m'), Uploader::ARTWORK);
-                if ($stored['ok']) {
-                    $itemRow = DB::get(
-                        'SELECT id FROM `' . tbl('order_items') . '` WHERE order_id = ? AND sort_order = ?',
-                        [$result['order_id'], (int)$m[1]]
-                    );
-                    DB::insert('order_attachments', [
-                        'order_id' => $result['order_id'],
-                        'order_item_id' => $itemRow['id'] ?? null,
-                        'file_path' => $stored['path'],
-                        'original_name' => $stored['original'],
-                        'mime' => $stored['mime'],
-                        'size_bytes' => $stored['size'],
-                        'kind' => 'customer_artwork',
-                        'uploaded_by' => (int)$this->user['id'],
-                        'created_at' => now(),
-                    ]);
-                }
-            }
-        }
+        $this->storeReferenceFiles((int)$result['order_id']);
 
         flash('success', 'Order ' . $result['job_no'] . ' saved.');
         redirect(admin_url('orders/' . $result['order_id'] . '?print=1'));
@@ -247,29 +227,29 @@ class OrderController extends Controller
             redirect(admin_url('orders/' . $id));
         }
         $customer = DB::get('SELECT * FROM `' . tbl('customers') . '` WHERE id = ?', [(int)$order['customer_id']]);
+        // Each line carries its category (matched via its catalogue item, else by the snapshot
+        // name) so the editor knows whether to show foot x foot fields.
         $items = DB::all(
-            'SELECT oi.*, i.pricing_type FROM `' . tbl('order_items') . '` oi
+            'SELECT oi.*,
+                    COALESCE(ci.id, cn.id) AS category_id,
+                    COALESCE(ci.calc_mode, cn.calc_mode, ?) AS calc_mode
+             FROM `' . tbl('order_items') . '` oi
              LEFT JOIN `' . tbl('items') . '` i ON i.id = oi.item_id
+             LEFT JOIN `' . tbl('categories') . '` ci ON ci.id = i.category_id
+             LEFT JOIN `' . tbl('categories') . '` cn ON cn.name = oi.category_name_snapshot
              WHERE oi.order_id = ? ORDER BY oi.sort_order, oi.id',
-            [(int)$order['id']]
+            ['simple', (int)$order['id']]
         );
-        // Catalog for the "Add Item" builder (same data the create page uses)
-        $categories = DB::all(
-            'SELECT c.*, (SELECT COUNT(*) FROM `' . tbl('items') . '` i WHERE i.category_id = c.id AND i.is_active = 1 AND i.deleted_at IS NULL) AS item_count
-             FROM `' . tbl('categories') . '` c WHERE c.is_active = 1 ORDER BY c.sort_order'
-        );
-        $catalog = DB::all(
-            'SELECT id, category_id, name, unit, base_price, pricing_type, min_qty FROM `' . tbl('items') . '`
-             WHERE is_active = 1 AND deleted_at IS NULL ORDER BY sort_order, name'
-        );
+        $categories = DB::all('SELECT * FROM `' . tbl('categories') . '` WHERE is_active = 1 ORDER BY sort_order, name');
         $designers = DB::all(
-            'SELECT u.id, u.name,
-                    (SELECT COUNT(*) FROM `' . tbl('order_items') . "` oi WHERE oi.assigned_designer_id = u.id
-                     AND oi.status IN ('design_pending','design_in_progress','proof_sent','change_requested')) AS open_jobs
-             FROM `" . tbl('users') . '` u JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
+            'SELECT u.id, u.name FROM `' . tbl('users') . '` u JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
              WHERE r.slug = 'designer' AND u.is_active = 1 AND u.deleted_at IS NULL ORDER BY u.name"
         );
-        $this->render('orders/edit', compact('order', 'customer', 'items', 'categories', 'catalog', 'designers'));
+        $staff = DB::all('SELECT id, name FROM `' . tbl('users') . '` WHERE is_active = 1 AND deleted_at IS NULL ORDER BY name');
+        $nameSuggestions = array_column(DB::all(
+            'SELECT DISTINCT item_name_snapshot AS n FROM `' . tbl('order_items') . '` ORDER BY n LIMIT 400'
+        ), 'n');
+        $this->render('orders/edit', compact('order', 'customer', 'items', 'categories', 'designers', 'staff', 'nameSuggestions'));
     }
 
     /** Order-level fields plus per-item price/qty edits (discount, delivery, notes, priority, due date, line rates). */
@@ -315,8 +295,10 @@ class OrderController extends Controller
                 : $order['order_date'],
             'priority' => in_array($_POST['priority'] ?? '', ['normal', 'urgent', 'rush'], true) ? $_POST['priority'] : $order['priority'],
             'due_date' => !empty($_POST['due_date']) ? date('Y-m-d H:i:s', (int)strtotime((string)$_POST['due_date'])) : $order['due_date'],
-            'discount_type' => in_array($_POST['discount_type'] ?? '', ['flat', 'percent'], true) ? $_POST['discount_type'] : null,
-            'discount_value' => (float)($_POST['discount_value'] ?? 0),
+            'discount_type' => null, // no discount in this workflow
+            'discount_value' => 0,
+            'accepted_by_user_id' => !empty($_POST['accepted_by_user_id'])
+                ? (int)$_POST['accepted_by_user_id'] : ($order['accepted_by_user_id'] ?? null),
             'delivery_charge' => (float)($_POST['delivery_charge'] ?? 0),
             'delivery_type' => ($_POST['delivery_type'] ?? '') === 'delivery' ? 'delivery' : 'pickup',
             'delivery_address' => $_POST['delivery_address'] ?? null,
@@ -482,6 +464,60 @@ class OrderController extends Controller
         $queued = Whatsapp::queueRaw((string)$customer['phone'], $text, null, null, 'manual', 'order', (int)$order['id'], 3);
         flash($queued ? 'success' : 'danger', $queued ? 'WhatsApp message queued.' : 'Could not queue — check the customer number.');
         redirect(admin_url('orders/' . $id));
+    }
+
+    /**
+     * Save any reference files sent with the form. Accepts one or many under
+     * reference_files[], plus the legacy per-item item_file_{index} inputs.
+     * @return int how many were stored
+     */
+    private function storeReferenceFiles(int $orderId): int
+    {
+        $saved = 0;
+        $save = function (array $file, ?int $itemId) use ($orderId, &$saved): void {
+            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+                return;
+            }
+            $stored = Uploader::store($file, 'artwork/' . date('Y/m'), Uploader::ARTWORK);
+            if (!$stored['ok']) {
+                flash('warning', 'Could not attach ' . ($file['name'] ?? 'a file') . ': ' . ($stored['error'] ?? 'rejected'));
+                return;
+            }
+            DB::insert('order_attachments', [
+                'order_id' => $orderId,
+                'order_item_id' => $itemId,
+                'file_path' => $stored['path'],
+                'original_name' => $stored['original'],
+                'mime' => $stored['mime'],
+                'size_bytes' => $stored['size'],
+                'kind' => 'customer_artwork',
+                'uploaded_by' => (int)$this->user['id'],
+                'created_at' => now(),
+            ]);
+            $saved++;
+        };
+
+        // Multiple files under one input arrive as parallel arrays.
+        if (!empty($_FILES['reference_files']) && is_array($_FILES['reference_files']['name'] ?? null)) {
+            $f = $_FILES['reference_files'];
+            foreach (array_keys($f['name']) as $i) {
+                $save([
+                    'name' => $f['name'][$i], 'type' => $f['type'][$i], 'tmp_name' => $f['tmp_name'][$i],
+                    'error' => $f['error'][$i], 'size' => $f['size'][$i],
+                ], null);
+            }
+        }
+        // Legacy per-item inputs (public site / older forms).
+        foreach (array_keys($_FILES) as $key) {
+            if (preg_match('/^item_file_(\d+)$/', (string)$key, $m)) {
+                $row = DB::get(
+                    'SELECT id FROM `' . tbl('order_items') . '` WHERE order_id = ? AND sort_order = ?',
+                    [$orderId, (int)$m[1]]
+                );
+                $save($_FILES[$key], isset($row['id']) ? (int)$row['id'] : null);
+            }
+        }
+        return $saved;
     }
 
     private function findOrder(int $id): array

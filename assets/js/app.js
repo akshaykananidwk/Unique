@@ -132,176 +132,92 @@
     }
   });
 
-  // Item modal: category → item → options
-  const itemModalEl = document.getElementById('itemModal');
-  const itemModal = new bootstrap.Modal(itemModalEl);
-  const categorySelect = document.getElementById('modalCategory');
-  const itemSelect = document.getElementById('modalItem');
-  const optionsBox = document.getElementById('modalOptions');
-  let currentItem = null;
-  let editIndex = null;
 
-  categorySelect.addEventListener('change', () => {
-    const catId = categorySelect.value;
-    itemSelect.innerHTML = '<option value="">— Select item —</option>';
-    (window.KP_ITEMS || []).filter(i => i.category_id == catId).forEach(i => {
-      const opt = document.createElement('option');
-      opt.value = i.id;
-      opt.textContent = i.name + ' (' + money(parseFloat(i.base_price)) + '/' + i.unit + ')';
-      itemSelect.appendChild(opt);
-    });
-    optionsBox.innerHTML = '';
-    currentItem = null;
-  });
+  // ================================================================ order lines
+  // Mirrors App\Models\OrderCalc exactly. The server recalculates on save, so this is
+  // only the live preview — but the formulas are kept identical on purpose.
+  const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
+  const calcLine = l => {
+    const mode = l.calc_mode === 'sqft' ? 'sqft' : 'simple';
+    const qty = Math.max(0, round2(l.qty));
+    const rate = Math.max(0, round2(l.rate));
+    const w = Math.max(0, round2(l.width_ft));
+    const h = Math.max(0, round2(l.height_ft));
+    const sqft = mode === 'sqft' ? round2(qty * w * h) : null;
+    const billed = mode === 'sqft' ? sqft : qty;
+    const amount = round2(billed * rate);
+    const taxPercent = Math.max(0, Number(l.tax_percent) || 0);
+    return { sqft, amount, tax: round2(amount * taxPercent / 100) };
+  };
 
-  itemSelect.addEventListener('change', async () => {
-    if (!itemSelect.value) { optionsBox.innerHTML = ''; currentItem = null; return; }
-    optionsBox.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading options…</div>';
-    const data = await kpFetch(window.KP.adminUrl + '/api/item-options/' + itemSelect.value);
-    if (!data.ok) { optionsBox.innerHTML = '<div class="alert alert-danger">Could not load item.</div>'; return; }
-    currentItem = data.item;
-    optionsBox.innerHTML = data.html;
-    document.getElementById('modalQty').value = currentItem.min_qty;
-    document.getElementById('modalQty').min = currentItem.min_qty;
-    document.getElementById('modalQty').step = currentItem.step_qty;
-    const due = new Date(Date.now() + currentItem.turnaround_hours * 3600000);
-    document.getElementById('modalDue').value = due.toISOString().slice(0, 16);
-    document.getElementById('modalDesignerWrap').style.display = currentItem.requires_design == 1 ? '' : 'none';
-    document.getElementById('modalFileWrap').style.display = currentItem.allow_upload == 1 ? '' : 'none';
-    recalcModal();
-  });
-
-  function collectSpec() {
-    const spec = {};
-    optionsBox.querySelectorAll('[data-spec-key]').forEach(el => {
-      const key = el.getAttribute('data-spec-key');
-      if (el.type === 'radio') { if (el.checked) spec[key] = el.value; }
-      else if (el.type === 'checkbox') { if (el.checked) { (spec[key] = spec[key] || []).push(el.value); } }
-      else if (el.type === 'file') { /* handled separately */ }
-      else if (el.value !== '') spec[key] = el.value;
-    });
-    return spec;
+  function recalcTotals() {
+    let subtotal = 0, tax = 0;
+    state.items.forEach(l => { const c = calcLine(l); l.total_sqft = c.sqft; l.amount = c.amount; l.tax_amount = c.tax; subtotal += c.amount; tax += c.tax; });
+    subtotal = round2(subtotal); tax = round2(tax);
+    const dc = document.getElementById('delivery_charge');
+    const delivery = dc ? Math.max(0, round2(dc.value)) : 0;
+    const total = Math.round(subtotal + tax + delivery);
+    setText('sumSubtotal', money(subtotal));
+    setText('sumTax', money(tax));
+    setText('sumDelivery', money(delivery));
+    setText('sumTotal', money(total));
+    const adv = document.getElementById('advance_amount');
+    if (adv) setText('sumBalance', money(total - (round2(adv.value) || 0)));
+    const paid = Number(window.KP_ALREADY_PAID || 0);
+    setText('sumDue', money(total - paid));
   }
-
-  async function recalcModal() {
-    if (!currentItem) return;
-    const qty = parseFloat(document.getElementById('modalQty').value) || currentItem.min_qty;
-    const data = await kpFetch(window.KP.adminUrl + '/api/calc-price', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item_id: currentItem.id, qty: qty, spec: collectSpec(), customer_id: state.customerId })
-    });
-    if (data.ok) {
-      const rateField = document.getElementById('modalRate');
-      if (!rateField.dataset.touched) rateField.value = data.rate.toFixed(2);
-      const rate = parseFloat(rateField.value) || data.rate;
-      const amount = currentItem.pricing_type === 'fixed' ? rate : rate * data.billed_qty;
-      document.getElementById('modalAmount').textContent = money(amount) +
-        (data.tax_percent > 0 ? ' + ' + data.tax_percent + '% tax' : '');
-      document.getElementById('modalAmount').dataset.billedQty = data.billed_qty;
-      document.getElementById('modalAmount').dataset.specText = data.spec_text;
-    }
-  }
-  optionsBox.addEventListener('change', recalcModal);
-  optionsBox.addEventListener('input', recalcModal);
-  document.getElementById('modalQty').addEventListener('input', recalcModal);
-  document.getElementById('modalRate').addEventListener('input', function () { this.dataset.touched = '1'; recalcModal(); });
-
-  document.getElementById('modalAdd').addEventListener('click', () => {
-    if (!currentItem) { kpToast('danger', 'Pick an item first.'); return; }
-    // Required-option validation
-    let missing = null;
-    optionsBox.querySelectorAll('[data-required="1"]').forEach(el => {
-      const key = el.getAttribute('data-spec-key');
-      const spec = collectSpec();
-      if (!(key in spec) && el.type !== 'file') missing = el.closest('.mb-3')?.querySelector('label')?.textContent || key;
-    });
-    if (missing) { kpToast('danger', 'Please fill: ' + missing); return; }
-
-    const qty = parseFloat(document.getElementById('modalQty').value) || currentItem.min_qty;
-    const rate = parseFloat(document.getElementById('modalRate').value) || 0;
-    const amountEl = document.getElementById('modalAmount');
-    const billedQty = parseFloat(amountEl.dataset.billedQty || qty);
-    const line = {
-      item_id: currentItem.id,
-      name: currentItem.name,
-      qty: qty,
-      rate: rate,
-      fixed: currentItem.pricing_type === 'fixed',
-      spec: collectSpec(),
-      spec_text: amountEl.dataset.specText || '',
-      amount: currentItem.pricing_type === 'fixed' ? rate : rate * billedQty,
-      tax_percent: parseFloat(currentItem.tax_percent || 0),
-      due_date: document.getElementById('modalDue').value,
-      designer_id: document.getElementById('modalDesigner').value || null,
-      special_instructions: document.getElementById('modalInstructions').value,
-      requires_design: currentItem.requires_design
-    };
-    // Per-item file: move the modal file input into the form (renamed by index). Create page only.
-    const fileInput = document.getElementById('modalFile');
-    const idx = editIndex !== null ? editIndex : state.items.length;
-    if (fileInput && fileInput.files.length) {
-      const clone = fileInput.cloneNode(true);
-      clone.name = 'item_file_' + idx;
-      clone.classList.add('d-none');
-      clone.id = '';
-      orderForm.appendChild(clone);
-    }
-    if (editIndex !== null) { state.items[editIndex] = line; editIndex = null; }
-    else state.items.push(line);
-    if (fileInput) fileInput.value = '';
-    renderItems();
-    itemModal.hide();
-  });
-
-  itemModalEl.addEventListener('hidden.bs.modal', () => {
-    editIndex = null;
-    document.getElementById('modalRate').dataset.touched = '';
-    document.getElementById('modalInstructions').value = '';
-  });
-
-  window.kpRemoveItem = function (i) { state.items.splice(i, 1); renderItems(); };
 
   function renderItems() {
     const tbody = document.getElementById('itemsBody');
     if (!tbody) return;
     tbody.innerHTML = '';
     if (!state.items.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-muted small text-center py-3">No items yet — tap “Add Item”.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-muted small text-center py-3">No items yet — tap “Add Item”.</td></tr>';
       recalcTotals();
       return;
     }
     state.items.forEach((line, i) => {
-      const design = line.requires_design == 1 ? ' <span class="badge bg-info badge-status">Design</span>' : '';
+      const sq = line.calc_mode === 'sqft';
+      const num = (cls, val, ph) =>
+        '<input type="number" step="any" min="0" class="form-control form-control-sm ' + cls + '" data-i="' + i + '" value="' + (val == null ? '' : val) + '"' + (ph ? ' placeholder="' + ph + '"' : '') + '>';
       const tr = document.createElement('tr');
       tr.innerHTML =
-        '<td data-label="Item"><strong>' + esc(line.name) + '</strong>' + design +
-          (line.spec_text ? '<br><small class="text-muted">' + esc(line.spec_text) + '</small>' : '') + '</td>' +
-        '<td data-label="Qty"><input type="number" step="0.01" min="0" class="form-control form-control-sm kp-qty" data-i="' + i + '" value="' + line.qty + '"></td>' +
-        '<td data-label="Rate"><input type="number" step="0.01" min="0" class="form-control form-control-sm kp-rate" data-i="' + i + '" value="' + line.rate + '"></td>' +
-        '<td data-label="Amount" class="kp-amt fw-semibold">' + money(line.amount) + '</td>' +
+        '<td data-label="Item"><strong>' + esc(line.item_name) + '</strong>' +
+          (line.requires_design == 1 ? ' <span class="badge bg-info badge-status">Design</span>' : '') +
+          '<div class="small text-muted">' + esc(line.category_name || '') +
+          (line.spec_text ? ' · ' + esc(line.spec_text) : '') + '</div></td>' +
+        '<td data-label="Qty">' + num('kp-qty', line.qty) + '</td>' +
+        '<td data-label="Width ft">' + (sq ? num('kp-w', line.width_ft) : '<span class="text-muted">—</span>') + '</td>' +
+        '<td data-label="Height ft">' + (sq ? num('kp-h', line.height_ft) : '<span class="text-muted">—</span>') + '</td>' +
+        '<td data-label="Sq. Ft." class="kp-sqft fw-semibold">' + (sq ? (line.total_sqft ?? 0) : '—') + '</td>' +
+        '<td data-label="Rate ₹">' + num('kp-rate', line.rate) + '</td>' +
+        '<td data-label="Amount" class="kp-amt fw-semibold text-end">' + money(line.amount || 0) + '</td>' +
         '<td data-label=""><button type="button" class="btn btn-sm btn-outline-danger" data-rm="' + i + '"><i class="bi bi-trash"></i></button></td>';
       tbody.appendChild(tr);
     });
     recalcTotals();
   }
 
-  // Inline qty/rate editing + row removal (event delegation)
+  // Inline editing of every number on a line — recalculates that row and the totals at once.
   const itemsBody = document.getElementById('itemsBody');
   if (itemsBody) {
     itemsBody.addEventListener('input', e => {
-      const field = e.target.closest('.kp-qty, .kp-rate');
+      const field = e.target.closest('.kp-qty, .kp-w, .kp-h, .kp-rate');
       if (!field) return;
       const i = parseInt(field.dataset.i, 10);
       const line = state.items[i];
       if (!line) return;
-      const qEl = itemsBody.querySelector('.kp-qty[data-i="' + i + '"]');
-      const rEl = itemsBody.querySelector('.kp-rate[data-i="' + i + '"]');
-      line.qty = parseFloat(qEl.value) || 0;
-      line.rate = parseFloat(rEl.value) || 0;
-      line.amount = line.fixed ? line.rate : line.rate * line.qty;
-      const amtCell = field.closest('tr').querySelector('.kp-amt');
-      if (amtCell) amtCell.textContent = money(line.amount);
+      const val = cls => { const el = itemsBody.querySelector('.' + cls + '[data-i="' + i + '"]'); return el ? el.value : 0; };
+      line.qty = val('kp-qty');
+      line.rate = val('kp-rate');
+      if (line.calc_mode === 'sqft') { line.width_ft = val('kp-w'); line.height_ft = val('kp-h'); }
+      const c = calcLine(line);
+      line.total_sqft = c.sqft; line.amount = c.amount; line.tax_amount = c.tax;
+      const tr = field.closest('tr');
+      const sqCell = tr.querySelector('.kp-sqft');
+      if (sqCell && line.calc_mode === 'sqft') sqCell.textContent = c.sqft;
+      const amtCell = tr.querySelector('.kp-amt');
+      if (amtCell) amtCell.textContent = money(c.amount);
       recalcTotals();
     });
     itemsBody.addEventListener('click', e => {
@@ -312,46 +228,153 @@
     });
   }
 
-  function recalcTotals() {
-    const subtotal = state.items.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
-    const tax = state.items.reduce((s, l) => s + (parseFloat(l.amount) || 0) * (l.tax_percent || 0) / 100, 0);
-    const dt = document.getElementById('discount_type');
-    const dv = document.getElementById('discount_value');
-    const discType = dt ? dt.value : '';
-    const discValue = dv ? (parseFloat(dv.value) || 0) : 0;
-    const discount = discType === 'percent' ? subtotal * discValue / 100 : (discType === 'flat' ? Math.min(discValue, subtotal) : 0);
-    const dc = document.getElementById('delivery_charge');
-    const delivery = dc ? (parseFloat(dc.value) || 0) : 0;
-    const total = Math.round(subtotal - discount + tax + delivery);
-    setText('sumSubtotal', money(subtotal));
-    setText('sumDiscount', '− ' + money(discount));
-    setText('sumTax', money(tax));
-    setText('sumTotal', money(total));
-    const adv = document.getElementById('advance_amount');
-    if (adv) setText('sumBalance', money(total - (parseFloat(adv.value) || 0)));
-  }
-  ['discount_type', 'discount_value', 'delivery_charge', 'advance_amount'].forEach(id => {
+  ['delivery_charge', 'advance_amount'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', recalcTotals);
     el.addEventListener('change', recalcTotals);
   });
 
-  renderItems(); // initial paint (seeded lines on edit, empty state on create)
+  // ================================================================ Add Item modal
+  const itemModalEl = document.getElementById('itemModal');
+  const itemModal = itemModalEl ? new bootstrap.Modal(itemModalEl) : null;
+  const categorySelect = document.getElementById('modalCategory');
+  const nameInput = document.getElementById('modalItemName');
+  const optionsBox = document.getElementById('modalOptions');
+  const el = id => document.getElementById(id);
+  let currentCategory = null;
 
-  // WhatsApp Yes/No popup before the order is actually saved
+  (window.KP_NAME_SUGGESTIONS || []).forEach(n => {
+    const list = document.getElementById('itemNameSuggest');
+    if (!list) return;
+    const o = document.createElement('option'); o.value = n; list.appendChild(o);
+  });
+
+  const showSqftFields = show => document.querySelectorAll('.kp-sqft-only')
+    .forEach(n => { n.style.display = show ? '' : 'none'; });
+
+  function modalCalc() {
+    if (!currentCategory) return;
+    const line = {
+      calc_mode: currentCategory.calc_mode,
+      qty: el('modalQty').value, rate: el('modalRate').value,
+      width_ft: el('modalWidth').value, height_ft: el('modalHeight').value,
+      tax_percent: currentCategory.tax_percent
+    };
+    const c = calcLine(line);
+    if (el('modalSqft')) el('modalSqft').value = c.sqft == null ? '0' : c.sqft;
+    setText('modalAmount', money(c.amount));
+  }
+
+  if (categorySelect) categorySelect.addEventListener('change', async () => {
+    if (!categorySelect.value) { optionsBox.innerHTML = ''; currentCategory = null; showSqftFields(false); return; }
+    optionsBox.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm"></div></div>';
+    const data = await kpFetch(window.KP.adminUrl + '/api/category-options/' + categorySelect.value);
+    if (!data.ok) { optionsBox.innerHTML = '<div class="alert alert-danger">Could not load this category.</div>'; return; }
+    currentCategory = data.category;
+    optionsBox.innerHTML = data.html;
+    showSqftFields(currentCategory.calc_mode === 'sqft');
+    const dw = el('modalDesignerWrap');
+    if (dw) dw.style.display = currentCategory.requires_design == 1 ? '' : 'none';
+    modalCalc();
+  });
+
+  ['modalQty', 'modalWidth', 'modalHeight', 'modalRate'].forEach(id => {
+    const node = el(id);
+    if (node) node.addEventListener('input', modalCalc);
+  });
+
+  function collectSpec() {
+    const spec = {};
+    optionsBox.querySelectorAll('[data-spec-key]').forEach(node => {
+      const key = node.getAttribute('data-spec-key');
+      if (node.type === 'radio') { if (node.checked) spec[key] = node.value; }
+      else if (node.type === 'checkbox') { if (node.checked) (spec[key] = spec[key] || []).push(node.value); }
+      else if (node.value !== '') spec[key] = node.value;
+    });
+    return spec;
+  }
+
+  function specSummary(spec) {
+    return Object.keys(spec).map(k => {
+      const node = optionsBox.querySelector('[data-spec-key="' + k + '"]');
+      const label = node ? (node.closest('.mb-1') || node.closest('div')).querySelector('label') : null;
+      const name = label ? label.textContent.replace(/\s*\*$/, '').trim() : k;
+      return name + ': ' + (Array.isArray(spec[k]) ? spec[k].join(', ') : spec[k]);
+    }).join(' | ');
+  }
+
+  const addBtn = document.getElementById('modalAdd');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    if (!currentCategory) { kpToast('danger', 'Pick a category first.'); return; }
+    const name = (nameInput.value || '').trim();
+    if (!name) { kpToast('danger', 'Type the item name.'); return; }
+    let missing = null;
+    const spec = collectSpec();
+    optionsBox.querySelectorAll('[data-required="1"]').forEach(node => {
+      const key = node.getAttribute('data-spec-key');
+      if (!(key in spec)) {
+        const lab = (node.closest('.mb-1') || node.closest('div')).querySelector('label');
+        missing = lab ? lab.textContent.replace(/\s*\*$/, '').trim() : key;
+      }
+    });
+    if (missing) { kpToast('danger', 'Please fill: ' + missing); return; }
+
+    const line = {
+      category_id: currentCategory.id,
+      category_name: currentCategory.name,
+      calc_mode: currentCategory.calc_mode,
+      item_name: name,
+      qty: round2(el('modalQty').value) || 0,
+      width_ft: currentCategory.calc_mode === 'sqft' ? round2(el('modalWidth').value) : null,
+      height_ft: currentCategory.calc_mode === 'sqft' ? round2(el('modalHeight').value) : null,
+      rate: round2(el('modalRate').value) || 0,
+      tax_percent: currentCategory.tax_percent,
+      spec: spec,
+      spec_text: specSummary(spec),
+      due_date: el('modalDue').value,
+      designer_id: el('modalDesigner') ? (el('modalDesigner').value || null) : null,
+      special_instructions: el('modalInstructions').value,
+      requires_design: currentCategory.requires_design
+    };
+    const c = calcLine(line);
+    line.total_sqft = c.sqft; line.amount = c.amount; line.tax_amount = c.tax;
+    state.items.push(line);
+    renderItems();
+    itemModal.hide();
+  });
+
+  if (itemModalEl) itemModalEl.addEventListener('hidden.bs.modal', () => {
+    if (nameInput) nameInput.value = '';
+    ['modalQty'].forEach(id => { if (el(id)) el(id).value = 1; });
+    ['modalWidth', 'modalHeight', 'modalRate'].forEach(id => { if (el(id)) el(id).value = 0; });
+    if (el('modalInstructions')) el('modalInstructions').value = '';
+    if (optionsBox) optionsBox.innerHTML = '';
+    if (categorySelect) categorySelect.value = '';
+    currentCategory = null;
+    showSqftFields(false);
+    setText('modalAmount', money(0));
+  });
+
+  // Show how many reference files were picked
+  const fileInput = document.getElementById('referenceFiles');
+  if (fileInput) fileInput.addEventListener('change', () => {
+    const names = Array.from(fileInput.files).map(f => f.name);
+    document.getElementById('fileList').innerHTML = names.length
+      ? '<i class="bi bi-paperclip"></i> ' + names.length + ' file(s): ' + names.map(esc).join(', ')
+      : '';
+  });
+
+  // ================================================================ submit
   const waModalEl = document.getElementById('waConfirmModal');
   const waModal = waModalEl ? new bootstrap.Modal(waModalEl) : null;
   let waConfirmed = false;
 
-  const submitOrder = notify => {
-    document.getElementById('notify_customer').value = notify ? '1' : '0';
+  const fillAndGo = notify => {
+    if (document.getElementById('notify_customer')) document.getElementById('notify_customer').value = notify ? '1' : '0';
     document.getElementById('items_json').value = JSON.stringify(state.items);
     const btn = orderForm.querySelector('button[type=submit]');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…';
-    waConfirmed = true;
-    orderForm.submit();
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…'; }
   };
 
   orderForm.addEventListener('submit', e => {
@@ -360,25 +383,15 @@
       kpToast('danger', 'Add at least one item.');
       return;
     }
-    if (isEdit) {
-      // No WhatsApp popup on edit — just persist the reconciled item set.
-      document.getElementById('items_json').value = JSON.stringify(state.items);
-      const btn = orderForm.querySelector('button[type=submit]');
-      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…'; }
-      return;
-    }
-    if (waConfirmed || !waModal) return; // already answered — let it through
+    if (isEdit || waConfirmed || !waModal) { fillAndGo(true); return; }
     e.preventDefault();
     waModal.show();
   });
 
   if (waModal) {
-    document.getElementById('waYes').addEventListener('click', () => { waModal.hide(); submitOrder(true); });
-    document.getElementById('waNo').addEventListener('click', () => { waModal.hide(); submitOrder(false); });
+    document.getElementById('waYes').addEventListener('click', () => { waModal.hide(); waConfirmed = true; fillAndGo(true); orderForm.submit(); });
+    document.getElementById('waNo').addEventListener('click', () => { waModal.hide(); waConfirmed = true; fillAndGo(false); orderForm.submit(); });
   }
 
-  // Enter in the qty field adds the item (keyboard-friendly entry)
-  document.getElementById('modalQty').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('modalAdd').click(); }
-  });
+  renderItems();
 })();

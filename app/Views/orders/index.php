@@ -19,7 +19,7 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
       <?php endforeach; ?>
     </select>
   </div>
-  <?php if (count($branches) > 1): ?>
+  <?php if (false && count($branches) > 1): // single shop — no branch filter ?>
   <div class="col-6 col-md-2">
     <select name="branch_id" class="form-select form-select-sm">
       <option value="">All branches</option>

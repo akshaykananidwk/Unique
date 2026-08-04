@@ -7,7 +7,8 @@ class Uploader
 {
     public const IMAGES = ['jpg', 'jpeg', 'png', 'webp'];
     public const PROOFS = ['jpg', 'jpeg', 'png', 'pdf'];
-    public const ARTWORK = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'cdr', 'ai', 'psd', 'zip'];
+    // No SVG: it can carry script and would run if a browser ever opened it inline.
+    public const ARTWORK = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'cdr', 'ai', 'psd', 'zip', 'eps', 'rar'];
     public const AUDIO = ['webm', 'ogg', 'mp3', 'm4a', 'wav'];
 
     private const MIME_MAP = [
@@ -17,6 +18,8 @@ class Uploader
         'ai' => ['application/postscript', 'application/pdf', 'application/illustrator'],
         'psd' => ['image/vnd.adobe.photoshop', 'application/octet-stream'],
         'zip' => ['application/zip', 'application/x-zip-compressed'],
+        'eps' => ['application/postscript', 'image/x-eps', 'application/octet-stream'],
+        'rar' => ['application/vnd.rar', 'application/x-rar-compressed', 'application/octet-stream'],
         'webm' => ['video/webm', 'audio/webm'], 'ogg' => ['audio/ogg', 'application/ogg', 'video/ogg'],
         'mp3' => ['audio/mpeg'], 'm4a' => ['audio/mp4', 'audio/x-m4a', 'video/mp4'], 'wav' => ['audio/wav', 'audio/x-wav'],
         'ico' => ['image/vnd.microsoft.icon', 'image/x-icon'],

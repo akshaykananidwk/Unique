@@ -1,9 +1,15 @@
 {
-    "version": "1.0.17",
-    "released_at": "2026-08-04",
+    "version": "1.1.0",
+    "released_at": "2026-08-05",
     "changelog": [
-        "New Order now has an Order Date box, so old orders can be entered on the date they actually came in. Job due dates are worked out from that date too, not from today.",
-        "Job No can be typed by hand when taking an order — useful for matching a GST bill — or left blank to be generated automatically as before.",
-        "Job No and Order Date can both be changed later from Edit Order, at any time. A job number already used by another order is refused, and every change is recorded in the activity log."
+        "Item Master is gone from order entry. Pick a Category, then type any item name you like — Flex Banner, Star Flex, Vinyl, Sunboard, PVC, anything. Names you have used before are offered as suggestions.",
+        "Each Category now carries its own questions: banners ask Pipe, Frame and Eyelets; visiting cards ask Single/Double Side, Paper Type and Lamination; bill books ask Duplicate/Triplicate, Four Colour/Single Colour and Numbering.",
+        "Foot x foot items now work as Quantity → Width → Height → Total Sq. Ft. → Rate → Amount, calculated as you type. Example: 2 pieces of 5ft x 2ft at ₹30 = 20 sq.ft = ₹600.",
+        "Rate is always typed in by hand at order time — no price is stored on the category.",
+        "All the total calculation bugs are fixed. New Order, Edit Order and the printed bill now run through one single calculation, so changing quantity, width, height or rate always gives the same correct answer everywhere.",
+        "Edit Order: every field on every line is editable and the amount and grand total update the moment you change anything.",
+        "Reference files can be attached when taking an order — one or many at once (PDF, JPG, PNG, CDR, AI, PSD, EPS, ZIP, RAR).",
+        "Discount has been removed from the order screens, and the branch selector is gone — one shop, many users.",
+        "Every order now records who took it and who accepted it, ready for the performance reports coming next."
     ]
 }

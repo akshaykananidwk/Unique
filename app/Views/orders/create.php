@@ -5,6 +5,7 @@
   <input type="hidden" name="items_json" id="items_json">
   <input type="hidden" name="customer_id" id="customer_id">
   <input type="hidden" name="notify_customer" id="notify_customer" value="1">
+  <input type="hidden" name="branch_id" value="<?= (int)($branches[0]['id'] ?? 0) ?>">
 
   <!-- Step 1: Customer -->
   <div class="card mb-3"><div class="card-body">
@@ -14,21 +15,9 @@
         <label class="form-label">Mobile Number *</label>
         <input type="tel" id="customer_phone" name="customer_phone" class="form-control"
                inputmode="tel" required placeholder="e.g. 98765 43210 / +91…" autofocus>
-        <div class="form-text">Spaces, +91 or a leading 0 are fine — we keep the 10-digit number automatically.</div>
+        <div class="form-text">Spaces, +91 or a leading 0 are fine.</div>
         <div id="customerBadge" class="mt-1 small"></div>
       </div>
-      <?php if (count($branches) > 1): ?>
-      <div class="col-md-3">
-        <label class="form-label">Branch *</label>
-        <select name="branch_id" class="form-select" required>
-          <?php foreach ($branches as $b): ?>
-            <option value="<?= (int)$b['id'] ?>" <?= (int)$user['primary_branch_id'] === (int)$b['id'] ? 'selected' : '' ?>><?= e($b['name']) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <?php else: ?>
-        <input type="hidden" name="branch_id" value="<?= (int)($branches[0]['id'] ?? 0) ?>">
-      <?php endif; ?>
       <div class="col-md-3">
         <label class="form-label">Job No</label>
         <input name="job_no" class="form-control" placeholder="Leave blank — auto">
@@ -38,6 +27,16 @@
         <label class="form-label">Order Date</label>
         <input type="datetime-local" name="order_date" class="form-control" value="<?= e(date('Y-m-d\TH:i')) ?>">
         <div class="form-text">Change it to enter an older order.</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Accepted By</label>
+        <select name="accepted_by_user_id" class="form-select">
+          <option value="">— <?= e($user['name']) ?> (me) —</option>
+          <?php foreach ($staff as $s): ?>
+            <option value="<?= (int)$s['id'] ?>"><?= e($s['name']) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <div class="form-text">Who accepted this order.</div>
       </div>
     </div>
     <div id="newCustomerFields" class="row g-2 mt-1 d-none">
@@ -56,25 +55,38 @@
       <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#itemModal"><i class="bi bi-plus-lg"></i> Add Item</button>
     </div>
     <div class="table-responsive mt-2">
-      <table class="table table-sm align-middle table-mobile">
-        <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th><th></th></tr></thead>
-        <tbody id="itemsBody"><tr><td colspan="5" class="text-muted small text-center py-3">No items added yet — tap “Add Item”.</td></tr></tbody>
+      <table class="table table-sm align-middle table-mobile kp-lines">
+        <thead><tr>
+          <th style="min-width:190px">Item</th>
+          <th style="width:90px">Qty</th>
+          <th style="width:90px">Width ft</th>
+          <th style="width:90px">Height ft</th>
+          <th style="width:95px">Sq. Ft.</th>
+          <th style="width:105px">Rate ₹</th>
+          <th style="width:110px" class="text-end">Amount</th>
+          <th style="width:44px"></th>
+        </tr></thead>
+        <tbody id="itemsBody"></tbody>
       </table>
     </div>
+    <div class="form-text">Foot × foot items: Qty × Width × Height = Sq. Ft., then × Rate = Amount. Everything recalculates as you type.</div>
   </div></div>
 
-  <!-- Step 3: Summary & Payment -->
+  <!-- Step 3: Files -->
   <div class="card mb-3"><div class="card-body">
-    <h6 class="text-uppercase text-muted small">Step 3 — Summary &amp; Payment</h6>
+    <h6 class="text-uppercase text-muted small">Step 3 — Reference Files <span class="text-muted">(optional)</span></h6>
+    <input type="file" name="reference_files[]" id="referenceFiles" class="form-control" multiple
+           accept=".pdf,.jpg,.jpeg,.png,.webp,.cdr,.ai,.psd,.eps,.zip,.rar">
+    <div class="form-text">PDF, JPG, PNG, CDR, AI, PSD, EPS, ZIP, RAR — pick as many as you like.</div>
+    <div id="fileList" class="small mt-2"></div>
+  </div></div>
+
+  <!-- Step 4: Summary & Payment -->
+  <div class="card mb-3"><div class="card-body">
+    <h6 class="text-uppercase text-muted small">Step 4 — Summary &amp; Payment</h6>
     <div class="row g-3">
       <div class="col-md-6">
         <div class="row g-2">
-          <div class="col-6"><label class="form-label">Discount Type</label>
-            <select id="discount_type" name="discount_type" class="form-select">
-              <option value="">None</option><option value="flat">Flat ₹</option><option value="percent">Percent %</option>
-            </select></div>
-          <div class="col-6"><label class="form-label">Discount Value</label>
-            <input type="number" step="0.01" min="0" id="discount_value" name="discount_value" class="form-control" value="0"></div>
           <div class="col-6"><label class="form-label">Delivery Charge</label>
             <input type="number" step="0.01" min="0" id="delivery_charge" name="delivery_charge" class="form-control" value="0"></div>
           <div class="col-6"><label class="form-label">Priority</label>
@@ -96,8 +108,8 @@
       <div class="col-md-6">
         <table class="table table-sm">
           <tr><td>Subtotal</td><td class="text-end" id="sumSubtotal">₹0.00</td></tr>
-          <tr><td>Discount</td><td class="text-end" id="sumDiscount">− ₹0.00</td></tr>
           <tr><td>Tax</td><td class="text-end" id="sumTax">₹0.00</td></tr>
+          <tr><td>Delivery</td><td class="text-end" id="sumDelivery">₹0.00</td></tr>
           <tr class="fw-bold fs-5"><td>Total</td><td class="text-end" id="sumTotal">₹0.00</td></tr>
         </table>
         <div class="row g-2">
@@ -128,39 +140,46 @@
 <div class="modal fade" id="itemModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-fullscreen-md-down">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Add Item</h5>
+      <div class="modal-header"><h5 class="modal-title" id="itemModalTitle">Add Item</h5>
         <button class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <div class="row g-2 mb-3">
-          <div class="col-md-6"><label class="form-label">Category</label>
+        <div class="row g-2 mb-2">
+          <div class="col-md-5"><label class="form-label">Category *</label>
             <select id="modalCategory" class="form-select">
               <option value="">— Select category —</option>
               <?php foreach ($categories as $c): ?>
-                <option value="<?= (int)$c['id'] ?>"><?= e($c['name']) ?> (<?= (int)$c['item_count'] ?>)</option>
+                <option value="<?= (int)$c['id'] ?>" data-mode="<?= e($c['calc_mode'] ?? 'simple') ?>"><?= e($c['name']) ?></option>
               <?php endforeach; ?>
             </select></div>
-          <div class="col-md-6"><label class="form-label">Item</label>
-            <select id="modalItem" class="form-select"><option value="">— Select item —</option></select></div>
+          <div class="col-md-7"><label class="form-label">Item Name *</label>
+            <input id="modalItemName" class="form-control" list="itemNameSuggest" autocomplete="off"
+                   placeholder="e.g. Flex Banner, Star Flex, Vinyl, Sunboard, PVC…">
+            <datalist id="itemNameSuggest"></datalist>
+            <div class="form-text">Type any name — you are not limited to a list.</div></div>
         </div>
-        <div id="modalOptions"></div>
-        <div class="row g-2 border-top pt-3">
-          <div class="col-4 col-md-2"><label class="form-label">Qty</label>
-            <input type="number" id="modalQty" class="form-control" value="1" min="1"></div>
-          <div class="col-4 col-md-2"><label class="form-label">Rate ₹</label>
-            <input type="number" step="0.01" id="modalRate" class="form-control"></div>
-          <div class="col-4 col-md-3"><label class="form-label">Due Date</label>
+        <div id="modalOptions" class="border-top pt-2"></div>
+        <div class="row g-2 border-top pt-3 align-items-end">
+          <div class="col-4 col-md-2"><label class="form-label">Qty *</label>
+            <input type="number" step="any" min="0" id="modalQty" class="form-control" value="1"></div>
+          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Width ft</label>
+            <input type="number" step="any" min="0" id="modalWidth" class="form-control" value="0"></div>
+          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Height ft</label>
+            <input type="number" step="any" min="0" id="modalHeight" class="form-control" value="0"></div>
+          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Sq. Ft.</label>
+            <input id="modalSqft" class="form-control-plaintext fw-semibold ps-2" readonly value="0"></div>
+          <div class="col-4 col-md-2"><label class="form-label">Rate ₹ *</label>
+            <input type="number" step="any" min="0" id="modalRate" class="form-control" value="0"></div>
+          <div class="col-4 col-md-2"><label class="form-label">Due Date</label>
             <input type="datetime-local" id="modalDue" class="form-control"></div>
-          <div class="col-12 col-md-5" id="modalDesignerWrap"><label class="form-label">Designer (optional)</label>
+          <div class="col-12 col-md-6" id="modalDesignerWrap"><label class="form-label">Designer (optional)</label>
             <select id="modalDesigner" class="form-select">
               <option value="">— Assign later / auto —</option>
               <?php foreach ($designers as $d): ?>
                 <option value="<?= (int)$d['id'] ?>"><?= e($d['name']) ?> (<?= (int)$d['open_jobs'] ?> open)</option>
               <?php endforeach; ?>
             </select></div>
-          <div class="col-12" id="modalFileWrap"><label class="form-label">Customer artwork / reference (optional)</label>
-            <input type="file" id="modalFile" class="form-control" accept=".jpg,.jpeg,.png,.webp,.pdf,.cdr,.ai,.psd,.zip"></div>
-          <div class="col-12"><label class="form-label">Special instructions</label>
-            <textarea id="modalInstructions" class="form-control" rows="2"></textarea></div>
+          <div class="col-12 col-md-6"><label class="form-label">Special instructions</label>
+            <input id="modalInstructions" class="form-control"></div>
         </div>
       </div>
       <div class="modal-footer justify-content-between">
@@ -190,7 +209,4 @@
   </div>
 </div>
 
-<script>window.KP_ITEMS = <?= json_encode(array_map(fn($i) => [
-    'id' => (int)$i['id'], 'category_id' => (int)$i['category_id'], 'name' => $i['name'],
-    'unit' => $i['unit'], 'base_price' => $i['base_price'], 'pricing_type' => $i['pricing_type'], 'min_qty' => (int)$i['min_qty'],
-], $items), JSON_UNESCAPED_UNICODE) ?>;</script>
+<script>window.KP_NAME_SUGGESTIONS = <?= json_encode($nameSuggestions ?? [], JSON_UNESCAPED_UNICODE) ?>;</script>

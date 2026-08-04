@@ -136,6 +136,9 @@ class OrderController extends Controller
                 'source' => 'counter',
                 'user_id' => (int)$this->user['id'],
                 'branch_id' => $branchId,
+                // Blank job number = generate the next one automatically.
+                'job_no' => trim((string)($_POST['job_no'] ?? '')),
+                'order_date' => $_POST['order_date'] ?? null,
                 'customer' => [
                     'id' => $_POST['customer_id'] ?? null,
                     'phone' => $_POST['customer_phone'] ?? '',
@@ -292,7 +295,24 @@ class OrderController extends Controller
             redirect(admin_url('orders/' . $id . '/edit'));
         }
 
+        // Job number can be re-typed at any time; it just has to stay unique.
+        $jobNo = trim((string)($_POST['job_no'] ?? ''));
+        if ($jobNo === '') {
+            $jobNo = (string)$order['job_no'];
+        } elseif ($jobNo !== (string)$order['job_no']) {
+            $taken = DB::val('SELECT id FROM `' . tbl('orders') . '` WHERE job_no = ? AND id <> ?', [$jobNo, (int)$id]);
+            if ($taken) {
+                flash('danger', 'Job number “' . $jobNo . '” is already used by another order.');
+                redirect(admin_url('orders/' . $id . '/edit'));
+            }
+            Logger::activity('order', 'job_no', 'order', (int)$id, 'Job number ' . $order['job_no'] . ' → ' . $jobNo);
+        }
+
         DB::update('orders', [
+            'job_no' => $jobNo,
+            'order_date' => !empty($_POST['order_date'])
+                ? date('Y-m-d H:i:s', (int)strtotime((string)$_POST['order_date']))
+                : $order['order_date'],
             'priority' => in_array($_POST['priority'] ?? '', ['normal', 'urgent', 'rush'], true) ? $_POST['priority'] : $order['priority'],
             'due_date' => !empty($_POST['due_date']) ? date('Y-m-d H:i:s', (int)strtotime((string)$_POST['due_date'])) : $order['due_date'],
             'discount_type' => in_array($_POST['discount_type'] ?? '', ['flat', 'percent'], true) ? $_POST['discount_type'] : null,

@@ -29,6 +29,16 @@
       <?php else: ?>
         <input type="hidden" name="branch_id" value="<?= (int)($branches[0]['id'] ?? 0) ?>">
       <?php endif; ?>
+      <div class="col-md-3">
+        <label class="form-label">Job No</label>
+        <input name="job_no" class="form-control" placeholder="Leave blank — auto">
+        <div class="form-text">Type your own (e.g. to match a GST bill) or leave blank.</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Order Date</label>
+        <input type="datetime-local" name="order_date" class="form-control" value="<?= e(date('Y-m-d\TH:i')) ?>">
+        <div class="form-text">Change it to enter an older order.</div>
+      </div>
     </div>
     <div id="newCustomerFields" class="row g-2 mt-1 d-none">
       <div class="col-md-3"><label class="form-label">Name *</label><input id="customer_name" name="customer_name" class="form-control"></div>

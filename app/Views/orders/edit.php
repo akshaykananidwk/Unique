@@ -8,6 +8,12 @@
 
   <!-- Order-level fields -->
   <div class="card mb-3"><div class="card-body row g-2">
+    <div class="col-md-3"><label class="form-label">Job No</label>
+      <input name="job_no" class="form-control" value="<?= e($order['job_no']) ?>" required>
+      <div class="form-text">Editable any time — must stay unique.</div></div>
+    <div class="col-md-3"><label class="form-label">Order Date</label>
+      <input type="datetime-local" name="order_date" class="form-control"
+             value="<?= e($order['order_date'] ? date('Y-m-d\TH:i', strtotime($order['order_date'])) : '') ?>"></div>
     <div class="col-md-3"><label class="form-label">Priority</label>
       <select name="priority" class="form-select">
         <?php foreach (['normal', 'urgent', 'rush'] as $p): ?>

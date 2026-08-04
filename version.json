@@ -1,10 +1,9 @@
 {
-    "version": "1.0.16",
+    "version": "1.0.17",
     "released_at": "2026-08-04",
     "changelog": [
-        "Status can now be set to anything, in any direction — no more blocking errors. Design Approved and Ready for Print no longer wait for the customer's online approval, and a job can be moved from the first stage to the last or from the last back to the first.",
-        "A mis-click is now recoverable: an order set to Completed, Delivered or Cancelled by mistake can be put straight back to Design Pending from the orders list, and the delivered/completed/cancelled marks are cleared with it.",
-        "The status dropdown now shows on every order, including completed and cancelled ones, and no reason is required to move a job backwards.",
-        "The “Customer approved in person” tick still exists but is no longer needed to proceed — it simply records that the customer approved face to face."
+        "New Order now has an Order Date box, so old orders can be entered on the date they actually came in. Job due dates are worked out from that date too, not from today.",
+        "Job No can be typed by hand when taking an order — useful for matching a GST bill — or left blank to be generated automatically as before.",
+        "Job No and Order Date can both be changed later from Edit Order, at any time. A job number already used by another order is refused, and every change is recorded in the activity log."
     ]
 }

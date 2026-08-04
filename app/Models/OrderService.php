@@ -104,9 +104,23 @@ class OrderService
                 ) ?? 0);
             }
 
-            // 2. Job number + tracking token
-            $jobNo = self::generateJobNo($branchId);
+            // 2. Job number + tracking token. A number typed by hand wins (e.g. to match a
+            //    GST bill); otherwise take the next one from the branch sequence.
+            $jobNo = trim((string)($payload['job_no'] ?? ''));
+            if ($jobNo !== '') {
+                if (DB::val('SELECT id FROM `' . tbl('orders') . '` WHERE job_no = ?', [$jobNo])) {
+                    throw new \RuntimeException('Job number "' . $jobNo . '" is already used by another order.');
+                }
+            } else {
+                $jobNo = self::generateJobNo($branchId);
+            }
             $token = random_token(16); // 32 hex chars
+
+            // Back-dating an old order: everything hangs off the date given, not today.
+            $orderDate = !empty($payload['order_date'])
+                ? date('Y-m-d H:i:s', (int)strtotime((string)$payload['order_date']))
+                : now();
+            $baseTs = (int)strtotime($orderDate);
 
             // 3. Order + items
             $orderId = DB::insert('orders', [
@@ -116,7 +130,7 @@ class OrderService
                 'customer_id' => $customerId,
                 'source' => $source,
                 'taken_by_user_id' => $userId,
-                'order_date' => now(),
+                'order_date' => $orderDate,
                 'priority' => $payload['priority'] ?? 'normal',
                 'status' => 'design_pending', // recomputed from the item lines below
                 'needs_review' => ($source === 'public' && !Settings::getBool('public_order_auto_confirm')) ? 1 : 0,
@@ -159,7 +173,7 @@ class OrderService
 
                 $dueDate = !empty($line['due_date'])
                     ? date('Y-m-d H:i:s', (int)strtotime((string)$line['due_date']))
-                    : date('Y-m-d H:i:s', time() + (int)$item['default_turnaround_hours'] * 3600);
+                    : date('Y-m-d H:i:s', $baseTs + (int)$item['default_turnaround_hours'] * 3600);
                 if ($orderDue === null || $dueDate > $orderDue) {
                     $orderDue = $dueDate;
                 }

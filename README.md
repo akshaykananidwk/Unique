@@ -21,7 +21,9 @@ Every configurable value lives in the database and is editable from the admin pa
 1. Upload the files to your web root (aaPanel: `/www/wwwroot/{domain}`).
 2. Create an empty MySQL database.
 3. Open `https://your-domain/install` and follow the 8 steps.
-4. Paste the 4 cron commands shown on the final screen into aaPanel → Cron.
+4. Paste the single cron command shown on the final screen into aaPanel → Cron:
+   `* * * * * /usr/bin/php /path/to/cron/run.php`. Everything else is scheduled inside
+   the app and managed from **Admin → Cron Jobs**.
 5. Done — click **Go to Admin Panel**.
 
 No config files to edit. The installer writes `config/config.php`, generates the encryption key, detects the base URL, creates your branches + super admin, and locks itself.
@@ -35,7 +37,7 @@ app/Core        Router, DB, Auth, Acl, Csrf, Crypt, Settings, Uploader,
 app/Controllers Admin\* and Site\* controllers
 app/Models      OrderService, ProofService, Pricing, Status (state machine)
 app/Views       admin panel + public site + print templates
-cron/           whatsapp_worker, reminders, update_check, auto_backup
+cron/           run.php — the ONE server cron; the app schedules the rest
 database/       schema.sql, seed.sql, migrations/
 assets/         bundled Bootstrap, Bootstrap Icons, Chart.js, QRCode (no CDN)
 ```

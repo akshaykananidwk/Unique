@@ -27,11 +27,13 @@ $root = BASE_PATH;
     <p class="text-muted">The installer is now locked.</p>
   </div>
   <div class="alert alert-warning">
-    <strong>Final step — paste these cron jobs into aaPanel</strong> (Cron → Add Task → Shell Script):
-    <pre class="small mb-0 mt-2">* * * * *    /usr/bin/php <?= ins_e($root) ?>/cron/whatsapp_worker.php  &gt;/dev/null 2&gt;&amp;1
-*/15 * * * * /usr/bin/php <?= ins_e($root) ?>/cron/reminders.php        &gt;/dev/null 2&gt;&amp;1
-0 3 * * *    /usr/bin/php <?= ins_e($root) ?>/cron/update_check.php     &gt;/dev/null 2&gt;&amp;1
-30 2 * * *   /usr/bin/php <?= ins_e($root) ?>/cron/auto_backup.php      &gt;/dev/null 2&gt;&amp;1</pre>
+    <strong>Final step — add this one cron job in aaPanel</strong> (Cron → Add Task → Shell Script):
+    <pre class="small mb-0 mt-2">* * * * * /usr/bin/php <?= ins_e($root) ?>/cron/run.php &gt;/dev/null 2&gt;&amp;1</pre>
+    <div class="small mt-2">
+      That single line is all the server needs. Messages, reminders, reports, backups and
+      update checks are scheduled inside the app — see <strong>Admin → Cron Jobs</strong>,
+      where you can watch them run, pause any of them or run one by hand.
+    </div>
   </div>
   <div class="d-grid">
     <a class="btn btn-primary btn-lg" href="<?= ins_e($baseUrl) ?>/admin/">Go to Admin Panel →</a>

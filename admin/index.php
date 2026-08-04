@@ -148,6 +148,16 @@ $router->post('/system/backups/create', 'UpdateController@createBackup');
 $router->post('/system/backups/restore', 'UpdateController@restoreBackup');
 $router->post('/system/backups/delete', 'UpdateController@deleteBackup');
 $router->get('/system/update-history', 'UpdateController@history');
+// Cron: one screen for every background task
+$router->get('/system/cron', 'CronController@index');
+$router->get('/system/cron/history', 'CronController@history');
+$router->get('/system/cron/status', 'CronController@status');
+$router->post('/system/cron/run', 'CronController@run');
+$router->post('/system/cron/retry-failed', 'CronController@retryFailed');
+$router->post('/system/cron/toggle', 'CronController@toggle');
+$router->post('/system/cron/schedule', 'CronController@schedule');
+$router->post('/system/cron/release-lock', 'CronController@releaseLock');
+$router->post('/system/cron/web-key', 'CronController@webKey');
 
 // Notifications + AJAX API
 $router->get('/notifications', 'NotificationController@index');

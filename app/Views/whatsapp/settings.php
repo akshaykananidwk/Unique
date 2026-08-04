@@ -78,9 +78,9 @@
         <a class="btn btn-outline-secondary btn-sm" href="<?= e(admin_url('whatsapp/logs')) ?>">View logs</a>
       </div>
       <p class="small text-muted mt-2 mb-0">
-        Messages are queued and sent by the per-minute cron
-        (<code>cron/whatsapp_worker.php</code>). If the cron isn't set up yet, use
-        <strong>Send pending now</strong> to send them from here.
+        Messages are queued and sent by the master cron, which runs every minute
+        (<a href="<?= e(admin_url('system/cron')) ?>">Admin → Cron Jobs</a>). If the cron
+        isn't set up yet, use <strong>Send pending now</strong> to send them from here.
       </p>
     </div></div>
 

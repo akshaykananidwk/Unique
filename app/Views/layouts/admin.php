@@ -38,6 +38,7 @@ $navGroups = [
     ],
     'System' => [
         ['settings.manage', 'settings', 'gear', 'Settings'],
+        ['settings.manage', 'system/cron', 'clock-history', 'Cron Jobs'],
         ['update.manage', 'system/updates', 'cloud-arrow-down', 'Updates'],
         ['backup.manage', 'system/backups', 'hdd-stack', 'Backups'],
     ],

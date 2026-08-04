@@ -132,6 +132,17 @@ tr.row-amber td { background: rgba(255, 193, 7, .12) !important; }
   .table-mobile td::before { content: attr(data-label); font-weight: 600; color: var(--bs-secondary-color); font-size: .78rem; }
 }
 
+/* Cron Jobs table on a phone: the job description needs the full width, and the
+   toggle / action buttons must not be squeezed to nothing. */
+@media (max-width: 767.98px) {
+  .kp-cron td { flex-wrap: wrap; align-items: center; }
+  .kp-cron td:first-child { display: block; }
+  .kp-cron td:first-child::before { display: none; }
+  .kp-cron td[data-label="On"] .form-check { padding-left: 2.5em; }
+  .kp-cron td[data-label="Actions"] { justify-content: flex-start; gap: .4rem; }
+  .kp-cron td[data-label="Actions"]::before { width: 100%; }
+}
+
 /* Sticky bottom action bar on mobile forms */
 .sticky-actions { position: sticky; bottom: 0; background: var(--bs-body-bg); border-top: 1px solid var(--bs-border-color); padding: .6rem 0; z-index: 100; }
 

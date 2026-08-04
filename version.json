@@ -1,11 +1,15 @@
 {
-    "version": "1.4.0",
-    "released_at": "2026-08-06",
+    "version": "1.5.0",
+    "released_at": "2026-08-07",
     "changelog": [
-        "Settings now has a Default GST % box. Put 18 in it and every new order line picks up 18% GST automatically, added on top of the amount.",
-        "GST is never forced. A category can carry its own GST %, and any single line can be given its own — most specific wins: the line, then the category, then the Settings default. Leave everything blank or 0 and no GST is charged.",
-        "The Add Item box and every order line now have a GST % field you can type into, with the GST amount shown under the line amount and rolled into the grand total as you type.",
-        "The Categories screen is now the one place to set everything up: name, icon, description, sort order, Active / Public, Needs design, the calculation type (Qty × Rate, ft × ft, or Mixed) and the GST % — plus the component list.",
-        "The printed bill now says GST instead of Tax."
+        "New screen: Admin → Cron Jobs. Every background task in the system is now listed in one place with its schedule, last run, result, next run and an on/off switch.",
+        "The server now needs only ONE cron line — * * * * * php cron/run.php. It ticks every minute and the app decides what is due. The old four cron entries still work but can be removed.",
+        "Run any job by hand with the play button, or press Run all due now. Retry failed re-runs everything whose last run failed.",
+        "Health panel: shows whether the cron is running, late or stopped, with ticks so far, runs and failures in the last 24 hours and average duration. It refreshes itself every 30 seconds.",
+        "Execution log on the same page plus a full, filterable history by job and status.",
+        "Each job's schedule can be changed from the panel — every N minutes, or once a day at a set time.",
+        "A run that dies mid-flight leaves a lock; the panel shows it and gives you a Clear lock button.",
+        "Two ticks can never run the same job twice — each job is claimed with a database lock before it starts.",
+        "Hosting with no shell cron can call tick.php with a generated key instead."
     ]
 }

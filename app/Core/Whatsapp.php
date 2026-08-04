@@ -341,8 +341,8 @@ class Whatsapp
         if (!$autoSend) {
             $add('Sending worker (cron) is running', $recent,
                 $lastRun
-                    ? ('Last run: ' . fmt_date($lastRun, true) . ($recent ? '' : ' — more than 10 minutes ago. Either turn on Auto-send above, or set up the per-minute cron for cron/whatsapp_worker.php.'))
-                    : 'The worker has never run. Turn on Auto-send above (recommended), or add the per-minute cron for cron/whatsapp_worker.php.',
+                    ? ('Last run: ' . fmt_date($lastRun, true) . ($recent ? '' : ' — more than 10 minutes ago. Either turn on Auto-send above, or check Admin → Cron Jobs.'))
+                    : 'The worker has never run. Turn on Auto-send above (recommended), or add the master cron — see Admin → Cron Jobs.',
                 'warning');
             if ($counts['pending'] > 0 && !$recent) {
                 $add($counts['pending'] . ' message(s) waiting in the queue', false,

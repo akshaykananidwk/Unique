@@ -159,6 +159,8 @@ class OrderController extends Controller
                     'mode' => $_POST['advance_mode'] ?? 'cash',
                     'reference' => $_POST['advance_reference'] ?? null,
                 ],
+                // Yes/No popup on save: '0' = don't WhatsApp the customer the confirmation.
+                'notify_customer' => ($_POST['notify_customer'] ?? '1') !== '0',
             ]);
         } catch (\Throwable $e) {
             flash('danger', 'Could not save the order: ' . $e->getMessage());
@@ -242,14 +244,66 @@ class OrderController extends Controller
             redirect(admin_url('orders/' . $id));
         }
         $customer = DB::get('SELECT * FROM `' . tbl('customers') . '` WHERE id = ?', [(int)$order['customer_id']]);
-        $this->render('orders/edit', compact('order', 'customer'));
+        $items = DB::all(
+            'SELECT oi.*, i.pricing_type FROM `' . tbl('order_items') . '` oi
+             LEFT JOIN `' . tbl('items') . '` i ON i.id = oi.item_id
+             WHERE oi.order_id = ? ORDER BY oi.sort_order, oi.id',
+            [(int)$order['id']]
+        );
+        $this->render('orders/edit', compact('order', 'customer', 'items'));
     }
 
-    /** Order-level fields only (discount, delivery, notes, priority, due date). */
+    /** Order-level fields plus per-item price/qty edits (discount, delivery, notes, priority, due date, line rates). */
     public function update(string $id): void
     {
         Acl::require('order.edit');
         $order = $this->findOrder((int)$id);
+        if (in_array($order['status'], ['delivered', 'completed', 'cancelled'], true)) {
+            flash('danger', 'Delivered, completed or cancelled orders cannot be edited.');
+            redirect(admin_url('orders/' . $id));
+        }
+
+        // Per-item price / quantity edits
+        $rates = (array)($_POST['item_rate'] ?? []);
+        $qtys = (array)($_POST['item_qty'] ?? []);
+        if ($rates || $qtys) {
+            $orderItems = DB::all(
+                'SELECT oi.*, i.pricing_type FROM `' . tbl('order_items') . '` oi
+                 LEFT JOIN `' . tbl('items') . '` i ON i.id = oi.item_id
+                 WHERE oi.order_id = ?',
+                [(int)$id]
+            );
+            foreach ($orderItems as $oi) {
+                $iid = (int)$oi['id'];
+                if (!isset($rates[$iid]) && !isset($qtys[$iid])) {
+                    continue;
+                }
+                if (in_array($oi['status'], ['cancelled'], true)) {
+                    continue;
+                }
+                $newRate = isset($rates[$iid]) && $rates[$iid] !== '' ? round((float)$rates[$iid], 2) : (float)$oi['rate'];
+                $newQty = isset($qtys[$iid]) && (float)$qtys[$iid] > 0 ? (float)$qtys[$iid] : (float)$oi['qty'];
+                $pricingType = $oi['pricing_type'] ?? 'per_unit';
+                $amount = $pricingType === 'fixed' ? $newRate : round($newRate * $newQty, 2);
+                $taxPercent = (float)$oi['tax_percent'];
+                $taxAmount = round($amount * $taxPercent / 100, 2);
+                $changed = abs($newRate - (float)$oi['rate']) > 0.009 || abs($newQty - (float)$oi['qty']) > 0.0001;
+                DB::update('order_items', [
+                    'qty' => $newQty,
+                    'rate' => $newRate,
+                    'rate_overridden' => $changed ? 1 : (int)$oi['rate_overridden'],
+                    'amount' => $amount,
+                    'tax_amount' => $taxAmount,
+                    'line_total' => round($amount + $taxAmount, 2),
+                    'updated_at' => now(),
+                ], ['id' => $iid]);
+                if ($changed) {
+                    Logger::activity('order', 'edit_item', 'order_item', $iid,
+                        $order['job_no'] . ': line edited → qty ' . rtrim(rtrim(number_format($newQty, 2, '.', ''), '0'), '.') . ' × ₹' . $newRate);
+                }
+            }
+        }
+
         DB::update('orders', [
             'priority' => in_array($_POST['priority'] ?? '', ['normal', 'urgent', 'rush'], true) ? $_POST['priority'] : $order['priority'],
             'due_date' => !empty($_POST['due_date']) ? date('Y-m-d H:i:s', (int)strtotime((string)$_POST['due_date'])) : $order['due_date'],

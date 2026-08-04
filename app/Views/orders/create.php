@@ -4,6 +4,7 @@
   <?= Csrf::field() ?>
   <input type="hidden" name="items_json" id="items_json">
   <input type="hidden" name="customer_id" id="customer_id">
+  <input type="hidden" name="notify_customer" id="notify_customer" value="1">
 
   <!-- Step 1: Customer -->
   <div class="card mb-3"><div class="card-body">
@@ -11,8 +12,9 @@
     <div class="row g-2">
       <div class="col-md-3">
         <label class="form-label">Mobile Number *</label>
-        <input type="tel" id="customer_phone" name="customer_phone" class="form-control" maxlength="10"
-               inputmode="numeric" pattern="[0-9]{10}" required placeholder="10 digits" autofocus>
+        <input type="tel" id="customer_phone" name="customer_phone" class="form-control"
+               inputmode="tel" required placeholder="e.g. 98765 43210 / +91…" autofocus>
+        <div class="form-text">Spaces, +91 or a leading 0 are fine — we keep the 10-digit number automatically.</div>
         <div id="customerBadge" class="mt-1 small"></div>
       </div>
       <?php if (count($branches) > 1): ?>
@@ -32,7 +34,7 @@
       <div class="col-md-3"><label class="form-label">Name *</label><input id="customer_name" name="customer_name" class="form-control"></div>
       <div class="col-md-3"><label class="form-label">Address</label><input id="customer_address" name="customer_address" class="form-control"></div>
       <div class="col-md-2"><label class="form-label">City</label><input id="customer_city" name="customer_city" class="form-control"></div>
-      <div class="col-md-2"><label class="form-label">WhatsApp</label><input name="customer_whatsapp" class="form-control" maxlength="10" placeholder="Same as phone"></div>
+      <div class="col-md-2"><label class="form-label">WhatsApp</label><input name="customer_whatsapp" class="form-control" inputmode="tel" placeholder="Same as phone"></div>
       <div class="col-md-2"><label class="form-label">GSTIN</label><input id="customer_gstin" name="customer_gstin" class="form-control"></div>
     </div>
   </div></div>
@@ -154,6 +156,25 @@
       <div class="modal-footer justify-content-between">
         <div class="fs-5">Amount: <strong id="modalAmount">₹0.00</strong></div>
         <button type="button" id="modalAdd" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add to Order</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WhatsApp confirmation choice on save -->
+<div class="modal fade" id="waConfirmModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title"><i class="bi bi-whatsapp text-success"></i> Send WhatsApp to customer?</h5>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1">Send the order-confirmation WhatsApp message to this customer now?</p>
+        <p class="text-muted small mb-0">Choose <strong>No</strong> to save the order silently — staff and designers are still notified either way.</p>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary" id="waNo"><i class="bi bi-x-lg"></i> No, don’t send</button>
+        <button type="button" class="btn btn-success" id="waYes"><i class="bi bi-whatsapp"></i> Yes, send it</button>
       </div>
     </div>
   </div>

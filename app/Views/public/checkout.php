@@ -11,7 +11,7 @@
       <div class="col-md-6"><label class="form-label">Your Name *</label>
         <input name="name" class="form-control" required></div>
       <div class="col-md-6"><label class="form-label">Mobile Number * <small class="text-muted">(WhatsApp updates go here)</small></label>
-        <input type="tel" name="phone" class="form-control" required maxlength="10" pattern="[0-9]{10}" inputmode="numeric"></div>
+        <input type="tel" name="phone" class="form-control" required inputmode="tel" placeholder="10-digit mobile"></div>
       <div class="col-md-8"><label class="form-label">Address</label>
         <input name="address" class="form-control"></div>
       <div class="col-md-4"><label class="form-label">City</label>

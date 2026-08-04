@@ -6,9 +6,9 @@
     <div class="col-md-4"><label class="form-label">Name *</label>
       <input name="name" class="form-control" required value="<?= e($customer['name'] ?? '') ?>"></div>
     <div class="col-md-4"><label class="form-label">Phone *</label>
-      <input name="phone" class="form-control" required maxlength="10" pattern="[0-9]{10}" inputmode="numeric" value="<?= e($customer['phone'] ?? '') ?>"></div>
+      <input name="phone" class="form-control" required inputmode="tel" placeholder="10-digit mobile" value="<?= e($customer['phone'] ?? '') ?>"></div>
     <div class="col-md-4"><label class="form-label">WhatsApp</label>
-      <input name="whatsapp" class="form-control" maxlength="10" value="<?= e($customer['whatsapp'] ?? '') ?>" placeholder="Same as phone"></div>
+      <input name="whatsapp" class="form-control" inputmode="tel" value="<?= e($customer['whatsapp'] ?? '') ?>" placeholder="Same as phone"></div>
     <div class="col-md-4"><label class="form-label">Email</label>
       <input type="email" name="email" class="form-control" value="<?= e($customer['email'] ?? '') ?>"></div>
     <div class="col-md-4"><label class="form-label">Address</label>

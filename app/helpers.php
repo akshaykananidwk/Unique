@@ -176,11 +176,13 @@ function local_phone(?string $raw): ?string
     if (!$digits) {
         return null;
     }
+    // Drop leading zeros first (Indian mobiles never start with 0), so a number
+    // typed as "0", "+91", "091…" or with spaces all collapse to the same 10 digits.
+    $digits = ltrim($digits, '0');
     $cc = (string)Settings::get('wa_country_code', '91');
     if (str_starts_with($digits, $cc) && strlen($digits) === strlen($cc) + 10) {
         $digits = substr($digits, strlen($cc));
     }
-    $digits = ltrim($digits, '0');
     return strlen($digits) === 10 ? $digits : null;
 }
 

@@ -1,8 +1,9 @@
 {
-    "version": "1.0.9",
-    "released_at": "2026-08-02",
+    "version": "1.0.10",
+    "released_at": "2026-08-04",
     "changelog": [
-        "Delete order is now a one-tap red button on every row of the Orders list (Super Admin) as well as on the order page — quick to find everywhere.",
-        "Products page: items are now centred and balanced across the page for any count, instead of sticking to the left with an empty right side on desktop."
+        "Order entry now accepts phone numbers in any format — spaces, +91, or a leading 0 are cleaned automatically and only the 10-digit number is kept, so a stray space no longer throws an error.",
+        "Admin can now edit an order's item prices and quantities after it has been taken — totals, tax and balance recalculate on save.",
+        "When saving a new order a Yes/No popup asks whether to WhatsApp the customer the confirmation message; choose No to save silently (staff and designers are still notified either way)."
     ]
 }

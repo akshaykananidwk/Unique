@@ -127,7 +127,7 @@
         <div class="col-lg-5">
           <form method="post" action="<?= e(base_url('my-orders')) ?>" class="d-flex gap-2">
             <?= Csrf::field() ?>
-            <input type="tel" name="phone" class="form-control form-control-lg" maxlength="10" pattern="[0-9]{10}" inputmode="numeric" placeholder="10-digit mobile" required>
+            <input type="tel" name="phone" class="form-control form-control-lg" inputmode="tel" placeholder="10-digit mobile" required>
             <button class="btn btn-light btn-lg px-4">Track</button>
           </form>
         </div>

@@ -68,14 +68,18 @@ class WaEvents
         ];
     }
 
-    public static function orderCreated(int $orderId): void
+    public static function orderCreated(int $orderId, bool $notifyCustomer = true): void
     {
         $order = DB::get('SELECT * FROM `' . tbl('orders') . '` WHERE id = ?', [$orderId]);
         if (!$order) {
             return;
         }
         $data = self::orderData($order);
-        Whatsapp::queueTemplate('order_created_customer', $data, self::ctx($order, $data));
+        // The customer confirmation is opt-in at the counter (staff choose Yes/No when saving).
+        if ($notifyCustomer) {
+            Whatsapp::queueTemplate('order_created_customer', $data, self::ctx($order, $data));
+        }
+        // Manager + designer alerts are internal and always go out.
         Whatsapp::queueTemplate('order_created_manager', $data, self::ctx($order, $data));
 
         // One message per assigned design item

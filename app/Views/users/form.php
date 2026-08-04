@@ -6,7 +6,7 @@
     <div class="col-md-4"><label class="form-label">Name *</label>
       <input name="name" class="form-control" required value="<?= e($staff['name'] ?? '') ?>"></div>
     <div class="col-md-4"><label class="form-label">Phone * <small class="text-muted">(login id)</small></label>
-      <input name="phone" class="form-control" required maxlength="10" pattern="[0-9]{10}" inputmode="numeric" value="<?= e($staff['phone'] ?? '') ?>"></div>
+      <input name="phone" class="form-control" required inputmode="tel" placeholder="10-digit mobile" value="<?= e($staff['phone'] ?? '') ?>"></div>
     <div class="col-md-4"><label class="form-label">Email</label>
       <input type="email" name="email" class="form-control" value="<?= e($staff['email'] ?? '') ?>"></div>
     <div class="col-md-4"><label class="form-label">Role *</label>

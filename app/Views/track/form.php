@@ -10,7 +10,7 @@
       </div>
       <div class="mb-3">
         <label class="form-label">Registered Mobile Number *</label>
-        <input type="tel" name="phone" class="form-control form-control-lg" maxlength="10" pattern="[0-9]{10}" inputmode="numeric" required>
+        <input type="tel" name="phone" class="form-control form-control-lg" inputmode="tel" placeholder="10-digit mobile" required>
         <div class="form-text">The mobile number used when placing the order.</div>
       </div>
       <button class="btn btn-primary btn-lg w-100">Track Order</button>

@@ -34,3 +34,6 @@ uploads/voice/*
 !uploads/logos/.gitkeep
 !uploads/receipts/.gitkeep
 !uploads/voice/.gitkeep
+
+# Local dev-only front-controller for `php -S` (not used in production)
+/router.php

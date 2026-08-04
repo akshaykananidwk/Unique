@@ -228,9 +228,12 @@ class OrderService
             return ['order_id' => $orderId, 'job_no' => $jobNo, 'tracking_token' => $token, 'payment_id' => $paymentId];
         });
 
-        // 6. WhatsApp — queued after commit so the worker never sees a half-saved order
-        WaEvents::orderCreated($result['order_id']);
-        if ($result['payment_id']) {
+        // 6. WhatsApp — queued after commit so the worker never sees a half-saved order.
+        //    The customer confirmation + receipt are opt-in (staff pick Yes/No when saving);
+        //    internal manager/designer alerts always go out via orderCreated().
+        $notifyCustomer = ($payload['notify_customer'] ?? true) ? true : false;
+        WaEvents::orderCreated($result['order_id'], $notifyCustomer);
+        if ($result['payment_id'] && $notifyCustomer) {
             WaEvents::paymentReceived($result['payment_id']);
         }
         return $result;

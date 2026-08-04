@@ -78,13 +78,20 @@
   const state = { items: [], customerId: null };
   const money = n => '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
-  // Customer lookup on 10 digits
+  // Strip formatting (+91, leading 0, spaces, dashes) down to the 10-digit local number.
+  const localPhone = raw => {
+    let d = String(raw || '').replace(/\D/g, '').replace(/^0+/, ''); // drop leading zeros first
+    if (d.length === 12 && d.startsWith('91')) d = d.slice(2);       // +91XXXXXXXXXX
+    return d.length === 10 ? d : null;
+  };
+
+  // Customer lookup once we have a clean 10-digit number
   const phoneInput = document.getElementById('customer_phone');
   const newCustomerFields = document.getElementById('newCustomerFields');
   const customerBadge = document.getElementById('customerBadge');
   phoneInput.addEventListener('input', async () => {
-    const digits = phoneInput.value.replace(/\D/g, '');
-    if (digits.length !== 10) return;
+    const digits = localPhone(phoneInput.value);
+    if (!digits) return;
     const data = await kpFetch(window.KP.adminUrl + '/api/customer-lookup?phone=' + digits);
     if (data.found) {
       state.customerId = data.customer.id;
@@ -272,17 +279,36 @@
     document.getElementById(id).addEventListener('change', recalcTotals);
   });
 
+  // WhatsApp Yes/No popup before the order is actually saved
+  const waModalEl = document.getElementById('waConfirmModal');
+  const waModal = waModalEl ? new bootstrap.Modal(waModalEl) : null;
+  let waConfirmed = false;
+
+  const submitOrder = notify => {
+    document.getElementById('notify_customer').value = notify ? '1' : '0';
+    document.getElementById('items_json').value = JSON.stringify(state.items);
+    const btn = orderForm.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…';
+    waConfirmed = true;
+    orderForm.submit();
+  };
+
   orderForm.addEventListener('submit', e => {
     if (!state.items.length) {
       e.preventDefault();
       kpToast('danger', 'Add at least one item.');
       return;
     }
-    document.getElementById('items_json').value = JSON.stringify(state.items);
-    const btn = orderForm.querySelector('button[type=submit]');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…';
+    if (waConfirmed || !waModal) return; // already answered — let it through
+    e.preventDefault();
+    waModal.show();
   });
+
+  if (waModal) {
+    document.getElementById('waYes').addEventListener('click', () => { waModal.hide(); submitOrder(true); });
+    document.getElementById('waNo').addEventListener('click', () => { waModal.hide(); submitOrder(false); });
+  }
 
   // Enter in the qty field adds the item (keyboard-friendly entry)
   document.getElementById('modalQty').addEventListener('keydown', e => {

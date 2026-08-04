@@ -54,13 +54,26 @@ class ApiController extends Controller
             );
         }
         unset($option);
+        // Preset components for build-up jobs (light board, banner + frame + labour…).
+        // Each carries its own calculation mode, so one order can mix sq.ft and per-piece lines.
+        $components = DB::all(
+            'SELECT id, name, calc_mode, unit FROM `' . tbl('category_components') . '`
+             WHERE category_id = ? AND is_active = 1 ORDER BY sort_order, name',
+            [(int)$category['id']]
+        );
         json_response(['ok' => true, 'category' => [
             'id' => (int)$category['id'],
             'name' => $category['name'],
             'calc_mode' => $category['calc_mode'] ?? 'simple',
             'tax_percent' => (float)($category['tax_percent'] ?? 0),
             'requires_design' => (int)($category['requires_design'] ?? 1),
-        ], 'html' => View::partial('orders/_category_fields', ['options' => $options])]);
+        ], 'components' => array_map(fn($c) => [
+            'id' => (int)$c['id'],
+            'name' => $c['name'],
+            'calc_mode' => $c['calc_mode'],
+            'unit' => $c['unit'],
+        ], $components),
+            'html' => View::partial('orders/_category_fields', ['options' => $options])]);
     }
 
     /** Rendered option fields HTML + item meta for the order form modal. */

@@ -1,12 +1,12 @@
 {
-    "version": "1.2.0",
-    "released_at": "2026-08-05",
+    "version": "1.3.0",
+    "released_at": "2026-08-06",
     "changelog": [
-        "Every order now shows an Order Team box: who took the order, who accepted it, and who is designing it.",
-        "New User Performance report: how many orders each person took and for how much, plus advance taken, money recovered, total collected and what is still pending on their orders. Downloadable as CSV.",
-        "New Designer Performance report: designs made, how many were approved, jobs and orders handled, total value handled, and what is open on their desk right now. Downloadable as CSV.",
-        "Dashboard now shows Pending Payment, Received This Month, Running Orders and Completed Orders at a glance, with user-wise and designer-wise performance panels underneath.",
-        "The last branch selectors are gone from the Dashboard — one shop throughout.",
-        "Commission is not switched on, but every order already carries commission percent, amount and user columns so the module can be added later without touching existing data."
+        "New Light Board category, built up component by component: Acrylic, ACP Sheet, Steel Letter, SS Letter, LED Module, Power Supply, Wire, Pipe & Frame, MS Frame, Installation / Fitting, Transport and Labour.",
+        "One order can now mix both kinds of line. Acrylic and ACP are asked as Quantity, Width, Height, Total Sq. Ft., Rate, Amount, while Steel Letter, LED Module, Power Supply, Wire and Labour just ask Quantity, Unit, Rate, Amount — in the same order.",
+        "Every component keeps its own unit (pcs, sqft, ft, mtr, job), shown on the order line and on the printed bill.",
+        "Not on the list? Choose Custom and type any component name you like.",
+        "The grand total updates the moment a component is added, edited or deleted — the same single calculation used everywhere.",
+        "Components are fully manageable from the Categories screen: add, rename, reorder, change a component between Qty × Rate and ft × ft, or remove it. No programming needed, and it applies to any category, not just Light Board."
     ]
 }

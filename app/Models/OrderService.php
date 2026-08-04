@@ -234,6 +234,7 @@ class OrderService
                         'category_id' => $line['category_id'] ?? self::categoryIdFor($ex),
                         'item_name' => $line['item_name'] ?? $ex['item_name_snapshot'],
                         'item_id' => $line['item_id'] ?? $ex['item_id'],
+                        'calc_mode' => $ex['calc_mode'] ?? 'simple',
                         'unit' => $ex['unit'],
                         'requires_design' => $ex['requires_design'],
                     ], $baseTs, $index);
@@ -355,9 +356,18 @@ class OrderService
             throw new \RuntimeException('Every item needs a name.');
         }
 
+        // The LINE decides how it is worked out — a light board mixes sq.ft components
+        // (acrylic, ACP) with per-piece ones (LED module, power supply) in one order.
+        // Fall back to the category for lines that do not say.
+        $lineMode = (string)($line['calc_mode'] ?? '');
+        if (!in_array($lineMode, OrderCalc::MODES, true)) {
+            $catMode = (string)($category['calc_mode'] ?? 'simple');
+            $lineMode = in_array($catMode, OrderCalc::MODES, true) ? $catMode : 'simple';
+        }
+
         $spec = is_array($line['spec'] ?? null) ? $line['spec'] : [];
         $calc = OrderCalc::line([
-            'calc_mode'   => $category['calc_mode'] ?? 'simple',
+            'calc_mode'   => $lineMode,
             'qty'         => $line['qty'] ?? 1,
             'width_ft'    => $line['width_ft'] ?? 0,
             'height_ft'   => $line['height_ft'] ?? 0,
@@ -374,6 +384,7 @@ class OrderService
             'item_id' => $catalogItemId,
             'item_name_snapshot' => mb_substr($name, 0, 150),
             'category_name_snapshot' => (string)$category['name'],
+            'calc_mode' => $calc['calc_mode'],
             'qty' => $calc['qty'],
             'width_ft' => $calc['width_ft'],
             'height_ft' => $calc['height_ft'],

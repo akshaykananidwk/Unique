@@ -30,11 +30,43 @@
         <div class="d-flex gap-2">
           <button class="btn btn-sm btn-outline-primary">Save</button>
       </form>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+                  data-bs-target="#comp<?= (int)$c['id'] ?>">
+            <i class="bi bi-diagram-3"></i> Components (<?= count($c['components']) ?>)
+          </button>
           <form method="post" action="<?= e(admin_url('categories/' . $c['id'] . '/delete')) ?>"
                 data-confirm="Delete “<?= e($c['name']) ?>”<?= (int)$c['item_count'] > 0
                     ? ' and all ' . (int)$c['item_count'] . ' item' . ((int)$c['item_count'] === 1 ? '' : 's') . ' inside it'
                     : '' ?>? Past orders keep their record.">
             <?= Csrf::field() ?><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+          </form>
+        </div>
+
+        <!-- Component presets: pure data, so new ones can be added without touching code -->
+        <div class="collapse mt-2" id="comp<?= (int)$c['id'] ?>">
+          <form method="post" action="<?= e(admin_url('categories/' . $c['id'] . '/components')) ?>" class="border-top pt-2">
+            <?= Csrf::field() ?>
+            <div class="small text-muted mb-1">Ready components offered when adding an item in this category.
+              Mark a component <strong>ft × ft</strong> and it will ask width and height.</div>
+            <div class="kp-comp-rows">
+              <?php foreach (array_merge($c['components'], [null]) as $comp): ?>
+                <div class="row g-1 mb-1 kp-comp-row">
+                  <div class="col-6"><input name="comp_name[]" class="form-control form-control-sm"
+                         placeholder="Component name" value="<?= e($comp['name'] ?? '') ?>"></div>
+                  <div class="col-3"><select name="comp_mode[]" class="form-select form-select-sm">
+                      <option value="simple" <?= ($comp['calc_mode'] ?? '') === 'simple' ? 'selected' : '' ?>>Qty × Rate</option>
+                      <option value="sqft" <?= ($comp['calc_mode'] ?? '') === 'sqft' ? 'selected' : '' ?>>ft × ft</option>
+                    </select></div>
+                  <div class="col-3"><input name="comp_unit[]" class="form-control form-control-sm"
+                         placeholder="unit" value="<?= e($comp['unit'] ?? '') ?>"></div>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary kp-comp-add"><i class="bi bi-plus-lg"></i> Add row</button>
+              <button class="btn btn-sm btn-primary">Save Components</button>
+            </div>
+            <div class="form-text">Clear a name and save to remove that component.</div>
           </form>
         </div>
     </div></div>

@@ -242,16 +242,16 @@ class OrderController extends Controller
         $customer = DB::get('SELECT * FROM `' . tbl('customers') . '` WHERE id = ?', [(int)$order['customer_id']]);
         // Each line carries its category (matched via its catalogue item, else by the snapshot
         // name) so the editor knows whether to show foot x foot fields.
+        // oi.calc_mode is the line's own — a light board mixes sq.ft and per-piece lines in
+        // one category, so it must not be re-derived from the category here.
         $items = DB::all(
-            'SELECT oi.*,
-                    COALESCE(ci.id, cn.id) AS category_id,
-                    COALESCE(ci.calc_mode, cn.calc_mode, ?) AS calc_mode
+            'SELECT oi.*, COALESCE(ci.id, cn.id) AS category_id
              FROM `' . tbl('order_items') . '` oi
              LEFT JOIN `' . tbl('items') . '` i ON i.id = oi.item_id
              LEFT JOIN `' . tbl('categories') . '` ci ON ci.id = i.category_id
              LEFT JOIN `' . tbl('categories') . '` cn ON cn.name = oi.category_name_snapshot
              WHERE oi.order_id = ? ORDER BY oi.sort_order, oi.id',
-            ['simple', (int)$order['id']]
+            [(int)$order['id']]
         );
         $categories = DB::all('SELECT * FROM `' . tbl('categories') . '` WHERE is_active = 1 ORDER BY sort_order, name');
         $designers = DB::all(

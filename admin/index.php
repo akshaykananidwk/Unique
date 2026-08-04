@@ -73,6 +73,7 @@ $router->post('/customers/{id}/delete', 'CustomerController@delete');
 $router->get('/categories', 'CatalogController@categories');
 $router->post('/categories', 'CatalogController@storeCategory');
 $router->post('/categories/{id}/update', 'CatalogController@updateCategory');
+$router->post('/categories/{id}/components', 'CatalogController@saveComponents');
 $router->post('/categories/{id}/delete', 'CatalogController@deleteCategory');
 $router->get('/items', 'CatalogController@items');
 $router->get('/items/create', 'CatalogController@createItem');

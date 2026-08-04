@@ -111,6 +111,13 @@
                    placeholder="e.g. Flex Banner, Star Flex, Vinyl, Sunboard, PVC…">
             <datalist id="itemNameSuggest"></datalist></div>
         </div>
+        <div class="row g-2 mb-2 kp-component-wrap" style="display:none">
+          <div class="col-md-7"><label class="form-label">Component</label>
+            <select id="modalComponent" class="form-select"></select>
+            <div class="form-text">Pick a ready component, or choose Custom and type any name.</div></div>
+          <div class="col-md-5"><label class="form-label">Unit</label>
+            <input id="modalUnit" class="form-control" placeholder="pcs / sqft / ft / mtr / job"></div>
+        </div>
         <div id="modalOptions" class="border-top pt-2"></div>
         <div class="row g-2 border-top pt-3 align-items-end">
           <div class="col-4 col-md-2"><label class="form-label">Qty *</label>
@@ -154,6 +161,7 @@ window.KP_EDIT_ITEMS = <?= json_encode(array_map(function ($oi) {
         'category_id' => (int)($oi['category_id'] ?? 0),
         'category_name' => (string)$oi['category_name_snapshot'],
         'calc_mode' => (string)($oi['calc_mode'] ?? 'simple'),
+        'unit' => (string)($oi['unit'] ?? ''),
         'item_name' => (string)$oi['item_name_snapshot'],
         'qty' => (float)$oi['qty'],
         'width_ft' => $oi['width_ft'] !== null ? (float)$oi['width_ft'] : null,

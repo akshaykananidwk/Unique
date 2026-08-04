@@ -19,6 +19,13 @@ class CatalogController extends Controller
             'SELECT c.*, (SELECT COUNT(*) FROM `' . tbl('items') . '` i WHERE i.category_id = c.id AND i.deleted_at IS NULL) AS item_count
              FROM `' . tbl('categories') . '` c ORDER BY c.sort_order, c.name'
         );
+        foreach ($categories as &$category) {
+            $category['components'] = DB::all(
+                'SELECT * FROM `' . tbl('category_components') . '` WHERE category_id = ? ORDER BY sort_order, name',
+                [(int)$category['id']]
+            );
+        }
+        unset($category);
         $this->render('catalog/categories', compact('categories'));
     }
 
@@ -80,6 +87,56 @@ class CatalogController extends Controller
         DB::update('categories', $updates, ['id' => (int)$id]);
         Logger::activity('catalog', 'update', 'category', (int)$id, 'Category updated');
         flash('success', 'Category updated.');
+        redirect(admin_url('categories'));
+    }
+
+    /**
+     * Replace a category's component presets from the inline editor.
+     * Adding, renaming, reordering or removing a component is pure data — no code change.
+     */
+    public function saveComponents(string $id): void
+    {
+        Acl::require('category.manage');
+        $category = DB::get('SELECT * FROM `' . tbl('categories') . '` WHERE id = ?', [(int)$id]);
+        if (!$category) {
+            abort(404, 'Category not found.');
+        }
+        $names = (array)($_POST['comp_name'] ?? []);
+        $modes = (array)($_POST['comp_mode'] ?? []);
+        $units = (array)($_POST['comp_unit'] ?? []);
+
+        DB::transaction(function () use ($id, $names, $modes, $units) {
+            DB::delete('category_components', ['category_id' => (int)$id]);
+            $sort = 0;
+            $seen = [];
+            foreach ($names as $i => $name) {
+                $name = trim((string)$name);
+                if ($name === '' || isset($seen[mb_strtolower($name)])) {
+                    continue; // blank row, or the same component twice
+                }
+                $seen[mb_strtolower($name)] = true;
+                DB::insert('category_components', [
+                    'category_id' => (int)$id,
+                    'name' => mb_substr($name, 0, 120),
+                    'calc_mode' => (($modes[$i] ?? 'simple') === 'sqft') ? 'sqft' : 'simple',
+                    'unit' => mb_substr(trim((string)($units[$i] ?? 'pcs')) ?: 'pcs', 0, 20),
+                    'sort_order' => ++$sort,
+                    'is_active' => 1,
+                ]);
+            }
+        });
+        // A category holding any foot x foot component is a mixed one.
+        $hasSqft = (int)DB::val(
+            "SELECT COUNT(*) FROM `" . tbl('category_components') . "` WHERE category_id = ? AND calc_mode = 'sqft'",
+            [(int)$id]
+        ) > 0;
+        $count = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('category_components') . '` WHERE category_id = ?', [(int)$id]);
+        if ($count > 0) {
+            DB::update('categories', ['calc_mode' => $hasSqft ? 'mixed' : $category['calc_mode'], 'updated_at' => now()], ['id' => (int)$id]);
+        }
+        Logger::activity('catalog', 'components', 'category', (int)$id,
+            'Components updated for ' . $category['name'] . ' (' . $count . ')');
+        flash('success', 'Components saved for “' . $category['name'] . '”.');
         redirect(admin_url('categories'));
     }
 

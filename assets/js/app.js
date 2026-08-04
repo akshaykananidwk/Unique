@@ -41,6 +41,18 @@
     }
   });
 
+  // "Add row" on the category component editor — clone the last row, blanked.
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.kp-comp-add');
+    if (!btn) return;
+    const wrap = btn.closest('form').querySelector('.kp-comp-rows');
+    const last = wrap.querySelector('.kp-comp-row:last-child');
+    const row = last.cloneNode(true);
+    row.querySelectorAll('input').forEach(i => { i.value = ''; });
+    wrap.appendChild(row);
+    row.querySelector('input').focus();
+  });
+
   // Selects that save the moment you pick (e.g. the status column on the orders list).
   // requestSubmit keeps any data-confirm on the form working; plain .submit() would skip it.
   document.addEventListener('change', e => {
@@ -186,7 +198,8 @@
           (line.requires_design == 1 ? ' <span class="badge bg-info badge-status">Design</span>' : '') +
           '<div class="small text-muted">' + esc(line.category_name || '') +
           (line.spec_text ? ' · ' + esc(line.spec_text) : '') + '</div></td>' +
-        '<td data-label="Qty">' + num('kp-qty', line.qty) + '</td>' +
+        '<td data-label="Qty">' + num('kp-qty', line.qty) +
+          (line.unit ? '<div class="small text-muted text-center">' + esc(line.unit) + '</div>' : '') + '</td>' +
         '<td data-label="Width ft">' + (sq ? num('kp-w', line.width_ft) : '<span class="text-muted">—</span>') + '</td>' +
         '<td data-label="Height ft">' + (sq ? num('kp-h', line.height_ft) : '<span class="text-muted">—</span>') + '</td>' +
         '<td data-label="Sq. Ft." class="kp-sqft fw-semibold">' + (sq ? (line.total_sqft ?? 0) : '—') + '</td>' +
@@ -253,10 +266,46 @@
   const showSqftFields = show => document.querySelectorAll('.kp-sqft-only')
     .forEach(n => { n.style.display = show ? '' : 'none'; });
 
+  // The mode in play right now: the chosen component's, else the category's.
+  // 'mixed' categories have no mode of their own — each component decides.
+  const componentSelect = document.getElementById('modalComponent');
+  const unitInput = document.getElementById('modalUnit');
+  let currentComponent = null;
+  const activeMode = () => {
+    if (currentComponent) return currentComponent.calc_mode;
+    if (!currentCategory) return 'simple';
+    return currentCategory.calc_mode === 'sqft' ? 'sqft' : 'simple';
+  };
+
+  function paintComponents(components) {
+    if (!componentSelect) return;
+    componentSelect.innerHTML = '<option value="">— Custom (type the name) —</option>';
+    (components || []).forEach((c, i) => {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = c.name + (c.calc_mode === 'sqft' ? '  (ft × ft)' : '  (' + c.unit + ')');
+      componentSelect.appendChild(o);
+    });
+    componentSelect.closest('.kp-component-wrap').style.display = (components && components.length) ? '' : 'none';
+  }
+
+  if (componentSelect) componentSelect.addEventListener('change', () => {
+    const list = (currentCategory && currentCategory._components) || [];
+    currentComponent = componentSelect.value === '' ? null : list[parseInt(componentSelect.value, 10)];
+    if (currentComponent) {
+      nameInput.value = currentComponent.name;
+      if (unitInput) unitInput.value = currentComponent.unit;
+    } else if (unitInput) {
+      unitInput.value = '';
+    }
+    showSqftFields(activeMode() === 'sqft');
+    modalCalc();
+  });
+
   function modalCalc() {
     if (!currentCategory) return;
     const line = {
-      calc_mode: currentCategory.calc_mode,
+      calc_mode: activeMode(),
       qty: el('modalQty').value, rate: el('modalRate').value,
       width_ft: el('modalWidth').value, height_ft: el('modalHeight').value,
       tax_percent: currentCategory.tax_percent
@@ -272,8 +321,11 @@
     const data = await kpFetch(window.KP.adminUrl + '/api/category-options/' + categorySelect.value);
     if (!data.ok) { optionsBox.innerHTML = '<div class="alert alert-danger">Could not load this category.</div>'; return; }
     currentCategory = data.category;
+    currentCategory._components = data.components || [];
+    currentComponent = null;
     optionsBox.innerHTML = data.html;
-    showSqftFields(currentCategory.calc_mode === 'sqft');
+    paintComponents(currentCategory._components);
+    showSqftFields(activeMode() === 'sqft');
     const dw = el('modalDesignerWrap');
     if (dw) dw.style.display = currentCategory.requires_design == 1 ? '' : 'none';
     modalCalc();
@@ -320,14 +372,16 @@
     });
     if (missing) { kpToast('danger', 'Please fill: ' + missing); return; }
 
+    const mode = activeMode();
     const line = {
       category_id: currentCategory.id,
       category_name: currentCategory.name,
-      calc_mode: currentCategory.calc_mode,
+      calc_mode: mode,
+      unit: unitInput ? (unitInput.value || '').trim() : '',
       item_name: name,
       qty: round2(el('modalQty').value) || 0,
-      width_ft: currentCategory.calc_mode === 'sqft' ? round2(el('modalWidth').value) : null,
-      height_ft: currentCategory.calc_mode === 'sqft' ? round2(el('modalHeight').value) : null,
+      width_ft: mode === 'sqft' ? round2(el('modalWidth').value) : null,
+      height_ft: mode === 'sqft' ? round2(el('modalHeight').value) : null,
       rate: round2(el('modalRate').value) || 0,
       tax_percent: currentCategory.tax_percent,
       spec: spec,
@@ -351,7 +405,10 @@
     if (el('modalInstructions')) el('modalInstructions').value = '';
     if (optionsBox) optionsBox.innerHTML = '';
     if (categorySelect) categorySelect.value = '';
+    if (componentSelect) { componentSelect.innerHTML = ''; componentSelect.closest('.kp-component-wrap').style.display = 'none'; }
+    if (unitInput) unitInput.value = '';
     currentCategory = null;
+    currentComponent = null;
     showSqftFields(false);
     setText('modalAmount', money(0));
   });

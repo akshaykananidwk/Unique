@@ -1,9 +1,8 @@
 {
-    "version": "1.0.12",
+    "version": "1.0.13",
     "released_at": "2026-08-04",
     "changelog": [
-        "Ready for Print can now be set by hand when the customer approves the design in person at the counter — tick “Customer approved in person” on the job's status box instead of waiting for them to approve the online proof. The job then flows through every later stage without asking again, and who vouched for it is recorded.",
-        "Priority is now colour-coded everywhere: URGENT and RUSH show in red with the row tinted, NORMAL shows in green — on the orders list, Job Board, My Jobs, customer page, order page and the printed job card.",
-        "Simplified the job stages: Pending, Quality Check, Out for Delivery and On Hold have been removed. Orders now start straight at Design Pending and run through to Completed. Existing jobs on a removed stage were moved to the nearest matching stage automatically."
+        "Fix: when On Hold was retired in 1.0.12, jobs that were paused mid-production were sent back to the very first stage — a job paused at Post-press reappeared in Design Pending, and a paused delivery job went back to Ready for Print. Paused jobs are now returned to the exact stage they were paused at, read from their own status history, and any job already moved wrongly is put back automatically.",
+        "Fix: an order's stage is now re-derived from its actual item stages (the lowest stage wins) instead of being guessed, so the orders list, order page and customer tracking page no longer show a stage the job has already passed."
     ]
 }

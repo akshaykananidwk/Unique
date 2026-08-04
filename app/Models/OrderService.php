@@ -574,30 +574,14 @@ class OrderService
         if (!$allowed) {
             return ['ok' => false, 'error' => $flag];
         }
-        if ($flag === 'backward' && trim($note) === '') {
-            return ['ok' => false, 'error' => 'A reason is required to move a job backwards.'];
-        }
-        // Gate: past design_approved requires a confirmed approved proof
-        if ((bool)$item['requires_design'] && Status::rank($to) > Status::rank('design_approved')
-            && !in_array($to, Status::SPECIAL, true)) {
-            $approved = !empty($item['counter_approved_at']) || DB::val(
-                'SELECT id FROM `' . tbl('design_proofs') . '`
-                 WHERE order_item_id = ? AND status = ? AND approval_confirmed = 1',
-                [$itemId, 'approved']
-            );
-            if (!$approved) {
-                if (!$approvalOverride) {
-                    // 'code' lets the controller add the "tick the box" hint only for staff who may override.
-                    return ['ok' => false, 'code' => 'needs_approval',
-                        'error' => 'The customer has not approved the design yet.'];
-                }
-                // Approved at the counter with the customer standing there: record it so the
-                // proof list and the audit trail match what actually happened.
-                self::recordCounterApproval($itemId, $userId);
-                $note = trim($note) !== ''
-                    ? trim($note) . ' — approved in person at the counter'
-                    : 'Approved in person at the counter';
-            }
+        // Staff moving a job past the design stages no longer wait on the customer's online
+        // approval — the counter decides. Ticking "Customer approved in person" is now purely
+        // a record of what happened, not a permission to proceed.
+        if ($approvalOverride && (bool)$item['requires_design']) {
+            self::recordCounterApproval($itemId, $userId);
+            $note = trim($note) !== ''
+                ? trim($note) . ' — approved in person at the counter'
+                : 'Approved in person at the counter';
         }
 
         DB::update('order_items', ['status' => $to, 'updated_at' => now()], ['id' => $itemId]);
@@ -667,7 +651,7 @@ class OrderService
     public static function recomputeOrderStatus(int $orderId): void
     {
         $order = DB::get('SELECT * FROM `' . tbl('orders') . '` WHERE id = ?', [$orderId]);
-        if (!$order || (int)$order['is_cancelled'] === 1) {
+        if (!$order) {
             return;
         }
         $items = DB::all('SELECT status FROM `' . tbl('order_items') . '` WHERE order_id = ?', [$orderId]);
@@ -693,6 +677,23 @@ class OrderService
             $updates = ['status' => $new, 'updated_at' => now()];
             if ($new === 'delivered') {
                 $updates['delivered_at'] = now();
+            }
+            // Moving a job back out of a finished state must clear that state completely,
+            // otherwise the order still reads as delivered/completed/cancelled elsewhere.
+            if ($new !== 'delivered' && Status::rank($new) < Status::rank('delivered')) {
+                $updates['delivered_at'] = null;
+            }
+            if ($new !== 'completed') {
+                $updates['completed_at'] = null;
+            }
+            if ($new === 'cancelled') {
+                $updates['is_cancelled'] = 1;
+                $updates['cancelled_at'] = $order['cancelled_at'] ?: now();
+            } elseif ((int)$order['is_cancelled'] === 1) {
+                $updates['is_cancelled'] = 0;
+                $updates['cancelled_at'] = null;
+                $updates['cancelled_reason'] = null;
+                $updates['cancelled_by'] = null;
             }
             DB::update('orders', $updates, ['id' => $orderId]);
             WaEvents::statusChanged($orderId, $new);

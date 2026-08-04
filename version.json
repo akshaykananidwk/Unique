@@ -1,9 +1,10 @@
 {
-    "version": "1.0.15",
+    "version": "1.0.16",
     "released_at": "2026-08-04",
     "changelog": [
-        "Every item now has a Delete button right next to Edit on the Items page.",
-        "Deleting a category now deletes the items inside it too, instead of refusing. The confirmation tells you exactly how many items will go, and past orders keep their own record of what was sold.",
-        "Orders list: Status is now a dropdown — change a job's stage straight from the list without opening the order. It applies to every job in that order, and if something cannot move (for example the customer has not approved the design yet) it says so and moves the rest."
+        "Status can now be set to anything, in any direction — no more blocking errors. Design Approved and Ready for Print no longer wait for the customer's online approval, and a job can be moved from the first stage to the last or from the last back to the first.",
+        "A mis-click is now recoverable: an order set to Completed, Delivered or Cancelled by mistake can be put straight back to Design Pending from the orders list, and the delivered/completed/cancelled marks are cleared with it.",
+        "The status dropdown now shows on every order, including completed and cancelled ones, and no reason is required to move a job backwards.",
+        "The “Customer approved in person” tick still exists but is no longer needed to proceed — it simply records that the customer approved face to face."
     ]
 }

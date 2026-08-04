@@ -54,7 +54,7 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
       <td data-label="Date / Due"><span class="small"><?= e(fmt_date($o['order_date'])) ?></span>
         <div class="small <?= $overdue ? 'text-overdue fw-bold' : 'text-muted' ?>">Due <?= e(fmt_date($o['due_date'], true)) ?></div></td>
       <td data-label="Status">
-        <?php if (Acl::can('order.change_status') && !in_array($o['status'], ['completed', 'cancelled'], true)): ?>
+        <?php if (Acl::can('order.change_status')): ?>
           <form method="post" action="<?= e(admin_url('orders/' . $o['id'] . '/status')) ?>" class="d-inline">
             <?= Csrf::field() ?>
             <input type="hidden" name="back" value="<?= e($backUrl) ?>">

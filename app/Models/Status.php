@@ -101,7 +101,17 @@ class Status
 
     /**
      * Is $from → $to a legal transition?
-     * @return array{0:bool,1:string} allowed + reason (also flags backward moves needing a note)
+     *
+     * Staff who hold order.change_status may move a job to ANY stage, in either direction —
+     * first to last, last to first, back out of Delivered/Completed/Cancelled, and into a
+     * design stage even on an item that needs no design. A counter must never be stuck
+     * because of a mis-click. The only rejections left are "it is already there" and an
+     * unknown status. Every move is still written to the status history, which is what
+     * makes an accidental change easy to see and undo.
+     *
+     * $requiresDesign / $isManager are kept for signature compatibility with existing callers.
+     *
+     * @return array{0:bool,1:string} allowed + flag ('backward' marks a step back, for the log)
      */
     public static function validate(string $from, string $to, bool $requiresDesign, bool $isManager): array
     {
@@ -111,36 +121,13 @@ class Status
         if (!isset(self::RANKS[$to]) && !in_array($to, self::SPECIAL, true)) {
             return [false, 'Unknown status.'];
         }
-        if ($from === 'cancelled') {
-            return [false, 'A cancelled item cannot change status.'];
-        }
-        if ($to === 'cancelled') {
-            return [true, ''];
-        }
-        // Items that skip the design loop must not enter design stages
-        if (!$requiresDesign && self::isDesignStage($to)) {
-            return [false, 'This item does not require design.'];
-        }
-        // A row still sitting on a retired stage (pending / on_hold / quality_check /
-        // out_for_delivery) ranks 0, so the forward-move rule below lets it rejoin the flow
-        // on its own — without handing out a free pass around the backward-move rules.
-        // change_requested loops back to design_in_progress
-        if ($from === 'change_requested' && $to === 'design_in_progress') {
-            return [true, ''];
-        }
-        if ($from === 'proof_sent' && in_array($to, ['change_requested', 'design_approved'], true)) {
-            return [true, ''];
-        }
         $fromRank = self::rank($from);
         $toRank = self::rank($to);
-        if ($toRank > $fromRank) {
-            return [true, ''];
-        }
-        // Backward — managers only, and a reason is required (enforced by controller)
-        if ($isManager) {
+        // Flag a step back purely so it is labelled that way in the history.
+        if ($fromRank > 0 && $toRank > 0 && $toRank < $fromRank) {
             return [true, 'backward'];
         }
-        return [false, 'Only a Branch Manager or Super Admin can move a job backwards.'];
+        return [true, ''];
     }
 
     /** Customer-facing progress percentage (0–100) for an order/item status. */

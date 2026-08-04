@@ -73,9 +73,9 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
             </form>
             <?php endif; ?>
           <?php endif; ?>
-          <?php if (Acl::can('order.change_status') && !in_array($item['status'], ['completed', 'cancelled'], true)):
-              // Design jobs are normally held until the customer approves the proof online.
-              // When they approve face-to-face, staff can vouch for it with this tick box.
+          <?php if (Acl::can('order.change_status')):
+              // Any stage can be set freely. This tick simply records that the customer
+              // approved face-to-face, so the proof list matches what actually happened.
               $hasApproval = !empty($item['counter_approved_at']);
               foreach ($item['proofs'] as $pf) {
                   if ($pf['status'] === 'approved' && (int)$pf['approval_confirmed'] === 1) { $hasApproval = true; break; }
@@ -97,7 +97,7 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
             <div class="form-check form-check-sm text-start mt-1">
               <input class="form-check-input" type="checkbox" value="1" name="approval_override" id="ovr<?= (int)$item['id'] ?>">
               <label class="form-check-label small text-muted" for="ovr<?= (int)$item['id'] ?>">
-                Customer approved in person — allow Ready for Print without the online approval
+                Also record that the customer approved this design in person
               </label>
             </div>
             <?php endif; ?>

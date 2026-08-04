@@ -359,9 +359,6 @@ class OrderController extends Controller
         // the online proof approval (e.g. the customer OK'd the design across the counter).
         $override = !empty($_POST['approval_override']) && Acl::can('order.override_approval');
         $result = OrderService::changeItemStatus((int)$id, $to, (int)$this->user['id'], $note, false, $this->isManager(), $override);
-        if (!$result['ok'] && ($result['code'] ?? '') === 'needs_approval' && Acl::can('order.override_approval')) {
-            $result['error'] .= ' If they approved it in person, tick “Customer approved in person” and try again.';
-        }
         if ($result['ok']) {
             Logger::activity('order', 'status', 'order_item', (int)$id,
                 $order['job_no'] . ': ' . $item['status'] . ' → ' . $to . ($note !== '' ? " ($note)" : ''));
@@ -387,8 +384,13 @@ class OrderController extends Controller
         }
         $note = trim((string)($_POST['note'] ?? ''));
         $override = !empty($_POST['approval_override']) && Acl::can('order.override_approval');
+        // On a live order, a line cancelled on purpose stays cancelled. But when the WHOLE
+        // order is cancelled, picking a stage brings all of it back — otherwise a cancelled
+        // order would be a dead end with no way out from the list.
+        $orderCancelled = (int)$order['is_cancelled'] === 1 || $order['status'] === 'cancelled';
         $items = DB::all(
-            'SELECT id FROM `' . tbl('order_items') . "` WHERE order_id = ? AND status <> 'cancelled' ORDER BY sort_order, id",
+            'SELECT id FROM `' . tbl('order_items') . '` WHERE order_id = ?'
+            . ($orderCancelled ? '' : " AND status <> 'cancelled'") . ' ORDER BY sort_order, id',
             [(int)$id]
         );
 
@@ -404,11 +406,7 @@ class OrderController extends Controller
             } elseif (str_starts_with((string)($result['error'] ?? ''), 'Status is already')) {
                 $already++;
             } else {
-                $reason = (string)($result['error'] ?? 'Could not update.');
-                if (($result['code'] ?? '') === 'needs_approval' && Acl::can('order.override_approval')) {
-                    $reason .= ' Open the order and tick “Customer approved in person” to push it through.';
-                }
-                $reasons[$reason] = true;
+                $reasons[(string)($result['error'] ?? 'Could not update.')] = true;
             }
         }
 

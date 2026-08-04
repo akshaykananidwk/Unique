@@ -239,6 +239,168 @@ class OrderService
         return $result;
     }
 
+    /**
+     * Reconcile an existing order's item lines against a submitted set (full edit).
+     *  - line with `id` matching an existing item → manual update (qty/rate/amount/tax), keeps status/designer/proofs
+     *  - line without `id` → inserted as a fresh line (full pricing, designer assignment, alerts)
+     *  - existing item missing from the set → cancelled if it has design work, else hard-removed
+     * @param array $items each: [id?, item_id, qty, rate?, spec(array), spec_text?, due_date?, designer_id?, special_instructions?]
+     */
+    public static function syncOrderItems(int $orderId, array $items, ?int $userId): void
+    {
+        if (count($items) === 0) {
+            throw new \RuntimeException('An order must have at least one item.');
+        }
+        $newDesignerItemIds = DB::transaction(function () use ($orderId, $items, $userId) {
+            $order = DB::get('SELECT * FROM `' . tbl('orders') . '` WHERE id = ? FOR UPDATE', [$orderId]);
+            if (!$order) {
+                throw new \RuntimeException('Order not found.');
+            }
+            $branchId = (int)$order['branch_id'];
+            $customer = DB::get('SELECT price_group_id FROM `' . tbl('customers') . '` WHERE id = ?', [(int)$order['customer_id']]);
+            $groupDiscount = ($customer && $customer['price_group_id'])
+                ? (float)(DB::val('SELECT discount_percent FROM `' . tbl('price_groups') . '` WHERE id = ?', [(int)$customer['price_group_id']]) ?? 0)
+                : 0.0;
+
+            $existing = DB::all('SELECT * FROM `' . tbl('order_items') . '` WHERE order_id = ?', [$orderId]);
+            $existingById = [];
+            foreach ($existing as $e) {
+                $existingById[(int)$e['id']] = $e;
+            }
+            $keptIds = [];
+            $newDesigner = [];
+
+            foreach (array_values($items) as $index => $line) {
+                $lineId = isset($line['id']) ? (int)$line['id'] : 0;
+
+                if ($lineId && isset($existingById[$lineId])) {
+                    // Manual correction of an existing line — respect the entered qty/rate as-is.
+                    $ex = $existingById[$lineId];
+                    if ($ex['status'] === 'cancelled') {
+                        $keptIds[] = $lineId; // leave cancelled lines untouched
+                        continue;
+                    }
+                    $qty = max(0.01, (float)($line['qty'] ?? $ex['qty']));
+                    $rate = isset($line['rate']) && $line['rate'] !== '' ? round((float)$line['rate'], 2) : (float)$ex['rate'];
+                    $isFixed = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('items') . "` WHERE id = ? AND pricing_type = 'fixed'", [(int)$ex['item_id']]) > 0;
+                    $amount = $isFixed ? $rate : round($rate * $qty, 2);
+                    $taxPercent = (float)$ex['tax_percent'];
+                    $taxAmount = round($amount * $taxPercent / 100, 2);
+                    $changed = abs($rate - (float)$ex['rate']) > 0.009 || abs($qty - (float)$ex['qty']) > 0.0001;
+                    DB::update('order_items', [
+                        'qty' => $qty,
+                        'rate' => $rate,
+                        'rate_overridden' => $changed ? 1 : (int)$ex['rate_overridden'],
+                        'amount' => $amount,
+                        'tax_amount' => $taxAmount,
+                        'line_total' => round($amount + $taxAmount, 2),
+                        'sort_order' => $index,
+                        'updated_at' => now(),
+                    ], ['id' => $lineId]);
+                    if ($changed) {
+                        Logger::activity('order', 'edit_item', 'order_item', $lineId,
+                            $order['job_no'] . ': line edited → qty ' . rtrim(rtrim(number_format($qty, 2, '.', ''), '0'), '.') . ' × ₹' . $rate);
+                    }
+                    $keptIds[] = $lineId;
+                    continue;
+                }
+
+                // Brand-new line — price it the same way createOrder() does.
+                $item = DB::get(
+                    'SELECT i.*, c.name AS category_name FROM `' . tbl('items') . '` i
+                     JOIN `' . tbl('categories') . '` c ON c.id = i.category_id
+                     WHERE i.id = ? AND i.is_active = 1 AND i.deleted_at IS NULL',
+                    [(int)($line['item_id'] ?? 0)]
+                );
+                if (!$item) {
+                    throw new \RuntimeException('Item not found or inactive.');
+                }
+                $qty = max((float)$item['min_qty'], (float)($line['qty'] ?? 1));
+                $spec = is_array($line['spec'] ?? null) ? $line['spec'] : [];
+                $calc = Pricing::calculate($item, $qty, $spec, $groupDiscount);
+                $rate = $calc['rate'];
+                $overridden = 0;
+                if (isset($line['rate']) && $line['rate'] !== '' && abs((float)$line['rate'] - $rate) > 0.009) {
+                    $rate = round((float)$line['rate'], 2);
+                    $overridden = 1;
+                }
+                $amount = $item['pricing_type'] === 'fixed' ? $rate : round($rate * $calc['billed_qty'], 2);
+                $taxPercent = (float)$item['tax_percent'];
+                $taxAmount = round($amount * $taxPercent / 100, 2);
+                $dueDate = !empty($line['due_date'])
+                    ? date('Y-m-d H:i:s', (int)strtotime((string)$line['due_date']))
+                    : date('Y-m-d H:i:s', time() + (int)$item['default_turnaround_hours'] * 3600);
+                $requiresDesign = (int)$item['requires_design'];
+                $designerId = !empty($line['designer_id']) ? (int)$line['designer_id'] : null;
+                $status = $requiresDesign ? 'design_pending' : 'ready_for_print';
+                $newId = DB::insert('order_items', [
+                    'order_id' => $orderId,
+                    'item_id' => (int)$item['id'],
+                    'item_name_snapshot' => $item['name'],
+                    'category_name_snapshot' => $item['category_name'],
+                    'qty' => $calc['billed_qty'],
+                    'unit' => $item['unit'],
+                    'rate' => $rate,
+                    'rate_overridden' => $overridden,
+                    'spec_json' => json_encode($spec, JSON_UNESCAPED_UNICODE),
+                    'spec_text' => $calc['spec_text'],
+                    'amount' => $amount,
+                    'tax_percent' => $taxPercent,
+                    'tax_amount' => $taxAmount,
+                    'line_total' => round($amount + $taxAmount, 2),
+                    'requires_design' => $requiresDesign,
+                    'assigned_designer_id' => $requiresDesign ? $designerId : null,
+                    'designer_assigned_at' => ($requiresDesign && $designerId) ? now() : null,
+                    'status' => $status,
+                    'due_date' => $dueDate,
+                    'special_instructions' => $line['special_instructions'] ?? null,
+                    'sort_order' => $index,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                self::history($orderId, $newId, null, $status, $userId, false, 'Item added on edit');
+                Logger::activity('order', 'add_item', 'order_item', $newId, $order['job_no'] . ': line added — ' . $item['name']);
+                if ($requiresDesign && $designerId) {
+                    $newDesigner[] = $newId;
+                } elseif ($requiresDesign && !$designerId && Settings::getBool('auto_assign_designer')) {
+                    if (self::autoAssignDesigner($newId, $branchId, $userId)) {
+                        $newDesigner[] = $newId;
+                    }
+                }
+                $keptIds[] = $newId;
+            }
+
+            // Anything left over was removed by the editor.
+            foreach ($existing as $ex) {
+                $exId = (int)$ex['id'];
+                if (in_array($exId, $keptIds, true) || $ex['status'] === 'cancelled') {
+                    continue; // already gone / never shown in the editor
+                }
+                $hasProofs = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('design_proofs') . '` WHERE order_item_id = ?', [$exId]) > 0;
+                $advanced = in_array($ex['status'], ['printing', 'ready_for_delivery', 'delivered', 'completed'], true);
+                if ($hasProofs || $advanced) {
+                    if ($ex['status'] !== 'cancelled') {
+                        DB::update('order_items', ['status' => 'cancelled', 'updated_at' => now()], ['id' => $exId]);
+                        self::history($orderId, $exId, (string)$ex['status'], 'cancelled', $userId, false, 'Item removed on edit');
+                        Logger::activity('order', 'remove_item', 'order_item', $exId, $order['job_no'] . ': line cancelled (had design work)');
+                    }
+                } else {
+                    DB::run('DELETE FROM `' . tbl('order_attachments') . '` WHERE order_item_id = ?', [$exId]);
+                    DB::run('DELETE FROM `' . tbl('order_status_history') . '` WHERE order_item_id = ?', [$exId]);
+                    DB::delete('order_items', ['id' => $exId]);
+                    Logger::activity('order', 'remove_item', 'order_item', $exId, $order['job_no'] . ': line removed — ' . $ex['item_name_snapshot']);
+                }
+            }
+
+            self::recomputeOrderStatus($orderId);
+            return $newDesigner;
+        });
+
+        foreach ($newDesignerItemIds as $iid) {
+            WaEvents::designerAssigned((int)$iid);
+        }
+    }
+
     private static function upsertCustomer(array $c, int $branchId, ?int $userId, string $source): int
     {
         if (!empty($c['id'])) {
@@ -293,8 +455,8 @@ class OrderService
     {
         $order = DB::get('SELECT * FROM `' . tbl('orders') . '` WHERE id = ?', [$orderId]);
         $sums = DB::get(
-            'SELECT COALESCE(SUM(amount),0) AS subtotal, COALESCE(SUM(tax_amount),0) AS tax
-             FROM `' . tbl('order_items') . '` WHERE order_id = ?',
+            "SELECT COALESCE(SUM(amount),0) AS subtotal, COALESCE(SUM(tax_amount),0) AS tax
+             FROM `" . tbl('order_items') . "` WHERE order_id = ? AND status <> 'cancelled'",
             [$orderId]
         );
         $subtotal = (float)$sums['subtotal'];

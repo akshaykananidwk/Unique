@@ -1,9 +1,10 @@
 {
-    "version": "1.0.10",
+    "version": "1.0.11",
     "released_at": "2026-08-04",
     "changelog": [
-        "Order entry now accepts phone numbers in any format — spaces, +91, or a leading 0 are cleaned automatically and only the 10-digit number is kept, so a stray space no longer throws an error.",
-        "Admin can now edit an order's item prices and quantities after it has been taken — totals, tax and balance recalculate on save.",
+        "Edit Order is now a full editor: add an item that was missed, remove a wrong line, or change any item's quantity and rate — using the same Add Item builder as New Order. Discount, delivery and notes are editable too, and totals, tax and balance recalculate on save.",
+        "Removing a line that has no design work deletes it cleanly; a line that already has proofs is safely marked cancelled to keep the job history intact.",
+        "Order entry now accepts phone numbers in any format — spaces, +91, or a leading 0 are cleaned automatically and only the 10-digit number is kept.",
         "When saving a new order a Yes/No popup asks whether to WhatsApp the customer the confirmation message; choose No to save silently (staff and designers are still notified either way)."
     ]
 }

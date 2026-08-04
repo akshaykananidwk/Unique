@@ -71,12 +71,20 @@
     });
   }
 
-  // ---------------------------------------------------------------- order create page
-  const orderForm = document.getElementById('orderCreateForm');
+  // ---------------------------------------------------------------- order create / edit page
+  const orderForm = document.getElementById('orderCreateForm') || document.getElementById('orderEditForm');
   if (!orderForm) return;
+  const isEdit = orderForm.id === 'orderEditForm';
 
   const state = { items: [], customerId: null };
   const money = n => '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+  // On the edit page, seed the basket with the order's current lines (each carries its DB id).
+  if (isEdit && Array.isArray(window.KP_EDIT_ITEMS)) {
+    state.items = window.KP_EDIT_ITEMS.map(l => Object.assign({}, l));
+  }
 
   // Strip formatting (+91, leading 0, spaces, dashes) down to the 10-digit local number.
   const localPhone = raw => {
@@ -85,11 +93,11 @@
     return d.length === 10 ? d : null;
   };
 
-  // Customer lookup once we have a clean 10-digit number
+  // Customer lookup once we have a clean 10-digit number (create page only)
   const phoneInput = document.getElementById('customer_phone');
   const newCustomerFields = document.getElementById('newCustomerFields');
   const customerBadge = document.getElementById('customerBadge');
-  phoneInput.addEventListener('input', async () => {
+  if (phoneInput) phoneInput.addEventListener('input', async () => {
     const digits = localPhone(phoneInput.value);
     if (!digits) return;
     const data = await kpFetch(window.KP.adminUrl + '/api/customer-lookup?phone=' + digits);
@@ -208,6 +216,7 @@
       name: currentItem.name,
       qty: qty,
       rate: rate,
+      fixed: currentItem.pricing_type === 'fixed',
       spec: collectSpec(),
       spec_text: amountEl.dataset.specText || '',
       amount: currentItem.pricing_type === 'fixed' ? rate : rate * billedQty,
@@ -217,10 +226,10 @@
       special_instructions: document.getElementById('modalInstructions').value,
       requires_design: currentItem.requires_design
     };
-    // Per-item file: move the modal file input into the form (renamed by index)
+    // Per-item file: move the modal file input into the form (renamed by index). Create page only.
     const fileInput = document.getElementById('modalFile');
     const idx = editIndex !== null ? editIndex : state.items.length;
-    if (fileInput.files.length) {
+    if (fileInput && fileInput.files.length) {
       const clone = fileInput.cloneNode(true);
       clone.name = 'item_file_' + idx;
       clone.classList.add('d-none');
@@ -229,7 +238,7 @@
     }
     if (editIndex !== null) { state.items[editIndex] = line; editIndex = null; }
     else state.items.push(line);
-    fileInput.value = '';
+    if (fileInput) fileInput.value = '';
     renderItems();
     itemModal.hide();
   });
@@ -244,40 +253,80 @@
 
   function renderItems() {
     const tbody = document.getElementById('itemsBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
+    if (!state.items.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-muted small text-center py-3">No items yet — tap “Add Item”.</td></tr>';
+      recalcTotals();
+      return;
+    }
     state.items.forEach((line, i) => {
+      const design = line.requires_design == 1 ? ' <span class="badge bg-info badge-status">Design</span>' : '';
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td data-label="Item"><strong>' + line.name + '</strong><br><small class="text-muted">' +
-        (line.spec_text || '') + '</small>' +
-        (line.requires_design == 1 ? ' <span class="badge bg-info badge-status">Design</span>' : '') + '</td>' +
-        '<td data-label="Qty">' + line.qty + '</td>' +
-        '<td data-label="Rate">' + money(line.rate) + '</td>' +
-        '<td data-label="Amount">' + money(line.amount) + '</td>' +
-        '<td data-label=""><button type="button" class="btn btn-sm btn-outline-danger" onclick="kpRemoveItem(' + i + ')"><i class="bi bi-trash"></i></button></td>';
+      tr.innerHTML =
+        '<td data-label="Item"><strong>' + esc(line.name) + '</strong>' + design +
+          (line.spec_text ? '<br><small class="text-muted">' + esc(line.spec_text) + '</small>' : '') + '</td>' +
+        '<td data-label="Qty"><input type="number" step="0.01" min="0" class="form-control form-control-sm kp-qty" data-i="' + i + '" value="' + line.qty + '"></td>' +
+        '<td data-label="Rate"><input type="number" step="0.01" min="0" class="form-control form-control-sm kp-rate" data-i="' + i + '" value="' + line.rate + '"></td>' +
+        '<td data-label="Amount" class="kp-amt fw-semibold">' + money(line.amount) + '</td>' +
+        '<td data-label=""><button type="button" class="btn btn-sm btn-outline-danger" data-rm="' + i + '"><i class="bi bi-trash"></i></button></td>';
       tbody.appendChild(tr);
     });
     recalcTotals();
   }
 
+  // Inline qty/rate editing + row removal (event delegation)
+  const itemsBody = document.getElementById('itemsBody');
+  if (itemsBody) {
+    itemsBody.addEventListener('input', e => {
+      const field = e.target.closest('.kp-qty, .kp-rate');
+      if (!field) return;
+      const i = parseInt(field.dataset.i, 10);
+      const line = state.items[i];
+      if (!line) return;
+      const qEl = itemsBody.querySelector('.kp-qty[data-i="' + i + '"]');
+      const rEl = itemsBody.querySelector('.kp-rate[data-i="' + i + '"]');
+      line.qty = parseFloat(qEl.value) || 0;
+      line.rate = parseFloat(rEl.value) || 0;
+      line.amount = line.fixed ? line.rate : line.rate * line.qty;
+      const amtCell = field.closest('tr').querySelector('.kp-amt');
+      if (amtCell) amtCell.textContent = money(line.amount);
+      recalcTotals();
+    });
+    itemsBody.addEventListener('click', e => {
+      const btn = e.target.closest('[data-rm]');
+      if (!btn) return;
+      state.items.splice(parseInt(btn.dataset.rm, 10), 1);
+      renderItems();
+    });
+  }
+
   function recalcTotals() {
-    const subtotal = state.items.reduce((s, l) => s + l.amount, 0);
-    const tax = state.items.reduce((s, l) => s + l.amount * (l.tax_percent || 0) / 100, 0);
-    const discType = document.getElementById('discount_type').value;
-    const discValue = parseFloat(document.getElementById('discount_value').value) || 0;
+    const subtotal = state.items.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+    const tax = state.items.reduce((s, l) => s + (parseFloat(l.amount) || 0) * (l.tax_percent || 0) / 100, 0);
+    const dt = document.getElementById('discount_type');
+    const dv = document.getElementById('discount_value');
+    const discType = dt ? dt.value : '';
+    const discValue = dv ? (parseFloat(dv.value) || 0) : 0;
     const discount = discType === 'percent' ? subtotal * discValue / 100 : (discType === 'flat' ? Math.min(discValue, subtotal) : 0);
-    const delivery = parseFloat(document.getElementById('delivery_charge').value) || 0;
+    const dc = document.getElementById('delivery_charge');
+    const delivery = dc ? (parseFloat(dc.value) || 0) : 0;
     const total = Math.round(subtotal - discount + tax + delivery);
-    const advance = parseFloat(document.getElementById('advance_amount').value) || 0;
-    document.getElementById('sumSubtotal').textContent = money(subtotal);
-    document.getElementById('sumDiscount').textContent = '− ' + money(discount);
-    document.getElementById('sumTax').textContent = money(tax);
-    document.getElementById('sumTotal').textContent = money(total);
-    document.getElementById('sumBalance').textContent = money(total - advance);
+    setText('sumSubtotal', money(subtotal));
+    setText('sumDiscount', '− ' + money(discount));
+    setText('sumTax', money(tax));
+    setText('sumTotal', money(total));
+    const adv = document.getElementById('advance_amount');
+    if (adv) setText('sumBalance', money(total - (parseFloat(adv.value) || 0)));
   }
   ['discount_type', 'discount_value', 'delivery_charge', 'advance_amount'].forEach(id => {
-    document.getElementById(id).addEventListener('input', recalcTotals);
-    document.getElementById(id).addEventListener('change', recalcTotals);
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', recalcTotals);
+    el.addEventListener('change', recalcTotals);
   });
+
+  renderItems(); // initial paint (seeded lines on edit, empty state on create)
 
   // WhatsApp Yes/No popup before the order is actually saved
   const waModalEl = document.getElementById('waConfirmModal');
@@ -298,6 +347,13 @@
     if (!state.items.length) {
       e.preventDefault();
       kpToast('danger', 'Add at least one item.');
+      return;
+    }
+    if (isEdit) {
+      // No WhatsApp popup on edit — just persist the reconciled item set.
+      document.getElementById('items_json').value = JSON.stringify(state.items);
+      const btn = orderForm.querySelector('button[type=submit]');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…'; }
       return;
     }
     if (waConfirmed || !waModal) return; // already answered — let it through

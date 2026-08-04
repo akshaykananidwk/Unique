@@ -250,7 +250,23 @@ class OrderController extends Controller
              WHERE oi.order_id = ? ORDER BY oi.sort_order, oi.id',
             [(int)$order['id']]
         );
-        $this->render('orders/edit', compact('order', 'customer', 'items'));
+        // Catalog for the "Add Item" builder (same data the create page uses)
+        $categories = DB::all(
+            'SELECT c.*, (SELECT COUNT(*) FROM `' . tbl('items') . '` i WHERE i.category_id = c.id AND i.is_active = 1 AND i.deleted_at IS NULL) AS item_count
+             FROM `' . tbl('categories') . '` c WHERE c.is_active = 1 ORDER BY c.sort_order'
+        );
+        $catalog = DB::all(
+            'SELECT id, category_id, name, unit, base_price, pricing_type, min_qty FROM `' . tbl('items') . '`
+             WHERE is_active = 1 AND deleted_at IS NULL ORDER BY sort_order, name'
+        );
+        $designers = DB::all(
+            'SELECT u.id, u.name,
+                    (SELECT COUNT(*) FROM `' . tbl('order_items') . "` oi WHERE oi.assigned_designer_id = u.id
+                     AND oi.status IN ('design_pending','design_in_progress','proof_sent','change_requested')) AS open_jobs
+             FROM `" . tbl('users') . '` u JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
+             WHERE r.slug = 'designer' AND u.is_active = 1 AND u.deleted_at IS NULL ORDER BY u.name"
+        );
+        $this->render('orders/edit', compact('order', 'customer', 'items', 'categories', 'catalog', 'designers'));
     }
 
     /** Order-level fields plus per-item price/qty edits (discount, delivery, notes, priority, due date, line rates). */
@@ -263,45 +279,17 @@ class OrderController extends Controller
             redirect(admin_url('orders/' . $id));
         }
 
-        // Per-item price / quantity edits
-        $rates = (array)($_POST['item_rate'] ?? []);
-        $qtys = (array)($_POST['item_qty'] ?? []);
-        if ($rates || $qtys) {
-            $orderItems = DB::all(
-                'SELECT oi.*, i.pricing_type FROM `' . tbl('order_items') . '` oi
-                 LEFT JOIN `' . tbl('items') . '` i ON i.id = oi.item_id
-                 WHERE oi.order_id = ?',
-                [(int)$id]
-            );
-            foreach ($orderItems as $oi) {
-                $iid = (int)$oi['id'];
-                if (!isset($rates[$iid]) && !isset($qtys[$iid])) {
-                    continue;
-                }
-                if (in_array($oi['status'], ['cancelled'], true)) {
-                    continue;
-                }
-                $newRate = isset($rates[$iid]) && $rates[$iid] !== '' ? round((float)$rates[$iid], 2) : (float)$oi['rate'];
-                $newQty = isset($qtys[$iid]) && (float)$qtys[$iid] > 0 ? (float)$qtys[$iid] : (float)$oi['qty'];
-                $pricingType = $oi['pricing_type'] ?? 'per_unit';
-                $amount = $pricingType === 'fixed' ? $newRate : round($newRate * $newQty, 2);
-                $taxPercent = (float)$oi['tax_percent'];
-                $taxAmount = round($amount * $taxPercent / 100, 2);
-                $changed = abs($newRate - (float)$oi['rate']) > 0.009 || abs($newQty - (float)$oi['qty']) > 0.0001;
-                DB::update('order_items', [
-                    'qty' => $newQty,
-                    'rate' => $newRate,
-                    'rate_overridden' => $changed ? 1 : (int)$oi['rate_overridden'],
-                    'amount' => $amount,
-                    'tax_amount' => $taxAmount,
-                    'line_total' => round($amount + $taxAmount, 2),
-                    'updated_at' => now(),
-                ], ['id' => $iid]);
-                if ($changed) {
-                    Logger::activity('order', 'edit_item', 'order_item', $iid,
-                        $order['job_no'] . ': line edited → qty ' . rtrim(rtrim(number_format($newQty, 2, '.', ''), '0'), '.') . ' × ₹' . $newRate);
-                }
-            }
+        // Full item reconciliation: add / edit / remove lines in one shot.
+        $itemsRaw = json_decode((string)($_POST['items_json'] ?? '[]'), true);
+        if (!is_array($itemsRaw) || count($itemsRaw) === 0) {
+            flash('danger', 'An order must keep at least one item. Add an item before saving.');
+            redirect(admin_url('orders/' . $id . '/edit'));
+        }
+        try {
+            OrderService::syncOrderItems((int)$id, $itemsRaw, (int)$this->user['id']);
+        } catch (\Throwable $e) {
+            flash('danger', 'Could not update the items: ' . $e->getMessage());
+            redirect(admin_url('orders/' . $id . '/edit'));
         }
 
         DB::update('orders', [

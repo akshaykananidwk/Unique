@@ -21,6 +21,8 @@ class ProductController
             );
         }
         unset($category);
+        // Drop categories with nothing public in them (e.g. items still waiting to be priced).
+        $categories = array_values(array_filter($categories, fn($c) => count($c['items']) > 0));
         View::render('public/products', compact('categories'), 'layouts/public');
     }
 

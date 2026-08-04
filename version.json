@@ -1,8 +1,10 @@
 {
-    "version": "1.0.13",
+    "version": "1.0.14",
     "released_at": "2026-08-04",
     "changelog": [
-        "Fix: when On Hold was retired in 1.0.12, jobs that were paused mid-production were sent back to the very first stage — a job paused at Post-press reappeared in Design Pending, and a paused delivery job went back to Ready for Print. Paused jobs are now returned to the exact stage they were paused at, read from their own status history, and any job already moved wrongly is put back automatically.",
-        "Fix: an order's stage is now re-derived from its actual item stages (the lowest stage wins) instead of being guessed, so the orders list, order page and customer tracking page no longer show a stage the job has already passed."
+        "Your full product list is now in the system — 200 items across 18 categories (Visiting Card, Paper Bag, Letter Head, Rough Pad, Pamphlet, Envelope, Bill Book, UV DTF, Doctor File, Display, Solvent Printing, Eco Solvent, UV Special, LED Signage, Sun Pack, Paper Wristband, ID Card, Garment Tag).",
+        "Each product now asks the right questions when taking an order: visiting cards ask Single Side or Double Side, banners ask width and height in feet and price per square foot automatically, and bill books ask 2 Copy or 3 Copy and Full Colour or Single Colour, with numbering.",
+        "All imported items start at ₹0 and are kept off the public website until you enter a real price, so no customer can ever be quoted zero. Counter staff can use them straight away and type the rate.",
+        "The public website no longer shows a category that has nothing in it — a category appears the moment one of its items is priced and made public."
     ]
 }

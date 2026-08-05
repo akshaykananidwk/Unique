@@ -5,34 +5,54 @@ namespace App\Controllers\Admin;
 
 use App\Core\Acl;
 use App\Core\DB;
+use App\Models\CustomerBook;
 use App\Core\View;
 use App\Models\Pricing;
 
 class ApiController extends Controller
 {
-    /** ?phone=98765xxxxx → customer + outstanding + order count. */
+    /** ?phone=98765xxxxx → the person, their company, and how that company is doing. */
     public function customerLookup(): void
     {
         Acl::require('customer.view');
-        $phone = local_phone((string)($_GET['phone'] ?? ''));
-        if (!$phone) {
+        $contact = CustomerBook::findByPhone((string)($_GET['phone'] ?? ''));
+        if (!$contact) {
             json_response(['ok' => true, 'found' => false]);
         }
+        $customerId = (int)$contact['customer_id'];
         $customer = DB::get(
-            'SELECT id, name, phone, whatsapp, email, address, city, pincode, gstin, customer_type, is_blocked
-             FROM `' . tbl('customers') . '` WHERE phone = ? AND deleted_at IS NULL',
-            [$phone]
+            'SELECT id, name, phone, whatsapp, email, address, pincode, gstin, customer_type, is_blocked
+             FROM `' . tbl('customers') . '` WHERE id = ?',
+            [$customerId]
         );
-        if (!$customer) {
-            json_response(['ok' => true, 'found' => false]);
-        }
         $stats = DB::get(
             'SELECT COUNT(*) AS order_count, COALESCE(SUM(balance_amount),0) AS outstanding
              FROM `' . tbl('orders') . '` WHERE customer_id = ? AND deleted_at IS NULL AND is_cancelled = 0',
-            [(int)$customer['id']]
+            [$customerId]
         );
-        json_response(['ok' => true, 'found' => true, 'customer' => $customer,
-            'order_count' => (int)$stats['order_count'], 'outstanding' => (float)$stats['outstanding']]);
+        json_response([
+            'ok' => true,
+            'found' => true,
+            'customer' => $customer,
+            'contact' => [
+                'id' => (int)$contact['id'],
+                'name' => $contact['name'],
+                'phone' => $contact['phone'],
+                'designation' => $contact['designation'],
+                'is_primary' => (int)$contact['is_primary'],
+            ],
+            // How many other people in this company — tells the counter it is a company account.
+            'contact_count' => count(CustomerBook::contacts($customerId)),
+            'order_count' => (int)$stats['order_count'],
+            'outstanding' => (float)$stats['outstanding'],
+        ]);
+    }
+
+    /** ?q=tata → companies to attach a new number to. */
+    public function customerSearch(): void
+    {
+        Acl::require('customer.view');
+        json_response(['ok' => true, 'results' => CustomerBook::search((string)($_GET['q'] ?? ''))]);
     }
 
     /** A category's question set + how its lines are calculated, for the order form. */

@@ -136,8 +136,12 @@ class OrderController extends Controller
         if (trim((string)($_POST['customer_phone'] ?? '')) === '') {
             $this->backToCreate('Enter the customer’s mobile number.');
         }
-        if (empty($_POST['customer_id']) && trim((string)($_POST['customer_name'] ?? '')) === '') {
-            $this->backToCreate('This is a new customer — enter their name.');
+        // A number already in the book brings its own account, so a name is only needed when
+        // this is a genuinely new one and no existing customer was picked.
+        if (empty($_POST['customer_id'])
+            && trim((string)($_POST['customer_name'] ?? '')) === ''
+            && !\App\Models\CustomerBook::findByPhone((string)($_POST['customer_phone'] ?? ''))) {
+            $this->backToCreate('This is a new customer — enter the customer or company name.');
         }
 
         try {
@@ -149,12 +153,13 @@ class OrderController extends Controller
                 'job_no' => trim((string)($_POST['job_no'] ?? '')),
                 'order_date' => $_POST['order_date'] ?? null,
                 'customer' => [
+                    // id = an existing account this number should be added to (the Tata case)
                     'id' => $_POST['customer_id'] ?? null,
                     'phone' => $_POST['customer_phone'] ?? '',
                     'name' => $_POST['customer_name'] ?? '',
+                    'contact_name' => $_POST['contact_name'] ?? '',
                     'whatsapp' => $_POST['customer_whatsapp'] ?? '',
                     'address' => $_POST['customer_address'] ?? '',
-                    'city' => $_POST['customer_city'] ?? '',
                     'gstin' => $_POST['customer_gstin'] ?? '',
                 ],
                 'priority' => in_array($_POST['priority'] ?? '', ['normal', 'urgent', 'rush'], true) ? $_POST['priority'] : 'normal',
@@ -233,6 +238,9 @@ class OrderController extends Controller
         );
         $attachments = DB::all('SELECT * FROM `' . tbl('order_attachments') . '` WHERE order_id = ?', [(int)$id]);
         $customer = DB::get('SELECT * FROM `' . tbl('customers') . '` WHERE id = ?', [(int)$order['customer_id']]);
+        // Which person at that customer handed this order over.
+        $contact = !empty($order['contact_id'])
+            ? \App\Models\CustomerBook::contact((int)$order['contact_id']) : null;
         $branch = DB::get('SELECT * FROM `' . tbl('branches') . '` WHERE id = ?', [(int)$order['branch_id']]);
         $designers = DB::all(
             'SELECT u.id, u.name FROM `' . tbl('users') . '` u JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
@@ -251,7 +259,7 @@ class OrderController extends Controller
                 [(int)$id]
             ), 'name'),
         ];
-        $this->render('orders/show', compact('order', 'items', 'payments', 'history', 'attachments', 'customer', 'branch', 'designers', 'people'));
+        $this->render('orders/show', compact('order', 'items', 'payments', 'history', 'attachments', 'customer', 'contact', 'branch', 'designers', 'people'));
     }
 
     public function edit(string $id): void

@@ -3,7 +3,7 @@
   <div>
     <h4 class="mb-0"><?= e($customer['name']) ?>
       <?php if ((int)$customer['is_blocked']): ?><span class="badge bg-danger">Blocked</span><?php endif; ?></h4>
-    <small class="text-muted"><?= e($customer['phone']) ?> · <?= e($customer['city'] ?? '') ?> · since <?= e(fmt_date($customer['created_at'])) ?></small>
+    <small class="text-muted"><?= e($customer['phone']) ?><?= $customer['address'] ? ' · ' . e($customer['address']) : '' ?> · since <?= e(fmt_date($customer['created_at'])) ?></small>
   </div>
   <div class="btn-group btn-group-sm">
     <a class="btn btn-outline-success" target="_blank" href="https://wa.me/<?= e(normalize_phone($customer['phone']) ?? '') ?>"><i class="bi bi-whatsapp"></i> Chat</a>
@@ -22,16 +22,45 @@
   <div class="col-4"><div class="stat-card <?= $totals['outstanding'] > 0 ? 'stat-danger' : '' ?>"><div class="stat-value"><?= e(fmt_money($totals['outstanding'])) ?></div><div class="stat-label">Outstanding</div></div></div>
 </div>
 
+<!-- Everyone who gives work under this account -->
 <div class="card mb-3"><div class="card-body">
-  <h6>Orders (<?= count($orders) ?>)</h6>
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="mb-0">People (<?= count($contacts) ?>)</h6>
+    <?php if (Acl::can('customer.edit')): ?>
+      <a class="btn btn-sm btn-outline-primary" href="<?= e(admin_url('customers/' . $customer['id'] . '/edit')) ?>">
+        <i class="bi bi-person-plus"></i> Add / edit people</a>
+    <?php endif; ?>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <?php foreach ($contacts as $ct): ?>
+      <div class="border rounded px-2 py-1 small">
+        <span class="fw-semibold"><?= e($ct['name']) ?></span>
+        <?php if ((int)$ct['is_primary'] === 1): ?><span class="badge bg-primary">Main</span><?php endif; ?>
+        <?php if ($ct['designation']): ?><span class="text-muted">· <?= e($ct['designation']) ?></span><?php endif; ?>
+        <div class="text-muted">
+          <a href="tel:<?= e($ct['phone']) ?>"><?= e($ct['phone']) ?></a>
+          · <a target="_blank" rel="noopener" href="https://wa.me/<?= e(normalize_phone($ct['whatsapp'] ?: $ct['phone']) ?? '') ?>">
+            <i class="bi bi-whatsapp"></i></a>
+        </div>
+      </div>
+    <?php endforeach; ?>
+  </div>
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <h6>Orders (<?= count($orders) ?>) <span class="text-muted fs-6">— everything this customer has given, from any of its numbers</span></h6>
   <div class="table-responsive"><table class="table table-sm table-mobile">
-    <thead><tr><th>Job No</th><th>Date</th><th>Branch</th><th>Status</th><th>Total</th><th>Balance</th></tr></thead>
+    <thead><tr><th>Job No</th><th>Date</th><th>Given by</th><th>Branch</th><th>Status</th><th>Total</th><th>Balance</th></tr></thead>
     <tbody>
     <?php foreach ($orders as $o): ?>
       <tr>
         <td data-label="Job No"><a href="<?= e(admin_url('orders/' . $o['id'])) ?>"><?= e($o['job_no']) ?></a>
           <?= isset($o['priority']) ? priority_badge($o['priority']) : '' ?></td>
         <td data-label="Date"><?= e(fmt_date($o['order_date'])) ?></td>
+        <td data-label="Given by" class="small">
+          <?= e($o['contact_name'] ?: '—') ?>
+          <?php if (!empty($o['contact_phone'])): ?><div class="text-muted"><?= e($o['contact_phone']) ?></div><?php endif; ?>
+        </td>
         <td data-label="Branch"><?= e($o['branch_name']) ?></td>
         <td data-label="Status"><span class="badge bg-<?= e(Status::color((string)$o['status'])) ?>"><?= e(Status::label((string)$o['status'])) ?></span></td>
         <td data-label="Total"><?= e(fmt_money($o['total'])) ?></td>

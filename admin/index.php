@@ -68,6 +68,10 @@ $router->get('/customers/{id}', 'CustomerController@show');
 $router->get('/customers/{id}/edit', 'CustomerController@edit');
 $router->post('/customers/{id}/update', 'CustomerController@update');
 $router->post('/customers/{id}/delete', 'CustomerController@delete');
+// People inside a customer — one company, many numbers
+$router->post('/customers/{id}/contacts', 'CustomerController@addContact');
+$router->post('/customers/{id}/contacts/{contactId}/update', 'CustomerController@updateContact');
+$router->post('/customers/{id}/contacts/{contactId}/delete', 'CustomerController@deleteContact');
 
 // Catalog
 $router->get('/categories', 'CatalogController@categories');
@@ -164,6 +168,7 @@ $router->post('/system/cron/web-key', 'CronController@webKey');
 $router->get('/notifications', 'NotificationController@index');
 $router->post('/notifications/read', 'NotificationController@markRead');
 $router->get('/api/customer-lookup', 'ApiController@customerLookup');
+$router->get('/api/customer-search', 'ApiController@customerSearch');
 $router->get('/api/category-options/{id}', 'ApiController@categoryOptions');
 $router->get('/api/item-options/{id}', 'ApiController@itemOptions');
 $router->post('/api/calc-price', 'ApiController@calcPrice');

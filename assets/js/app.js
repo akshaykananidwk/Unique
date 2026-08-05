@@ -122,34 +122,91 @@
     return d.length === 10 ? d : null;
   };
 
-  // Customer lookup once we have a clean 10-digit number (create page only)
+  // Customer lookup once we have a clean 10-digit number (create page only).
+  // A number belongs to a person, and a person belongs to a company — so a known number
+  // fills in both, and an unknown one offers to attach itself to a company we already have.
   const phoneInput = document.getElementById('customer_phone');
   const newCustomerFields = document.getElementById('newCustomerFields');
   const customerBadge = document.getElementById('customerBadge');
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+
+  const clearChosenCompany = () => {
+    setVal('customer_id', '');
+    const chosen = document.getElementById('companyChosen');
+    if (chosen) chosen.innerHTML = '';
+  };
+
   if (phoneInput) phoneInput.addEventListener('input', async () => {
     const digits = localPhone(phoneInput.value);
     if (!digits) return;
     const data = await kpFetch(window.KP.adminUrl + '/api/customer-lookup?phone=' + digits);
     if (data.found) {
       state.customerId = data.customer.id;
-      document.getElementById('customer_id').value = data.customer.id;
-      document.getElementById('customer_name').value = data.customer.name;
-      document.getElementById('customer_address').value = data.customer.address || '';
-      document.getElementById('customer_city').value = data.customer.city || '';
-      document.getElementById('customer_gstin').value = data.customer.gstin || '';
+      setVal('customer_id', data.customer.id);
+      setVal('customer_name', data.customer.name);
+      setVal('customer_address', data.customer.address || '');
+      setVal('customer_gstin', data.customer.gstin || '');
+      if (data.contact && data.contact.name) setVal('contact_name', data.contact.name);
+      const person = data.contact ? esc(data.contact.name) : '';
       customerBadge.innerHTML = data.customer.is_blocked == 1
         ? '<span class="badge bg-danger">BLOCKED customer</span>'
-        : '<span class="badge bg-success">' + data.order_count + ' past orders</span> ' +
+        : '<span class="badge bg-primary">' + esc(data.customer.name) + '</span> ' +
+          (person ? '<span class="badge bg-secondary">' + person + '</span> ' : '') +
+          (data.contact_count > 1 ? '<span class="badge bg-light text-dark">' + data.contact_count + ' contacts</span> ' : '') +
+          '<span class="badge bg-success">' + data.order_count + ' past orders</span> ' +
           (data.outstanding > 0 ? '<span class="badge bg-warning text-dark">Outstanding ' + money(data.outstanding) + '</span>' : '');
-      newCustomerFields.classList.remove('d-none');
+      // Known number: nothing to fill in, so the new-customer block stays out of the way.
+      newCustomerFields.classList.add('d-none');
     } else {
       state.customerId = null;
-      document.getElementById('customer_id').value = '';
-      customerBadge.innerHTML = '<span class="badge bg-info">New customer — enter details</span>';
+      clearChosenCompany();
+      customerBadge.innerHTML = '<span class="badge bg-info">New number</span>';
       newCustomerFields.classList.remove('d-none');
     }
   });
 
+  // Attach a new number to a company that already exists — the Tata case, where one account
+  // has many people. Picking one means we do NOT create a second account for the same firm.
+  const companySearch = document.getElementById('companySearch');
+  const companyResults = document.getElementById('companyResults');
+  if (companySearch) {
+    let companyTimer;
+    const hideResults = () => companyResults.classList.add('d-none');
+    companySearch.addEventListener('input', () => {
+      clearTimeout(companyTimer);
+      const q = companySearch.value.trim();
+      if (q.length < 2) { hideResults(); return; }
+      companyTimer = setTimeout(async () => {
+        const data = await kpFetch(window.KP.adminUrl + '/api/customer-search?q=' + encodeURIComponent(q));
+        const rows = (data && data.results) || [];
+        if (!rows.length) {
+          companyResults.innerHTML = '<div class="list-group-item small text-muted">No match — fill in the new customer below.</div>';
+        } else {
+          companyResults.innerHTML = rows.map(r =>
+            '<button type="button" class="list-group-item list-group-item-action kp-company" ' +
+            'data-id="' + r.id + '" data-name="' + esc(r.name) + '">' + esc(r.name) +
+            ' <span class="text-muted small">· ' + r.contact_count + ' contact(s)</span></button>'
+          ).join('');
+        }
+        companyResults.classList.remove('d-none');
+      }, 250);
+    });
+    companyResults.addEventListener('click', e => {
+      const btn = e.target.closest('.kp-company');
+      if (!btn) return;
+      setVal('customer_id', btn.dataset.id);
+      setVal('customer_name', btn.dataset.name);
+      document.getElementById('companyChosen').innerHTML =
+        '<span class="badge bg-primary">' + esc(btn.dataset.name) + '</span> ' +
+        '<button type="button" class="btn btn-sm btn-link p-0 align-baseline" id="companyClear">change</button>';
+      companySearch.value = '';
+      hideResults();
+    });
+    document.addEventListener('click', e => {
+      if (e.target.id === 'companyClear') { clearChosenCompany(); return; }
+      if (!companySearch.contains(e.target) && !companyResults.contains(e.target)) hideResults();
+    });
+  }
 
   // ================================================================ order lines
   // Mirrors App\Models\OrderCalc exactly. The server recalculates on save, so this is

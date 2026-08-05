@@ -77,7 +77,8 @@ class OrderService
      * Create a full order in one transaction.
      *
      * $payload:
-     *  customer: [id?|phone,name,whatsapp,address,city,gstin]
+     *  customer: [phone, name (the company), contact_name (the person), id? (an existing
+     *             company to add this number to), whatsapp, address, gstin]
      *  branch_id, priority, delivery_type, delivery_address, customer_note, internal_note
      *  discount_type, discount_value, delivery_charge
      *  items: [ [item_id, qty, rate?, spec(array), due_date?, designer_id?, special_instructions?] ]
@@ -93,8 +94,8 @@ class OrderService
             $userId = $payload['user_id'] ?? null;
             $branchId = (int)$payload['branch_id'];
 
-            // 1. Customer
-            $customerId = self::upsertCustomer($payload['customer'], $branchId, $userId, $source);
+            // 1. Customer (the account) and the contact (the person who gave the work)
+            [$customerId, $contactId] = self::upsertCustomer($payload['customer'], $branchId, $userId, $source);
             // Rate is always typed in by hand now, so no price list or group discount applies.
 
             // 2. Job number + tracking token. A number typed by hand wins (e.g. to match a
@@ -121,6 +122,7 @@ class OrderService
                 'tracking_token' => $token,
                 'branch_id' => $branchId,
                 'customer_id' => $customerId,
+                'contact_id' => $contactId,
                 'source' => $source,
                 'taken_by_user_id' => $userId,
                 'accepted_by_user_id' => $payload['accepted_by_user_id'] ?? $userId,
@@ -468,45 +470,87 @@ class OrderService
         return implode(' | ', $parts);
     }
 
-    private static function upsertCustomer(array $c, int $branchId, ?int $userId, string $source): int
+    /**
+     * Resolve the account and the person for an order.
+     *
+     * A number is looked up against the contact book first, because that is where every
+     * number lives now. Three outcomes:
+     *   - the number is known           -> use that person and their company
+     *   - a company was chosen by hand  -> add this number to it as a new person
+     *   - neither                       -> a brand new company with this person as primary
+     *
+     * @return array{0:int,1:?int} [customer_id, contact_id]
+     */
+    private static function upsertCustomer(array $c, int $branchId, ?int $userId, string $source): array
     {
-        if (!empty($c['id'])) {
-            $existing = DB::get('SELECT id FROM `' . tbl('customers') . '` WHERE id = ? AND deleted_at IS NULL', [(int)$c['id']]);
-            if ($existing) {
-                return (int)$existing['id'];
-            }
-        }
         $phone = local_phone($c['phone'] ?? '');
         if (!$phone) {
             throw new \RuntimeException('A valid 10-digit customer mobile number is required.');
         }
-        $existing = DB::get('SELECT * FROM `' . tbl('customers') . '` WHERE phone = ? AND deleted_at IS NULL', [$phone]);
-        if ($existing) {
-            if ((int)$existing['is_blocked'] === 1) {
+
+        // --- the number is already in the book ---------------------------------------
+        $contact = CustomerBook::findByPhone($phone);
+        if ($contact) {
+            if ((int)$contact['is_blocked'] === 1) {
                 throw new \RuntimeException('This customer is blocked. Please contact the manager.');
             }
-            $updates = [];
-            foreach (['name', 'address', 'city', 'gstin', 'email'] as $field) {
-                if (!empty($c[$field]) && (string)$c[$field] !== (string)$existing[$field]) {
-                    $updates[$field] = trim((string)$c[$field]);
-                }
+            $customerId = (int)$contact['customer_id'];
+
+            // The number decides the account, so if a different one was picked say so rather
+            // than quietly filing the job under the wrong customer.
+            $chosen = (int)($c['id'] ?? 0);
+            if ($chosen > 0 && $chosen !== $customerId) {
+                throw new \RuntimeException(
+                    'The number ' . $phone . ' already belongs to ' . $contact['customer_name']
+                    . ' (' . $contact['name'] . '). Move it from the customer screen first, or use a different number.'
+                );
             }
-            if ($updates) {
-                $updates['updated_at'] = now();
-                DB::update('customers', $updates, ['id' => $existing['id']]);
+
+            // Fill in a name only where there is not a real one yet — a placeholder contact
+            // carries the account's own name. Renaming a person is done on the customer
+            // screen, never as a side effect of writing an order.
+            $person = trim((string)($c['contact_name'] ?? ''));
+            $stored = trim((string)$contact['name']);
+            if ($person !== '' && ($stored === '' || $stored === trim((string)$contact['customer_name']))) {
+                DB::update('customer_contacts', ['name' => $person, 'updated_at' => now()], ['id' => (int)$contact['id']]);
             }
-            return (int)$existing['id'];
+            self::touchCustomer($customerId, $c);
+            return [$customerId, (int)$contact['id']];
         }
-        if (empty($c['name'])) {
+
+        // --- an existing company was picked: this is simply a new person there ---------
+        $chosenId = (int)($c['id'] ?? 0);
+        if ($chosenId > 0) {
+            $customer = DB::get(
+                'SELECT * FROM `' . tbl('customers') . '` WHERE id = ? AND deleted_at IS NULL',
+                [$chosenId]
+            );
+            if ($customer) {
+                if ((int)$customer['is_blocked'] === 1) {
+                    throw new \RuntimeException('This customer is blocked. Please contact the manager.');
+                }
+                $contactId = CustomerBook::addContact($chosenId, [
+                    'name' => $c['contact_name'] ?? $c['name'] ?? '',
+                    'phone' => $phone,
+                    'whatsapp' => $c['whatsapp'] ?? '',
+                    'designation' => $c['designation'] ?? '',
+                ]);
+                self::touchCustomer($chosenId, $c);
+                return [$chosenId, $contactId];
+            }
+        }
+
+        // --- brand new account --------------------------------------------------------
+        $name = trim((string)($c['name'] ?? ''));
+        if ($name === '') {
             throw new \RuntimeException('Customer name is required for a new customer.');
         }
-        return DB::insert('customers', [
-            'name' => trim((string)$c['name']),
+        $customerId = DB::insert('customers', [
+            'name' => $name,
             'phone' => $phone,
             'whatsapp' => local_phone($c['whatsapp'] ?? '') ?: $phone,
             'email' => $c['email'] ?? null,
             'address' => $c['address'] ?? null,
-            'city' => $c['city'] ?? null,
             'pincode' => $c['pincode'] ?? null,
             'gstin' => $c['gstin'] ?? null,
             'source' => $source === 'public' ? 'public' : 'counter',
@@ -516,6 +560,32 @@ class OrderService
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $contactId = CustomerBook::addContact($customerId, [
+            'name' => trim((string)($c['contact_name'] ?? '')) ?: $name,
+            'phone' => $phone,
+            'whatsapp' => $c['whatsapp'] ?? '',
+            'designation' => $c['designation'] ?? '',
+        ]);
+        return [$customerId, $contactId];
+    }
+
+    /** Fill in account details that were left blank before, without overwriting good ones. */
+    private static function touchCustomer(int $customerId, array $c): void
+    {
+        $existing = DB::get('SELECT * FROM `' . tbl('customers') . '` WHERE id = ?', [$customerId]);
+        if (!$existing) {
+            return;
+        }
+        $updates = [];
+        foreach (['name', 'address', 'gstin', 'email'] as $field) {
+            if (!empty($c[$field]) && (string)$c[$field] !== (string)$existing[$field]) {
+                $updates[$field] = trim((string)$c[$field]);
+            }
+        }
+        if ($updates) {
+            $updates['updated_at'] = now();
+            DB::update('customers', $updates, ['id' => $customerId]);
+        }
     }
 
     public static function recalcTotals(int $orderId): void

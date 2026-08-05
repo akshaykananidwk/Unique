@@ -6,7 +6,7 @@
   <?php endif; ?>
 </div>
 <form method="get" class="mb-3 d-flex gap-2">
-  <input name="q" value="<?= e($q) ?>" class="form-control form-control-sm" style="max-width:280px" placeholder="Name / phone / city">
+  <input name="q" value="<?= e($q) ?>" class="form-control form-control-sm" style="max-width:280px" placeholder="Company, person or number">
   <button class="btn btn-outline-primary btn-sm">Search</button>
 </form>
 <?php if (!$customers): ?>
@@ -14,14 +14,17 @@
 <?php else: ?>
 <div class="table-responsive">
 <table class="table table-sm table-hover align-middle table-mobile">
-  <thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Type</th><th>Orders</th><th>Outstanding</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Main Number</th><th>Contacts</th><th>Type</th><th>Orders</th><th>Outstanding</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($customers as $c): ?>
     <tr>
       <td data-label="Name"><a href="<?= e(admin_url('customers/' . $c['id'])) ?>" class="fw-semibold"><?= e($c['name']) ?></a>
         <?php if ((int)$c['is_blocked']): ?><span class="badge bg-danger badge-status">Blocked</span><?php endif; ?></td>
       <td data-label="Phone"><?= e($c['phone']) ?></td>
-      <td data-label="City"><?= e($c['city'] ?? '—') ?></td>
+      <td data-label="Contacts">
+        <?php $cc = (int)($c['contact_count'] ?? 1); ?>
+        <span class="badge bg-<?= $cc > 1 ? 'primary' : 'secondary' ?>"><?= $cc ?> <?= $cc === 1 ? 'person' : 'people' ?></span>
+      </td>
       <td data-label="Type"><span class="badge bg-secondary badge-status"><?= e($c['customer_type']) ?></span></td>
       <td data-label="Orders"><?= (int)$c['order_count'] ?></td>
       <td data-label="Outstanding" class="<?= (float)$c['outstanding'] > 0 ? 'text-danger fw-semibold' : '' ?>"><?= e(fmt_money($c['outstanding'])) ?></td>

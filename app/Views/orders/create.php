@@ -24,6 +24,12 @@
         <div id="customerBadge" class="mt-1 small"></div>
       </div>
       <div class="col-md-3">
+        <label class="form-label">Contact Person</label>
+        <input id="contact_name" name="contact_name" class="form-control" value="<?= e(old('contact_name')) ?>"
+               placeholder="Who gave the work">
+        <div class="form-text">The person at this number.</div>
+      </div>
+      <div class="col-md-3">
         <label class="form-label">Job No</label>
         <input name="job_no" class="form-control" placeholder="Leave blank — auto" value="<?= e(old('job_no')) ?>">
         <div class="form-text">Type your own (e.g. to match a GST bill) or leave blank.</div>
@@ -46,13 +52,31 @@
       </div>
     </div>
     <?php // Keep the new-customer row open if it was being filled in when the save failed.
-    $reopenNew = old('customer_id') === '' && (old('customer_name') !== '' || old('customer_phone') !== ''); ?>
-    <div id="newCustomerFields" class="row g-2 mt-1 <?= $reopenNew ? '' : 'd-none' ?>">
-      <div class="col-md-3"><label class="form-label">Name *</label><input id="customer_name" name="customer_name" class="form-control" value="<?= e(old('customer_name')) ?>"></div>
-      <div class="col-md-3"><label class="form-label">Address</label><input id="customer_address" name="customer_address" class="form-control" value="<?= e(old('customer_address')) ?>"></div>
-      <div class="col-md-2"><label class="form-label">City</label><input id="customer_city" name="customer_city" class="form-control" value="<?= e(old('customer_city')) ?>"></div>
-      <div class="col-md-2"><label class="form-label">WhatsApp</label><input name="customer_whatsapp" class="form-control" inputmode="tel" placeholder="Same as phone" value="<?= e(old('customer_whatsapp')) ?>"></div>
-      <div class="col-md-2"><label class="form-label">GSTIN</label><input id="customer_gstin" name="customer_gstin" class="form-control" value="<?= e(old('customer_gstin')) ?>"></div>
+    $reopenNew = old('customer_name') !== '' || (old('customer_phone') !== '' && old('customer_id') === ''); ?>
+    <div id="newCustomerFields" class="row g-2 mt-2 <?= $reopenNew ? '' : 'd-none' ?>">
+      <div class="col-12">
+        <div class="alert alert-info py-2 small mb-2">
+          This number is new. Either attach it to a customer you already have — handy when a
+          company gives work through several people — or fill in a new one below.
+        </div>
+        <label class="form-label">Attach to an existing customer</label>
+        <div class="position-relative">
+          <input id="companySearch" class="form-control" autocomplete="off"
+                 placeholder="Start typing a customer name, e.g. Tata…">
+          <div id="companyResults" class="list-group position-absolute w-100 shadow d-none" style="z-index:20;max-height:240px;overflow:auto"></div>
+        </div>
+        <div id="companyChosen" class="mt-1 small"></div>
+      </div>
+      <div class="col-md-4"><label class="form-label">Customer / Company Name *</label>
+        <input id="customer_name" name="customer_name" class="form-control" value="<?= e(old('customer_name')) ?>"
+               placeholder="e.g. Tata Motors, or the person's name">
+        <div class="form-text">The account the work is billed to.</div></div>
+      <div class="col-md-4"><label class="form-label">Address</label>
+        <input id="customer_address" name="customer_address" class="form-control" value="<?= e(old('customer_address')) ?>"></div>
+      <div class="col-md-2"><label class="form-label">WhatsApp</label>
+        <input name="customer_whatsapp" class="form-control" inputmode="tel" placeholder="Same as phone" value="<?= e(old('customer_whatsapp')) ?>"></div>
+      <div class="col-md-2"><label class="form-label">GSTIN</label>
+        <input id="customer_gstin" name="customer_gstin" class="form-control" value="<?= e(old('customer_gstin')) ?>"></div>
     </div>
   </div></div>
 

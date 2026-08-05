@@ -1,10 +1,12 @@
 {
-    "version": "1.7.0",
+    "version": "1.8.0",
     "released_at": "2026-08-07",
     "changelog": [
-        "A New Order can no longer be lost. If the mobile number, the customer name or an item is missing, the mistake is caught before saving \u2014 a red box at the top of the page lists exactly what is missing and takes you to that field.",
-        "The WhatsApp Yes/No popup no longer appears until the form is complete, so pressing Yes can never send an order the server will reject.",
-        "If a save does fail for any reason, the form comes back with everything still filled in \u2014 customer, job number, notes, advance, and every item line. Only the reference files have to be picked again, and the message says so.",
-        "Same protection on Edit Order: a failed save keeps the item lines you had typed."
+        "One customer can now have many people, each with their own mobile number. A company like Tata gives work through several staff \u2014 open the company and you see every job it ever gave, whoever phoned it in.",
+        "New Order asks for the Contact Person next to the mobile number. Type a known number and it fills in the company and the person by itself.",
+        "A number nobody recognises offers two ways forward: attach it to a customer you already have (start typing the name), or add a brand new one. So a second number for the same firm never creates a second account.",
+        "The customer screen lists everyone in the account with their numbers, and every order shows Given by \u2014 which person it came from.",
+        "Add, rename, remove people and set the main number from the customer's Edit screen. A number can only ever belong to one person, and a customer always keeps at least one number.",
+        "City has been removed from the customer and order screens. Address stays."
     ]
 }

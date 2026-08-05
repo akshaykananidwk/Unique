@@ -153,7 +153,13 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
     <div class="card mb-3"><div class="card-body">
       <h6>Customer</h6>
       <a href="<?= e(admin_url('customers/' . $customer['id'])) ?>" class="fw-semibold"><?= e($customer['name']) ?></a>
-      <div class="small text-muted"><?= e($customer['phone']) ?> · <?= e($customer['city'] ?? '') ?></div>
+      <div class="small text-muted">
+        <?= e($customer['phone']) ?>
+        <?php if (!empty($contact)): ?>
+          · <span title="Who gave this order"><i class="bi bi-person"></i> <?= e($contact['name']) ?>
+            <?= $contact['phone'] !== $customer['phone'] ? '(' . e($contact['phone']) . ')' : '' ?></span>
+        <?php endif; ?>
+      </div>
       <?php if ($customer['gstin']): ?><div class="small">GSTIN: <?= e($customer['gstin']) ?></div><?php endif; ?>
       <div class="mt-2 d-flex gap-2">
         <a class="btn btn-sm btn-outline-success" target="_blank" href="https://wa.me/<?= e(normalize_phone($customer['phone']) ?? '') ?>"><i class="bi bi-whatsapp"></i> Chat</a>

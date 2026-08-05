@@ -57,3 +57,26 @@
 <p class="text-muted small">Advance and Recovered are money this person actually took in the period. Pending is what is still owed
   on every order they took, whenever it was taken.</p>
 <?php endif; ?>
+
+<?php // Month by month — the report the shop actually reads at the end of a month.
+if (!empty($monthly)):
+  $byMonth = [];
+  foreach ($monthly as $m) { $byMonth[$m['ym']][] = $m; }
+?>
+<div class="card mt-3"><div class="card-body">
+  <h6>Orders taken, month by month</h6>
+  <?php foreach ($byMonth as $ym => $mrows): ?>
+    <div class="fw-semibold mt-2"><?= e(date('F Y', strtotime($ym . '-01'))) ?></div>
+    <div class="table-responsive"><table class="table table-sm align-middle table-mobile mb-1">
+      <thead><tr><th>User</th><th class="text-end">Orders Taken</th><th class="text-end">Order Value</th></tr></thead>
+      <tbody>
+      <?php foreach ($mrows as $m): ?>
+        <tr><td data-label="User"><?= e($m['name']) ?></td><td data-label="Orders" class="text-end"><?= (int)$m['orders_taken'] ?></td><td data-label="Value" class="text-end"><?= e(fmt_money($m['order_value'])) ?></td></tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table></div>
+  <?php endforeach; ?>
+</div></div>
+<?php else: ?>
+<div class="card mt-3"><div class="card-body text-muted small">No orders were taken in this period.</div></div>
+<?php endif; ?>

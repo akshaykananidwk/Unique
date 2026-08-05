@@ -857,6 +857,92 @@ class OrderService
         return ['ok' => true];
     }
 
+    /**
+     * A designer accepts a job from the shared board — it becomes theirs, and that is what
+     * the monthly design report counts.
+     *
+     * The rules:
+     *   - only a job that needs design can be accepted
+     *   - only while it is still in a design stage; once it is printing it is too late
+     *   - only if nobody else holds it. The claim is a conditional UPDATE, so two people
+     *     pressing Accept at the same instant can never both win — the second is told who
+     *     got there first
+     *   - the person who accepts is the designer, whatever their job title
+     */
+    public static function claimDesign(int $itemId, int $userId): array
+    {
+        $item = DB::get('SELECT * FROM `' . tbl('order_items') . '` WHERE id = ?', [$itemId]);
+        if (!$item) {
+            return ['ok' => false, 'error' => 'Job item not found.'];
+        }
+        if (!(bool)$item['requires_design']) {
+            return ['ok' => false, 'error' => 'This item does not need design.'];
+        }
+        if (!Status::isDesignStage((string)$item['status'])) {
+            return ['ok' => false, 'error' => 'This job has moved past the design stage.'];
+        }
+
+        // Whoever changes the row wins; everyone else sees zero rows affected.
+        $claimed = DB::run(
+            'UPDATE `' . tbl('order_items') . '`
+             SET assigned_designer_id = ?, designer_assigned_at = NOW(),
+                 claimed_at = NOW(), claimed_by_user_id = ?, updated_at = NOW()
+             WHERE id = ? AND assigned_designer_id IS NULL',
+            [$userId, $userId, $itemId]
+        )->rowCount();
+
+        if ($claimed === 0) {
+            $holder = DB::val(
+                'SELECT u.name FROM `' . tbl('order_items') . '` oi
+                 JOIN `' . tbl('users') . '` u ON u.id = oi.assigned_designer_id WHERE oi.id = ?',
+                [$itemId]
+            );
+            return ['ok' => false, 'error' => $holder
+                ? (string)$holder . ' has already accepted this job.'
+                : 'This job could not be accepted — please refresh and try again.'];
+        }
+
+        $name = (string)DB::val('SELECT name FROM `' . tbl('users') . '` WHERE id = ?', [$userId]);
+        Logger::activity('design', 'claim', 'order_item', $itemId, $name . ' accepted this design job');
+        WaEvents::designerAssigned($itemId);
+        return ['ok' => true, 'designer' => $name];
+    }
+
+    /**
+     * Hand a job back to the board. Only the person holding it (or a manager) may, and only
+     * before any proof has gone out — after that the work is already half done and giving it
+     * away silently would lose the thread.
+     */
+    public static function releaseDesign(int $itemId, int $userId, bool $isManager = false): array
+    {
+        $item = DB::get('SELECT * FROM `' . tbl('order_items') . '` WHERE id = ?', [$itemId]);
+        if (!$item) {
+            return ['ok' => false, 'error' => 'Job item not found.'];
+        }
+        if ($item['assigned_designer_id'] === null) {
+            return ['ok' => false, 'error' => 'Nobody is holding this job.'];
+        }
+        if (!$isManager && (int)$item['assigned_designer_id'] !== $userId) {
+            return ['ok' => false, 'error' => 'Only the designer holding this job can give it back.'];
+        }
+        $sent = (int)DB::val(
+            'SELECT COUNT(*) FROM `' . tbl('design_proofs') . '` WHERE order_item_id = ?',
+            [$itemId]
+        );
+        if ($sent > 0 && !$isManager) {
+            return ['ok' => false, 'error' => 'A proof has already gone to the customer — ask a manager to reassign.'];
+        }
+        DB::update('order_items', [
+            'assigned_designer_id' => null,
+            'designer_assigned_at' => null,
+            'claimed_at' => null,
+            'claimed_by_user_id' => null,
+            'updated_at' => now(),
+        ], ['id' => $itemId]);
+        Logger::activity('design', 'release', 'order_item', $itemId, 'Job put back on the board');
+        return ['ok' => true];
+    }
+
     /** Round-robin auto-assignment respecting designer_capacity. */
     public static function autoAssignDesigner(int $itemId, int $branchId, ?int $userId): ?int
     {

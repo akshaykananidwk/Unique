@@ -51,3 +51,26 @@
 <p class="text-muted small">Designs Made counts every proof version uploaded. Value Handled is the total of the job lines assigned
   to that designer. Open Now is what is on their desk right now, regardless of the date range.</p>
 <?php endif; ?>
+
+<?php // Month by month — the report the shop actually reads at the end of a month.
+if (!empty($monthly)):
+  $byMonth = [];
+  foreach ($monthly as $m) { $byMonth[$m['ym']][] = $m; }
+?>
+<div class="card mt-3"><div class="card-body">
+  <h6>Designs accepted, month by month</h6>
+  <?php foreach ($byMonth as $ym => $mrows): ?>
+    <div class="fw-semibold mt-2"><?= e(date('F Y', strtotime($ym . '-01'))) ?></div>
+    <div class="table-responsive"><table class="table table-sm align-middle table-mobile mb-1">
+      <thead><tr><th>Designer</th><th class="text-end">Jobs Accepted</th><th class="text-end">Proofs Uploaded</th><th class="text-end">Value</th></tr></thead>
+      <tbody>
+      <?php foreach ($mrows as $m): ?>
+        <tr><td data-label="Designer"><?= e($m['name']) ?></td><td data-label="Accepted" class="text-end"><?= (int)$m['jobs_accepted'] ?></td><td data-label="Proofs" class="text-end"><?= (int)$m['proofs_uploaded'] ?></td><td data-label="Value" class="text-end"><?= e(fmt_money($m['value_handled'])) ?></td></tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table></div>
+  <?php endforeach; ?>
+</div></div>
+<?php else: ?>
+<div class="card mt-3"><div class="card-body text-muted small">No design jobs were accepted in this period.</div></div>
+<?php endif; ?>

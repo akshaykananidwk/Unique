@@ -1,12 +1,12 @@
 {
-    "version": "1.8.0",
+    "version": "1.9.0",
     "released_at": "2026-08-07",
     "changelog": [
-        "One customer can now have many people, each with their own mobile number. A company like Tata gives work through several staff \u2014 open the company and you see every job it ever gave, whoever phoned it in.",
-        "New Order asks for the Contact Person next to the mobile number. Type a known number and it fills in the company and the person by itself.",
-        "A number nobody recognises offers two ways forward: attach it to a customer you already have (start typing the name), or add a brand new one. So a second number for the same firm never creates a second account.",
-        "The customer screen lists everyone in the account with their numbers, and every order shows Given by \u2014 which person it came from.",
-        "Add, rename, remove people and set the main number from the customer's Edit screen. A number can only ever belong to one person, and a customer always keeps at least one number.",
-        "City has been removed from the customer and order screens. Address stays."
+        "FIXED: \"Item 1 has no name\" on every order. The check added in 1.7.0 was reading the wrong field, so it complained about items that had a perfectly good name and refused to save. Nobody could take an order.",
+        "Designs are now accepted, not handed out. Unassigned design work sits on a shared board on My Jobs \u2014 press Accept and the job is yours from that moment.",
+        "Whoever accepts a job is the designer for it, whatever their job title, and that is what the design report counts.",
+        "Two people pressing Accept at the same instant can never both get it. The second one is told who got there first.",
+        "A job can be given back to the board while it is untouched. Once a proof has gone to the customer only a manager can move it.",
+        "Two separate monthly reports: User Performance now shows orders taken per person per month, and Designer Performance shows designs accepted per person per month."
     ]
 }

@@ -564,8 +564,12 @@
       out.push({ id: null, msg: 'Add at least one item.' });
     }
     state.items.forEach((l, i) => {
-      if (!String(l.name || '').trim()) out.push({ id: null, msg: 'Item ' + (i + 1) + ' has no name.' });
-      if (!(Number(l.qty) > 0)) out.push({ id: null, msg: 'Item ' + (i + 1) + ' needs a quantity.' });
+      // item_name is the key the whole app uses — the table, the payload and the server.
+      const label = String(l.item_name || '').trim();
+      if (!label) out.push({ id: null, msg: 'Item ' + (i + 1) + ' has no name.' });
+      if (!(Number(l.qty) > 0)) {
+        out.push({ id: null, msg: (label || 'Item ' + (i + 1)) + ' needs a quantity.' });
+      }
     });
     return out;
   };

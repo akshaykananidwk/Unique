@@ -82,13 +82,57 @@ class ReportController extends Controller
                 array_map(fn($r) => [$r['name'], $r['role_name'], $r['orders_taken'], $r['order_value'],
                     $r['orders_accepted'], $r['advance_taken'], $r['recovered'], $r['collected_total'], $r['pending_amount']], $rows));
         }
-        $this->render('reports/users', compact('rows', 'totals', 'from', 'to'));
+        $monthly = $this->monthlyOrders($from, $to);
+        $this->render('reports/users', compact('rows', 'totals', 'from', 'to', 'monthly'));
     }
 
     /**
      * Designer performance — how much design work each person actually did.
      * Designs made (proof versions) · jobs worked on · orders touched · value handled.
      */
+    /**
+     * Month by month, per user: how many orders they took, and how many designs they did.
+     * Two questions, one table, so a full year reads at a glance.
+     */
+    private function monthlyOrders(string $from, string $to): array
+    {
+        return DB::all(
+            "SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS ym, u.id AS user_id, u.name,
+                    COUNT(*) AS orders_taken, COALESCE(SUM(o.total),0) AS order_value
+             FROM `" . tbl('orders') . "` o
+             JOIN `" . tbl('users') . "` u ON u.id = o.taken_by_user_id
+             WHERE o.deleted_at IS NULL AND o.is_cancelled = 0 AND o.order_date BETWEEN ? AND ?
+             GROUP BY ym, u.id, u.name
+             ORDER BY ym DESC, orders_taken DESC",
+            [$from, $to]
+        );
+    }
+
+    /**
+     * Designs are counted against whoever ACCEPTED the job — that is the whole point of the
+     * shared board. Proof uploads are counted separately so revisions do not inflate the
+     * job count.
+     */
+    private function monthlyDesigns(string $from, string $to): array
+    {
+        return DB::all(
+            "SELECT DATE_FORMAT(oi.claimed_at, '%Y-%m') AS ym, u.id AS user_id, u.name,
+                    COUNT(*) AS jobs_accepted,
+                    COALESCE(SUM(oi.line_total),0) AS value_handled,
+                    (SELECT COUNT(*) FROM `" . tbl('design_proofs') . "` dp
+                     WHERE dp.uploaded_by_user_id = u.id
+                       AND DATE_FORMAT(dp.created_at, '%Y-%m') = DATE_FORMAT(oi.claimed_at, '%Y-%m')) AS proofs_uploaded
+             FROM `" . tbl('order_items') . "` oi
+             JOIN `" . tbl('orders') . "` o ON o.id = oi.order_id
+             JOIN `" . tbl('users') . "` u ON u.id = oi.assigned_designer_id
+             WHERE oi.claimed_at IS NOT NULL AND o.deleted_at IS NULL AND o.is_cancelled = 0
+               AND oi.status <> 'cancelled' AND DATE(oi.claimed_at) BETWEEN ? AND ?
+             GROUP BY ym, u.id, u.name
+             ORDER BY ym DESC, jobs_accepted DESC",
+            [$from, $to]
+        );
+    }
+
     public function designers(): void
     {
         Acl::require('report.staff');
@@ -145,7 +189,8 @@ class ReportController extends Controller
                 array_map(fn($r) => [$r['name'], $r['designs_made'], $r['designs_approved'], $r['jobs_handled'],
                     $r['orders_handled'], $r['value_handled'], $r['open_now']], $rows));
         }
-        $this->render('reports/designers', compact('rows', 'totals', 'from', 'to'));
+        $monthly = $this->monthlyDesigns($from, $to);
+        $this->render('reports/designers', compact('rows', 'totals', 'from', 'to', 'monthly'));
     }
 
     public function staff(): void

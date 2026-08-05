@@ -90,6 +90,8 @@ $router->post('/items/{id}/slabs', 'CatalogController@saveSlabs');
 
 // Designer workspace
 $router->get('/my-jobs', 'DesignerController@myJobs');
+$router->post('/my-jobs/{itemId}/claim', 'DesignerController@claim');
+$router->post('/my-jobs/{itemId}/release', 'DesignerController@release');
 $router->post('/my-jobs/{itemId}/start', 'DesignerController@start');
 $router->post('/my-jobs/{itemId}/proof', 'DesignerController@uploadProof');
 

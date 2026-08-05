@@ -32,6 +32,20 @@ class DesignerController extends Controller
         $sql .= ' ORDER BY oi.due_date ASC';
         $jobs = DB::all($sql, $params);
 
+        // The shared board: design work nobody has accepted yet. Anyone who may accept sees
+        // it, and whoever presses Accept owns it from that moment.
+        $unclaimed = Acl::can('design.claim') ? DB::all(
+            'SELECT oi.*, o.job_no, o.priority, o.id AS order_id,
+                    c.name AS customer_name, c.phone AS customer_phone
+             FROM `' . tbl('order_items') . '` oi
+             JOIN `' . tbl('orders') . '` o ON o.id = oi.order_id
+             JOIN `' . tbl('customers') . "` c ON c.id = o.customer_id
+             WHERE oi.requires_design = 1 AND oi.assigned_designer_id IS NULL
+               AND o.deleted_at IS NULL AND o.is_cancelled = 0
+               AND oi.status IN ('design_pending','design_in_progress','change_requested')
+             ORDER BY o.priority = 'urgent' DESC, o.priority = 'rush' DESC, oi.due_date ASC"
+        ) : [];
+
         foreach ($jobs as &$job) {
             $job['proofs'] = DB::all(
                 'SELECT * FROM `' . tbl('design_proofs') . '` WHERE order_item_id = ? ORDER BY version DESC',
@@ -61,7 +75,31 @@ class DesignerController extends Controller
         foreach ($jobs as $job) {
             $columns[$job['status']]['jobs'][] = $job;
         }
-        $this->render('designer/my_jobs', compact('columns', 'seeAll'));
+        $this->render('designer/my_jobs', compact('columns', 'seeAll', 'unclaimed'));
+    }
+
+    /** Accept a job from the shared board — it becomes mine. */
+    public function claim(string $itemId): void
+    {
+        Acl::require('design.claim');
+        $result = OrderService::claimDesign((int)$itemId, (int)$this->user['id']);
+        flash($result['ok'] ? 'success' : 'danger',
+            $result['ok'] ? 'Accepted — this job is yours now.' : $result['error']);
+        redirect(admin_url('my-jobs'));
+    }
+
+    /** Put a job back on the board. */
+    public function release(string $itemId): void
+    {
+        Acl::require('design.claim');
+        $result = OrderService::releaseDesign(
+            (int)$itemId,
+            (int)$this->user['id'],
+            $this->user['role_slug'] !== 'designer' && Acl::can('order.assign')
+        );
+        flash($result['ok'] ? 'success' : 'danger',
+            $result['ok'] ? 'Put back on the board for someone else.' : $result['error']);
+        redirect(admin_url('my-jobs'));
     }
 
     public function start(string $itemId): void

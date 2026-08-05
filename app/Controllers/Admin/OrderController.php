@@ -262,7 +262,12 @@ class OrderController extends Controller
         $nameSuggestions = array_column(DB::all(
             'SELECT DISTINCT item_name_snapshot AS n FROM `' . tbl('order_items') . '` ORDER BY n LIMIT 400'
         ), 'n');
-        $this->render('orders/edit', compact('order', 'customer', 'items', 'categories', 'designers', 'staff', 'nameSuggestions'));
+        // Reference files already on the order, so they can be seen and removed from here.
+        $attachments = DB::all(
+            'SELECT * FROM `' . tbl('order_attachments') . '` WHERE order_id = ? ORDER BY id',
+            [(int)$order['id']]
+        );
+        $this->render('orders/edit', compact('order', 'customer', 'items', 'categories', 'designers', 'staff', 'nameSuggestions', 'attachments'));
     }
 
     /** Order-level fields plus per-item price/qty edits (discount, delivery, notes, priority, due date, line rates). */
@@ -321,8 +326,20 @@ class OrderController extends Controller
         ], ['id' => (int)$id]);
         OrderService::recalcTotals((int)$id);
         OrderService::recalcPayments((int)$id);
+
+        // Reference files can be added or dropped whenever the order is edited.
+        $removed = $this->removeReferenceFiles((int)$id, (array)($_POST['remove_attachments'] ?? []));
+        $added = $this->storeReferenceFiles((int)$id);
+
         Logger::activity('order', 'update', 'order', (int)$id, 'Order ' . $order['job_no'] . ' updated');
-        flash('success', 'Order updated.');
+        $note = 'Order updated.';
+        if ($added) {
+            $note .= ' ' . $added . ' file(s) attached.';
+        }
+        if ($removed) {
+            $note .= ' ' . $removed . ' file(s) removed.';
+        }
+        flash('success', $note);
         redirect(admin_url('orders/' . $id));
     }
 
@@ -531,6 +548,39 @@ class OrderController extends Controller
             }
         }
         return $saved;
+    }
+
+    /**
+     * Delete attachments the editor ticked off. Scoped to this order, so an id from another
+     * order cannot be posted in, and the file on disk goes with the row.
+     *
+     * @param array<int|string> $ids
+     * @return int how many were removed
+     */
+    private function removeReferenceFiles(int $orderId, array $ids): int
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if (!$ids) {
+            return 0;
+        }
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $rows = DB::all(
+            'SELECT id, file_path FROM `' . tbl('order_attachments') . "` WHERE order_id = ? AND id IN ($in)",
+            array_merge([$orderId], $ids)
+        );
+        $gone = 0;
+        foreach ($rows as $row) {
+            $path = BASE_PATH . '/uploads/' . ltrim((string)$row['file_path'], '/');
+            if (is_file($path)) {
+                @unlink($path);
+            }
+            DB::run('DELETE FROM `' . tbl('order_attachments') . '` WHERE id = ?', [(int)$row['id']]);
+            $gone++;
+        }
+        if ($gone) {
+            Logger::activity('order', 'attachment', 'order', $orderId, "Removed $gone reference file(s)");
+        }
+        return $gone;
     }
 
     private function findOrder(int $id): array

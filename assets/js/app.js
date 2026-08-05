@@ -429,6 +429,32 @@
       : '';
   });
 
+  // Removing an existing reference file only stages it — nothing is deleted until the
+  // order is saved, so a mis-click is undone by leaving the page.
+  const removeBox = document.getElementById('removeFilesBox');
+  if (removeBox) document.addEventListener('click', e => {
+    const btn = e.target.closest('.kp-file-remove');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const card = btn.closest('.col-6, .col-md-3, .col-lg-2') || btn.parentElement;
+    const staged = removeBox.querySelector('input[value="' + id + '"]');
+    if (staged) {                                   // clicked again — put it back
+      staged.remove();
+      card.classList.remove('opacity-50');
+      btn.className = 'btn btn-sm btn-outline-danger mt-auto kp-file-remove';
+      btn.innerHTML = '<i class="bi bi-trash"></i> Remove';
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'remove_attachments[]';
+    input.value = id;
+    removeBox.appendChild(input);
+    card.classList.add('opacity-50');
+    btn.className = 'btn btn-sm btn-outline-secondary mt-auto kp-file-remove';
+    btn.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Undo';
+  });
+
   // ================================================================ submit
   const waModalEl = document.getElementById('waConfirmModal');
   const waModal = waModalEl ? new bootstrap.Modal(waModalEl) : null;

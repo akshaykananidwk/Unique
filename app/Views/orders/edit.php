@@ -2,7 +2,8 @@
 <h4 class="mb-1">Edit <?= e($order['job_no']) ?> <small class="text-muted fs-6"><?= e($customer['name']) ?> · <?= e($customer['phone']) ?></small></h4>
 <p class="text-muted small">Every field is editable — add or remove items, change the name, quantity, size or rate. Amounts and the grand total update as you type, and are recalculated on the server when you save.</p>
 
-<form id="orderEditForm" method="post" action="<?= e(admin_url('orders/' . $order['id'] . '/update')) ?>">
+<form id="orderEditForm" method="post" action="<?= e(admin_url('orders/' . $order['id'] . '/update')) ?>"
+      enctype="multipart/form-data">
   <?= Csrf::field() ?>
   <input type="hidden" name="items_json" id="items_json">
 
@@ -68,6 +69,54 @@
       </table>
     </div>
     <div class="form-text">Foot × foot items: Qty × Width × Height = Sq. Ft., then × Rate = Amount.</div>
+  </div></div>
+
+  <!-- Reference files: the photo, artwork or old bill the customer handed over -->
+  <div class="card mb-3"><div class="card-body">
+    <h6 class="text-uppercase text-muted small">Reference Files</h6>
+
+    <?php if ($attachments): ?>
+      <div class="row g-2 mb-3">
+        <?php foreach ($attachments as $a):
+          $isImage = str_starts_with((string)$a['mime'], 'image/');
+          $url = upload_url($a['file_path']);
+        ?>
+          <div class="col-6 col-md-3 col-lg-2">
+            <div class="border rounded p-2 h-100 d-flex flex-column">
+              <!-- fixed-height preview box so the cards line up whatever the image size -->
+              <a href="<?= e($url) ?>" target="_blank" rel="noopener"
+                 class="text-decoration-none d-flex align-items-center justify-content-center mb-1"
+                 style="height:90px">
+                <?php if ($isImage): ?>
+                  <img src="<?= e($url) ?>" alt="<?= e($a['original_name']) ?>"
+                       class="rounded" style="max-height:90px;max-width:100%;object-fit:contain">
+                <?php else: ?>
+                  <i class="bi bi-file-earmark-text fs-1"></i>
+                <?php endif; ?>
+              </a>
+              <div class="small text-truncate" title="<?= e($a['original_name']) ?>">
+                <a href="<?= e($url) ?>" target="_blank" rel="noopener"><?= e($a['original_name'] ?: basename((string)$a['file_path'])) ?></a>
+              </div>
+              <div class="small text-muted mb-1"><?= number_format((int)$a['size_bytes'] / 1024, 0) ?> KB</div>
+              <button type="button" class="btn btn-sm btn-outline-danger mt-auto kp-file-remove"
+                      data-id="<?= (int)$a['id'] ?>" title="Remove this file">
+                <i class="bi bi-trash"></i> Remove
+              </button>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <!-- Ticked files are deleted when the order is saved, so nothing goes before you mean it -->
+      <div id="removeFilesBox"></div>
+    <?php endif; ?>
+
+    <input type="file" name="reference_files[]" id="referenceFiles" class="form-control" multiple
+           accept="<?= e('.' . implode(',.', App\Core\Uploader::ARTWORK)) ?>">
+    <div class="form-text">
+      Add as many as you like — photos, PDF, CorelDRAW, AI, PSD, Word, Excel, fonts, ZIP.
+      They are saved when you press <strong>Save Changes</strong>.
+    </div>
+    <div id="fileList" class="small mt-2"></div>
   </div></div>
 
   <!-- Totals -->

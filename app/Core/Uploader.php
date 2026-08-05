@@ -7,8 +7,26 @@ class Uploader
 {
     public const IMAGES = ['jpg', 'jpeg', 'png', 'webp'];
     public const PROOFS = ['jpg', 'jpeg', 'png', 'pdf'];
-    // No SVG: it can carry script and would run if a browser ever opened it inline.
-    public const ARTWORK = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'cdr', 'ai', 'psd', 'zip', 'eps', 'rar'];
+    /**
+     * Whatever the customer hands over for reference — a phone photo, a CorelDRAW file, an
+     * old bill as a Word document, a folder zipped up. Kept wide on purpose.
+     *
+     * Two things stay out, deliberately:
+     *   - SVG, which can carry script and would run if a browser ever opened it inline
+     *   - anything executable (php/phtml/phar are blocked again in store(), belt and braces)
+     */
+    public const ARTWORK = [
+        // pictures
+        'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tif', 'tiff', 'heic', 'heif', 'avif',
+        // design / print
+        'pdf', 'cdr', 'ai', 'psd', 'eps', 'indd', 'xcf', 'dwg', 'dxf', 'cpt',
+        // documents
+        'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'rtf', 'txt', 'csv',
+        // fonts (a job often comes with the font it must be set in)
+        'ttf', 'otf',
+        // bundles
+        'zip', 'rar', '7z', 'tar', 'gz',
+    ];
     public const AUDIO = ['webm', 'ogg', 'mp3', 'm4a', 'wav'];
 
     private const MIME_MAP = [
@@ -20,6 +38,11 @@ class Uploader
         'zip' => ['application/zip', 'application/x-zip-compressed'],
         'eps' => ['application/postscript', 'image/x-eps', 'application/octet-stream'],
         'rar' => ['application/vnd.rar', 'application/x-rar-compressed', 'application/octet-stream'],
+        'gif' => ['image/gif'], 'bmp' => ['image/bmp', 'image/x-ms-bmp'],
+        'tif' => ['image/tiff'], 'tiff' => ['image/tiff'],
+        // Types below are left unmapped on purpose — finfo reports them inconsistently
+        // (docx as zip, heic as octet-stream, fonts as sfnt or octet-stream), so an
+        // extension check plus the execute-nothing rule in uploads/ is the honest guard.
         'webm' => ['video/webm', 'audio/webm'], 'ogg' => ['audio/ogg', 'application/ogg', 'video/ogg'],
         'mp3' => ['audio/mpeg'], 'm4a' => ['audio/mp4', 'audio/x-m4a', 'video/mp4'], 'wav' => ['audio/wav', 'audio/x-wav'],
         'ico' => ['image/vnd.microsoft.icon', 'image/x-icon'],

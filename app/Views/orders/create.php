@@ -77,8 +77,10 @@
   <div class="card mb-3"><div class="card-body">
     <h6 class="text-uppercase text-muted small">Step 3 — Reference Files <span class="text-muted">(optional)</span></h6>
     <input type="file" name="reference_files[]" id="referenceFiles" class="form-control" multiple
-           accept=".pdf,.jpg,.jpeg,.png,.webp,.cdr,.ai,.psd,.eps,.zip,.rar">
-    <div class="form-text">PDF, JPG, PNG, CDR, AI, PSD, EPS, ZIP, RAR — pick as many as you like.</div>
+           accept="<?= e('.' . implode(',.', App\Core\Uploader::ARTWORK)) ?>">
+    <div class="form-text">
+      Photos, PDF, CorelDRAW, AI, PSD, Word, Excel, fonts, ZIP — pick as many as you like.
+    </div>
     <div id="fileList" class="small mt-2"></div>
   </div></div>
 

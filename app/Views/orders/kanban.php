@@ -10,10 +10,12 @@
     <?php foreach ($cards as $card):
         $overdue = Status::isOverdue($card['due_date'], (string)$card['status']); ?>
     <div class="kanban-card <?= $overdue ? 'overdue' : '' ?> <?= e(priority_class($card['priority'])) ?>">
-      <a href="<?= e(admin_url('orders/' . $card['order_id'])) ?>" class="fw-semibold"><?= e($card['job_no']) ?></a>
+      <?php // Customer name on top and clickable — that is how a job is recognised at a
+      // glance. The job number goes underneath rather than away. ?>
+      <a href="<?= e(admin_url('orders/' . $card['order_id'])) ?>" class="fw-semibold"><?= e($card['customer_name']) ?></a>
       <?= priority_badge($card['priority']) ?>
       <div><?= e($card['item_name_snapshot']) ?></div>
-      <div class="text-muted"><?= e($card['customer_name']) ?></div>
+      <div class="text-muted small"><?= e($card['job_no']) ?></div>
       <?php if ($card['designer_name']): ?><div class="text-muted"><i class="bi bi-palette"></i> <?= e($card['designer_name']) ?></div><?php endif; ?>
       <div class="<?= $overdue ? 'text-overdue fw-bold' : 'text-muted' ?>"><i class="bi bi-clock"></i> <?= e(fmt_date($card['due_date'], true)) ?></div>
     </div>

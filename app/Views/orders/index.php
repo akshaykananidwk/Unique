@@ -30,17 +30,19 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
 <?php else: ?>
 <div class="table-responsive">
 <table class="table table-sm table-hover align-middle table-mobile">
-  <thead><tr><th>Job No</th><th>Customer</th><th>Date / Due</th><th>Status</th><th>Total</th><th>Balance</th><th>Actions</th></tr></thead>
+  <thead><tr><th>Customer</th><th>Date / Due</th><th>Status</th><th>Total</th><th>Balance</th><th>Actions</th></tr></thead>
   <tbody>
   <?php foreach ($orders as $o):
       $overdue = Status::isOverdue($o['due_date'], (string)$o['status']); ?>
     <tr class="<?= $overdue ? 'row-overdue' : e(priority_class($o['priority'])) ?>">
-      <td data-label="Job No">
-        <a href="<?= e(admin_url('orders/' . $o['id'])) ?>" class="fw-semibold"><?= e($o['job_no']) ?></a>
+      <?php // The customer is what the shop actually looks for, so that is the link.
+      // The job number stays underneath, where it is still there to read. ?>
+      <td data-label="Customer">
+        <a href="<?= e(admin_url('orders/' . $o['id'])) ?>" class="fw-semibold"><?= e($o['customer_name']) ?></a>
         <?php if ((int)$o['needs_review']): ?><span class="badge bg-info badge-status">New — needs review</span><?php endif; ?>
         <?= priority_badge($o['priority']) ?>
+        <div class="small text-muted"><?= e($o['job_no']) ?> · <?= e($o['customer_phone']) ?></div>
       </td>
-      <td data-label="Customer"><?= e($o['customer_name']) ?><div class="small text-muted"><?= e($o['customer_phone']) ?></div></td>
       <td data-label="Date / Due"><span class="small"><?= e(fmt_date($o['order_date'])) ?></span>
         <div class="small <?= $overdue ? 'text-overdue fw-bold' : 'text-muted' ?>">Due <?= e(fmt_date($o['due_date'], true)) ?></div></td>
       <td data-label="Status">

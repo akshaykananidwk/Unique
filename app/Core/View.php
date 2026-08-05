@@ -9,6 +9,9 @@ class View
     public static function render(string $view, array $data = [], ?string $layout = 'layouts/admin'): void
     {
         $content = self::partial($view, $data);
+        // Old input is for redisplaying the form that failed — one page load, then gone,
+        // so it can never leak into the next blank form.
+        clear_old();
         if ($layout === null) {
             echo $content;
             return;

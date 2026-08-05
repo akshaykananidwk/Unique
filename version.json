@@ -1,10 +1,10 @@
 {
-    "version": "1.6.1",
+    "version": "1.7.0",
     "released_at": "2026-08-07",
     "changelog": [
-        "The uploads repair from 1.5.1 did not actually take on the live server \u2014 it tried to overwrite uploads/.htaccess, the file belonged to another user, the write was refused, and nothing said so. Fixed properly.",
-        "The repair now tries three ways: overwrite, then chmod and overwrite, then delete and recreate. The last one needs permission on the folder rather than on the file, and PHP always has that \u2014 it is where every upload is saved.",
-        "If it still cannot be done, it now says so out loud instead of staying silent, naming the file's owner and permissions.",
-        "System \u2192 Updates has a new Server checks box: it shows whether uploaded files are being served, with a Repair now button and, if that is not enough, the exact line to delete in aaPanel."
+        "A New Order can no longer be lost. If the mobile number, the customer name or an item is missing, the mistake is caught before saving \u2014 a red box at the top of the page lists exactly what is missing and takes you to that field.",
+        "The WhatsApp Yes/No popup no longer appears until the form is complete, so pressing Yes can never send an order the server will reject.",
+        "If a save does fail for any reason, the form comes back with everything still filled in \u2014 customer, job number, notes, advance, and every item line. Only the reference files have to be picked again, and the message says so.",
+        "Same protection on Edit Order: a failed save keeps the item lines you had typed."
     ]
 }

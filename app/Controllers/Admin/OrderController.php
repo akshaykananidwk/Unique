@@ -129,8 +129,15 @@ class OrderController extends Controller
 
         $itemsRaw = json_decode((string)($_POST['items_json'] ?? '[]'), true);
         if (!is_array($itemsRaw) || count($itemsRaw) === 0) {
-            flash('danger', 'Add at least one item to the order.');
-            redirect(admin_url('orders/create'));
+            $this->backToCreate('Add at least one item to the order.');
+        }
+        // Checked here as well as in the browser: a form can always reach the server without
+        // the browser's own checks running, and losing a full order to that is not acceptable.
+        if (trim((string)($_POST['customer_phone'] ?? '')) === '') {
+            $this->backToCreate('Enter the customer’s mobile number.');
+        }
+        if (empty($_POST['customer_id']) && trim((string)($_POST['customer_name'] ?? '')) === '') {
+            $this->backToCreate('This is a new customer — enter their name.');
         }
 
         try {
@@ -168,14 +175,30 @@ class OrderController extends Controller
                 'notify_customer' => ($_POST['notify_customer'] ?? '1') !== '0',
             ]);
         } catch (\Throwable $e) {
-            flash('danger', 'Could not save the order: ' . $e->getMessage());
-            redirect(admin_url('orders/create'));
+            $this->backToCreate('Could not save the order: ' . $e->getMessage());
         }
 
         $this->storeReferenceFiles((int)$result['order_id']);
 
         flash('success', 'Order ' . $result['job_no'] . ' saved.');
         redirect(admin_url('orders/' . $result['order_id'] . '?print=1'));
+    }
+
+    /**
+     * Send the user back to the New Order form with everything they typed still there.
+     *
+     * A whole order can take minutes to write up. Losing it to a missing mobile number and
+     * an empty form is the worst possible outcome, so nothing is ever thrown away — the
+     * form comes back filled in, with the reason at the top.
+     */
+    private function backToCreate(string $message): never
+    {
+        // Files are the one thing a browser will not hand back, so say so rather than
+        // letting them be quietly dropped.
+        $hadFiles = !empty(array_filter((array)($_FILES['reference_files']['name'] ?? [])));
+        flash('danger', $message . ($hadFiles ? ' Your details are still here — please pick the reference files again.' : ''));
+        keep_old($_POST);
+        redirect(admin_url('orders/create'));
     }
 
     public function show(string $id): void
@@ -284,12 +307,14 @@ class OrderController extends Controller
         $itemsRaw = json_decode((string)($_POST['items_json'] ?? '[]'), true);
         if (!is_array($itemsRaw) || count($itemsRaw) === 0) {
             flash('danger', 'An order must keep at least one item. Add an item before saving.');
+            keep_old($_POST);
             redirect(admin_url('orders/' . $id . '/edit'));
         }
         try {
             OrderService::syncOrderItems((int)$id, $itemsRaw, (int)$this->user['id']);
         } catch (\Throwable $e) {
             flash('danger', 'Could not update the items: ' . $e->getMessage());
+            keep_old($_POST);
             redirect(admin_url('orders/' . $id . '/edit'));
         }
 
@@ -301,7 +326,8 @@ class OrderController extends Controller
             $taken = DB::val('SELECT id FROM `' . tbl('orders') . '` WHERE job_no = ? AND id <> ?', [$jobNo, (int)$id]);
             if ($taken) {
                 flash('danger', 'Job number “' . $jobNo . '” is already used by another order.');
-                redirect(admin_url('orders/' . $id . '/edit'));
+                keep_old($_POST);
+            redirect(admin_url('orders/' . $id . '/edit'));
             }
             Logger::activity('order', 'job_no', 'order', (int)$id, 'Job number ' . $order['job_no'] . ' → ' . $jobNo);
         }

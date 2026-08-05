@@ -207,6 +207,9 @@
 <script>
 window.KP_ALREADY_PAID = <?= (float)$order['paid_amount'] ?>;
 window.KP_NAME_SUGGESTIONS = <?= json_encode($nameSuggestions ?? [], JSON_UNESCAPED_UNICODE) ?>;
+<?php // Lines as they were typed before a failed save, so nothing has to be re-entered.
+$oldItems = json_decode((string)old('items_json', '[]'), true); ?>
+window.KP_OLD_ITEMS = <?= json_encode(is_array($oldItems) ? $oldItems : [], JSON_UNESCAPED_UNICODE) ?>;
 window.KP_EDIT_ITEMS = <?= json_encode(array_map(function ($oi) {
     $spec = json_decode((string)($oi['spec_json'] ?? '[]'), true);
     return [

@@ -108,6 +108,12 @@
   if (isEdit && Array.isArray(window.KP_EDIT_ITEMS)) {
     state.items = window.KP_EDIT_ITEMS.map(l => Object.assign({}, l));
   }
+  // A save that came back with an error puts the lines back exactly as they were typed —
+  // an order takes minutes to write up and must never be lost to a missing field. This
+  // wins over the seed above, because it is the newer of the two.
+  if (Array.isArray(window.KP_OLD_ITEMS) && window.KP_OLD_ITEMS.length) {
+    state.items = window.KP_OLD_ITEMS.map(l => Object.assign({}, l));
+  }
 
   // Strip formatting (+91, leading 0, spaces, dashes) down to the 10-digit local number.
   const localPhone = raw => {
@@ -467,21 +473,99 @@
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…'; }
   };
 
-  orderForm.addEventListener('submit', e => {
-    if (!state.items.length) {
-      e.preventDefault();
-      kpToast('danger', 'Add at least one item.');
-      return;
+  /**
+   * Everything that must be filled in before the order can be saved.
+   * Returns a list of problems; empty means good to go.
+   */
+  const problems = () => {
+    const out = [];
+    const bad = (id, msg) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('is-invalid');
+      out.push({ id: id, msg: msg });
+    };
+    orderForm.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+
+    if (!isEdit) {
+      const phone = document.getElementById('customer_phone');
+      const digits = localPhone(phone ? phone.value : '');
+      if (!digits) {
+        bad('customer_phone', 'Mobile number is missing.');
+      } else if (digits.length !== 10) {
+        bad('customer_phone', 'Mobile number must be 10 digits — “' + phone.value.trim() + '” is not.');
+      }
+      // A number nobody recognises means a new customer, and a new customer needs a name.
+      const idField = document.getElementById('customer_id');
+      const nameField = document.getElementById('customer_name');
+      if (idField && !idField.value && nameField && !nameField.value.trim()) {
+        const box = document.getElementById('newCustomerFields');
+        if (box) box.classList.remove('d-none');
+        bad('customer_name', 'This is a new customer — enter their name.');
+      }
     }
+    if (!state.items.length) {
+      out.push({ id: null, msg: 'Add at least one item.' });
+    }
+    state.items.forEach((l, i) => {
+      if (!String(l.name || '').trim()) out.push({ id: null, msg: 'Item ' + (i + 1) + ' has no name.' });
+      if (!(Number(l.qty) > 0)) out.push({ id: null, msg: 'Item ' + (i + 1) + ' needs a quantity.' });
+    });
+    return out;
+  };
+
+  /** Put the problems at the top of the page, and take the user to the first one. */
+  const showProblems = list => {
+    const box = document.getElementById('formErrors');
+    if (box) {
+      box.innerHTML = '<strong>Please fix ' + (list.length === 1 ? 'this' : 'these ' + list.length) + ' before saving:</strong>'
+        + '<ul class="mb-0 mt-1">' + list.map(p => '<li>' + esc(p.msg) + '</li>').join('') + '</ul>';
+      box.classList.remove('d-none');
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      kpToast('danger', list[0].msg);
+    }
+    const first = list.find(p => p.id);
+    if (first) {
+      const el = document.getElementById(first.id);
+      if (el) setTimeout(() => el.focus(), 400);
+    }
+  };
+
+  /** One gate for every route into saving — the button and both modal answers. */
+  const guard = () => {
+    const list = problems();
+    if (list.length) { showProblems(list); return false; }
+    const box = document.getElementById('formErrors');
+    if (box) box.classList.add('d-none');
+    return true;
+  };
+
+  orderForm.addEventListener('submit', e => {
+    if (!guard()) { e.preventDefault(); return; }
     if (isEdit || waConfirmed || !waModal) { fillAndGo(true); return; }
     e.preventDefault();
     waModal.show();
   });
 
   if (waModal) {
-    document.getElementById('waYes').addEventListener('click', () => { waModal.hide(); waConfirmed = true; fillAndGo(true); orderForm.submit(); });
-    document.getElementById('waNo').addEventListener('click', () => { waModal.hide(); waConfirmed = true; fillAndGo(false); orderForm.submit(); });
+    // .submit() skips the form's own submit handler, so the gate is checked here too.
+    const answer = notify => {
+      waModal.hide();
+      if (!guard()) return;
+      waConfirmed = true;
+      fillAndGo(notify);
+      orderForm.submit();
+    };
+    document.getElementById('waYes').addEventListener('click', () => answer(true));
+    document.getElementById('waNo').addEventListener('click', () => answer(false));
   }
+
+  // Clear the red outline as soon as the field is being corrected.
+  orderForm.addEventListener('input', e => {
+    if (e.target.classList && e.target.classList.contains('is-invalid')) {
+      e.target.classList.remove('is-invalid');
+    }
+  });
 
   renderItems();
 })();

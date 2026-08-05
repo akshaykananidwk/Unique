@@ -1,9 +1,13 @@
 <?php use App\Core\Csrf; $title = 'New Order'; ?>
 <h4 class="mb-3">New Order</h4>
-<form id="orderCreateForm" method="post" action="<?= e(admin_url('orders')) ?>" enctype="multipart/form-data">
+
+<!-- Anything missing is listed here, at the top, where it cannot be missed. -->
+<div id="formErrors" class="alert alert-danger d-none" role="alert"></div>
+
+<form id="orderCreateForm" method="post" action="<?= e(admin_url('orders')) ?>" enctype="multipart/form-data" novalidate>
   <?= Csrf::field() ?>
   <input type="hidden" name="items_json" id="items_json">
-  <input type="hidden" name="customer_id" id="customer_id">
+  <input type="hidden" name="customer_id" id="customer_id" value="<?= e(old('customer_id')) ?>">
   <input type="hidden" name="notify_customer" id="notify_customer" value="1">
   <input type="hidden" name="branch_id" value="<?= (int)($branches[0]['id'] ?? 0) ?>">
 
@@ -14,18 +18,20 @@
       <div class="col-md-3">
         <label class="form-label">Mobile Number *</label>
         <input type="tel" id="customer_phone" name="customer_phone" class="form-control"
-               inputmode="tel" required placeholder="e.g. 98765 43210 / +91…" autofocus>
+               inputmode="tel" required placeholder="e.g. 98765 43210 / +91…" autofocus
+               value="<?= e(old('customer_phone')) ?>">
         <div class="form-text">Spaces, +91 or a leading 0 are fine.</div>
         <div id="customerBadge" class="mt-1 small"></div>
       </div>
       <div class="col-md-3">
         <label class="form-label">Job No</label>
-        <input name="job_no" class="form-control" placeholder="Leave blank — auto">
+        <input name="job_no" class="form-control" placeholder="Leave blank — auto" value="<?= e(old('job_no')) ?>">
         <div class="form-text">Type your own (e.g. to match a GST bill) or leave blank.</div>
       </div>
       <div class="col-md-3">
         <label class="form-label">Order Date</label>
-        <input type="datetime-local" name="order_date" class="form-control" value="<?= e(date('Y-m-d\TH:i')) ?>">
+        <input type="datetime-local" name="order_date" class="form-control"
+               value="<?= e(old('order_date', date('Y-m-d\TH:i'))) ?>">
         <div class="form-text">Change it to enter an older order.</div>
       </div>
       <div class="col-md-3">
@@ -33,18 +39,20 @@
         <select name="accepted_by_user_id" class="form-select">
           <option value="">— <?= e($user['name']) ?> (me) —</option>
           <?php foreach ($staff as $s): ?>
-            <option value="<?= (int)$s['id'] ?>"><?= e($s['name']) ?></option>
+            <option value="<?= (int)$s['id'] ?>" <?= (string)old('accepted_by_user_id') === (string)$s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?></option>
           <?php endforeach; ?>
         </select>
         <div class="form-text">Who accepted this order.</div>
       </div>
     </div>
-    <div id="newCustomerFields" class="row g-2 mt-1 d-none">
-      <div class="col-md-3"><label class="form-label">Name *</label><input id="customer_name" name="customer_name" class="form-control"></div>
-      <div class="col-md-3"><label class="form-label">Address</label><input id="customer_address" name="customer_address" class="form-control"></div>
-      <div class="col-md-2"><label class="form-label">City</label><input id="customer_city" name="customer_city" class="form-control"></div>
-      <div class="col-md-2"><label class="form-label">WhatsApp</label><input name="customer_whatsapp" class="form-control" inputmode="tel" placeholder="Same as phone"></div>
-      <div class="col-md-2"><label class="form-label">GSTIN</label><input id="customer_gstin" name="customer_gstin" class="form-control"></div>
+    <?php // Keep the new-customer row open if it was being filled in when the save failed.
+    $reopenNew = old('customer_id') === '' && (old('customer_name') !== '' || old('customer_phone') !== ''); ?>
+    <div id="newCustomerFields" class="row g-2 mt-1 <?= $reopenNew ? '' : 'd-none' ?>">
+      <div class="col-md-3"><label class="form-label">Name *</label><input id="customer_name" name="customer_name" class="form-control" value="<?= e(old('customer_name')) ?>"></div>
+      <div class="col-md-3"><label class="form-label">Address</label><input id="customer_address" name="customer_address" class="form-control" value="<?= e(old('customer_address')) ?>"></div>
+      <div class="col-md-2"><label class="form-label">City</label><input id="customer_city" name="customer_city" class="form-control" value="<?= e(old('customer_city')) ?>"></div>
+      <div class="col-md-2"><label class="form-label">WhatsApp</label><input name="customer_whatsapp" class="form-control" inputmode="tel" placeholder="Same as phone" value="<?= e(old('customer_whatsapp')) ?>"></div>
+      <div class="col-md-2"><label class="form-label">GSTIN</label><input id="customer_gstin" name="customer_gstin" class="form-control" value="<?= e(old('customer_gstin')) ?>"></div>
     </div>
   </div></div>
 
@@ -91,21 +99,24 @@
       <div class="col-md-6">
         <div class="row g-2">
           <div class="col-6"><label class="form-label">Delivery Charge</label>
-            <input type="number" step="0.01" min="0" id="delivery_charge" name="delivery_charge" class="form-control" value="0"></div>
+            <input type="number" step="0.01" min="0" id="delivery_charge" name="delivery_charge" class="form-control" value="<?= e(old('delivery_charge', '0')) ?>"></div>
           <div class="col-6"><label class="form-label">Priority</label>
             <select name="priority" class="form-select">
-              <option value="normal">Normal</option><option value="urgent">Urgent</option><option value="rush">Rush</option>
+              <?php foreach (['normal' => 'Normal', 'urgent' => 'Urgent', 'rush' => 'Rush'] as $pv => $pl): ?>
+                <option value="<?= $pv ?>" <?= old('priority') === $pv ? 'selected' : '' ?>><?= $pl ?></option>
+              <?php endforeach; ?>
             </select></div>
           <div class="col-6"><label class="form-label">Delivery Type</label>
             <select name="delivery_type" class="form-select" id="delivery_type">
-              <option value="pickup">Pickup</option><option value="delivery">Delivery</option>
+              <option value="pickup" <?= old('delivery_type') === 'pickup' ? 'selected' : '' ?>>Pickup</option>
+              <option value="delivery" <?= old('delivery_type') === 'delivery' ? 'selected' : '' ?>>Delivery</option>
             </select></div>
           <div class="col-6"><label class="form-label">Delivery Address</label>
-            <input name="delivery_address" class="form-control" placeholder="If delivery"></div>
+            <input name="delivery_address" class="form-control" placeholder="If delivery" value="<?= e(old('delivery_address')) ?>"></div>
           <div class="col-12"><label class="form-label">Order Note (shown to customer)</label>
-            <input name="customer_note" class="form-control"></div>
+            <input name="customer_note" class="form-control" value="<?= e(old('customer_note')) ?>"></div>
           <div class="col-12"><label class="form-label">Internal Note (staff only)</label>
-            <input name="internal_note" class="form-control"></div>
+            <input name="internal_note" class="form-control" value="<?= e(old('internal_note')) ?>"></div>
         </div>
       </div>
       <div class="col-md-6">
@@ -117,14 +128,15 @@
         </table>
         <div class="row g-2">
           <div class="col-4"><label class="form-label">Advance ₹</label>
-            <input type="number" step="0.01" min="0" id="advance_amount" name="advance_amount" class="form-control" value="0"></div>
+            <input type="number" step="0.01" min="0" id="advance_amount" name="advance_amount" class="form-control" value="<?= e(old('advance_amount', '0')) ?>"></div>
           <div class="col-4"><label class="form-label">Mode</label>
             <select name="advance_mode" class="form-select">
-              <option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option>
-              <option value="bank">Bank</option><option value="cheque">Cheque</option>
+              <?php foreach (['cash' => 'Cash', 'upi' => 'UPI', 'card' => 'Card', 'bank' => 'Bank', 'cheque' => 'Cheque'] as $mv => $ml): ?>
+                <option value="<?= $mv ?>" <?= old('advance_mode') === $mv ? 'selected' : '' ?>><?= $ml ?></option>
+              <?php endforeach; ?>
             </select></div>
           <div class="col-4"><label class="form-label">Reference</label>
-            <input name="advance_reference" class="form-control" placeholder="UPI ref / cheque no"></div>
+            <input name="advance_reference" class="form-control" placeholder="UPI ref / cheque no" value="<?= e(old('advance_reference')) ?>"></div>
         </div>
         <div class="alert alert-warning mt-3 mb-0 d-flex justify-content-between fs-5">
           <span>Balance Due</span><strong id="sumBalance">₹0.00</strong>
@@ -222,4 +234,9 @@
   </div>
 </div>
 
-<script>window.KP_NAME_SUGGESTIONS = <?= json_encode($nameSuggestions ?? [], JSON_UNESCAPED_UNICODE) ?>;</script>
+<script>
+window.KP_NAME_SUGGESTIONS = <?= json_encode($nameSuggestions ?? [], JSON_UNESCAPED_UNICODE) ?>;
+<?php // Lines typed before a failed save, handed straight back to the basket.
+$oldItems = json_decode((string)old('items_json', '[]'), true); ?>
+window.KP_OLD_ITEMS = <?= json_encode(is_array($oldItems) ? $oldItems : [], JSON_UNESCAPED_UNICODE) ?>;
+</script>

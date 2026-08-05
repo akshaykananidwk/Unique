@@ -1,8 +1,8 @@
 {
-    "version": "2.1.0",
+    "version": "2.1.1",
     "released_at": "2026-08-07",
     "changelog": [
-        "On the Orders list and the Job Board, the customer's name is now the big blue link at the top. Click the name and the whole order opens.",
-        "The job number has not gone \u2014 it now sits underneath the name in small grey text, along with the phone number on the Orders list."
+        "My Jobs now matches the Orders list and the Job Board: the customer's name is the blue link at the top of every card, on the shared \"Waiting to be accepted\" board and on your own cards alike.",
+        "The job number sits just below the item name, with the phone number on your own cards."
     ]
 }

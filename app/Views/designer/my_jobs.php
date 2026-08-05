@@ -16,12 +16,14 @@ if (!empty($unclaimed)): ?>
       $overdue = Status::isOverdue($u['due_date'], (string)$u['status']); ?>
       <div class="col-12 col-md-6 col-lg-4">
         <div class="border rounded p-2 h-100 <?= e(priority_class($u['priority'])) ?>">
+          <?php // Customer name is the link — that is how a job is recognised. The job
+          // number moves underneath rather than away. ?>
           <div class="d-flex justify-content-between">
-            <a href="<?= e(admin_url('orders/' . $u['order_id'])) ?>" class="fw-semibold"><?= e($u['job_no']) ?></a>
+            <a href="<?= e(admin_url('orders/' . $u['order_id'])) ?>" class="fw-semibold"><?= e($u['customer_name']) ?></a>
             <?= priority_badge($u['priority']) ?>
           </div>
           <div><?= e($u['item_name_snapshot']) ?> × <?= e(rtrim(rtrim((string)$u['qty'], '0'), '.')) ?></div>
-          <div class="small text-muted"><?= e($u['customer_name']) ?></div>
+          <div class="small text-muted"><?= e($u['job_no']) ?></div>
           <div class="small <?= $overdue ? 'text-overdue fw-bold' : 'text-muted' ?>">
             <i class="bi bi-clock"></i> <?= e(fmt_date($u['due_date'], true)) ?></div>
           <?php if ($u['spec_text']): ?><div class="small border-top mt-1 pt-1"><?= e($u['spec_text']) ?></div><?php endif; ?>
@@ -47,11 +49,11 @@ if (!empty($unclaimed)): ?>
         $overdue = Status::isOverdue($job['due_date'], (string)$job['status']); ?>
     <div class="kanban-card <?= $overdue ? 'overdue' : '' ?> <?= e(priority_class($job['priority'])) ?>">
       <div class="d-flex justify-content-between">
-        <a href="<?= e(admin_url('orders/' . $job['order_id'])) ?>" class="fw-semibold"><?= e($job['job_no']) ?></a>
+        <a href="<?= e(admin_url('orders/' . $job['order_id'])) ?>" class="fw-semibold"><?= e($job['customer_name']) ?></a>
         <?= priority_badge($job['priority']) ?>
       </div>
       <div><?= e($job['item_name_snapshot']) ?> × <?= e(rtrim(rtrim((string)$job['qty'], '0'), '.')) ?></div>
-      <div class="text-muted"><?= e($job['customer_name']) ?> (<?= e($job['customer_phone']) ?>)</div>
+      <div class="text-muted small"><?= e($job['job_no']) ?> · <?= e($job['customer_phone']) ?></div>
       <div class="<?= $overdue ? 'text-overdue fw-bold' : 'text-muted' ?>"><i class="bi bi-clock"></i> <?= e(fmt_date($job['due_date'], true)) ?></div>
       <?php if ((int)$job['revision_count'] > 0): ?>
         <span class="badge bg-warning text-dark badge-status">Revision #<?= (int)$job['revision_count'] ?></span>

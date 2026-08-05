@@ -188,28 +188,40 @@ class CronJobs
         ];
     }
 
-    /** Keep the tables from growing without limit. */
+    /** Keep the tables from growing without limit, and repair anything an update cannot. */
     public static function cleanup(): array
     {
         $done = [];
+        $total = 0;
+
+        // The updater is not allowed to touch uploads/, so a broken guard there can only be
+        // fixed in place. Checking daily costs nothing and it never rewrites a healthy file.
+        $repairs = Hardening::run();
+        foreach ($repairs as $repair) {
+            Logger::file('cron', 'self-heal: ' . $repair);
+        }
 
         $n = DB::run('DELETE FROM `' . tbl('cron_runs') . '` WHERE started_at < DATE_SUB(NOW(), INTERVAL 30 DAY)')->rowCount();
-        if ($n) { $done[] = "$n scheduler log(s)"; }
+        if ($n) { $done[] = "$n scheduler log(s)"; $total += $n; }
 
         $n = DB::run('DELETE FROM `' . tbl('whatsapp_queue') . "` WHERE status = 'sent'
                       AND sent_at < DATE_SUB(NOW(), INTERVAL 90 DAY)")->rowCount();
-        if ($n) { $done[] = "$n sent message(s)"; }
+        if ($n) { $done[] = "$n sent message(s)"; $total += $n; }
 
         $n = DB::run('DELETE FROM `' . tbl('customer_otps') . '` WHERE expires_at < DATE_SUB(NOW(), INTERVAL 7 DAY)')->rowCount();
-        if ($n) { $done[] = "$n expired OTP(s)"; }
+        if ($n) { $done[] = "$n expired OTP(s)"; $total += $n; }
 
         $n = DB::run('DELETE FROM `' . tbl('login_attempts') . '` WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)')->rowCount();
-        if ($n) { $done[] = "$n login attempt(s)"; }
+        if ($n) { $done[] = "$n login attempt(s)"; $total += $n; }
 
-        $total = 0;
-        foreach ($done as $d) {
-            $total += (int)$d;
+        $parts = [];
+        if ($done) {
+            $parts[] = 'Removed ' . implode(', ', $done) . '.';
         }
-        return ['items' => $total, 'message' => $done ? 'Removed ' . implode(', ', $done) . '.' : 'Nothing to clean up.'];
+        foreach ($repairs as $repair) {
+            $parts[] = 'Repaired ' . $repair . '.';
+            $total++;
+        }
+        return ['items' => $total, 'message' => $parts ? implode(' ', $parts) : 'Nothing to clean up.'];
     }
 }

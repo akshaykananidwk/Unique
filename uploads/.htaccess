@@ -1,11 +1,32 @@
-# No PHP execution, no directory listing inside uploads
-php_flag engine off
+# Uploaded files only: never execute anything here, never list the directory.
+#
+# NOTE: php_flag / php_value come from mod_php. On PHP-FPM or FastCGI hosting mod_php is
+# not loaded, and an UNGUARDED php_flag makes Apache return 500 for every file in this
+# folder — images included. Always keep it inside an <IfModule> guard.
 <IfModule mod_php.c>
     php_flag engine off
 </IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php5.c>
+    php_flag engine off
+</IfModule>
+
 Options -Indexes
-RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phar
-RemoveType .php .phtml .php3 .php4 .php5 .php7 .phar
+
+# Works however PHP is wired up: strip the handlers, then deny the files outright.
+<IfModule mod_mime.c>
+    RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phar
+    RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 .phar
+</IfModule>
+
 <FilesMatch "\.(php|phtml|php\d|phar|pl|py|cgi|sh)$">
-    Require all denied
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
 </FilesMatch>

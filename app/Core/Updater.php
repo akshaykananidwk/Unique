@@ -217,6 +217,11 @@ class Updater
                 $written = $this->copyOver($extractDir);
                 $this->say('Copied ' . count($written) . ' files into place.');
 
+                // 8b. Repair protected files the copy step is not allowed to overwrite
+                foreach (Hardening::run() as $repair) {
+                    $this->say('Repaired: ' . $repair);
+                }
+
                 // 9. Migrations
                 $ran = Migrator::run();
                 $this->say($ran ? 'Ran migrations: ' . implode(', ', $ran) : 'No new migrations.');

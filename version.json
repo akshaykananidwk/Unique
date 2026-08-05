@@ -1,15 +1,17 @@
 {
-    "version": "1.5.0",
+    "version": "1.5.1",
     "released_at": "2026-08-07",
     "changelog": [
-        "New screen: Admin → Cron Jobs. Every background task in the system is now listed in one place with its schedule, last run, result, next run and an on/off switch.",
-        "The server now needs only ONE cron line — * * * * * php cron/run.php. It ticks every minute and the app decides what is due. The old four cron entries still work but can be removed.",
+        "FIXED: every uploaded file \u2014 artwork, proofs, receipts, logos \u2014 was returning \"Internal Server Error\" on the live site. uploads/.htaccess carried an unguarded php_flag line, which Apache rejects when PHP runs as FPM (as it does here), so it refused to serve anything in that folder. The guard is now written so it is safe both ways.",
+        "The updater is not allowed to overwrite anything under uploads/, so the fix repairs the file in place \u2014 during the update itself, and again in the daily Housekeeping job. It only rewrites a file that is actually broken.",
+        "New screen: Admin \u2192 Cron Jobs. Every background task in the system is now listed in one place with its schedule, last run, result, next run and an on/off switch.",
+        "The server now needs only ONE cron line \u2014 * * * * * php cron/run.php. It ticks every minute and the app decides what is due. The old four cron entries still work but can be removed.",
         "Run any job by hand with the play button, or press Run all due now. Retry failed re-runs everything whose last run failed.",
         "Health panel: shows whether the cron is running, late or stopped, with ticks so far, runs and failures in the last 24 hours and average duration. It refreshes itself every 30 seconds.",
         "Execution log on the same page plus a full, filterable history by job and status.",
-        "Each job's schedule can be changed from the panel — every N minutes, or once a day at a set time.",
+        "Each job's schedule can be changed from the panel \u2014 every N minutes, or once a day at a set time.",
         "A run that dies mid-flight leaves a lock; the panel shows it and gives you a Clear lock button.",
-        "Two ticks can never run the same job twice — each job is claimed with a database lock before it starts.",
+        "Two ticks can never run the same job twice \u2014 each job is claimed with a database lock before it starts.",
         "Hosting with no shell cron can call tick.php with a generated key instead."
     ]
 }

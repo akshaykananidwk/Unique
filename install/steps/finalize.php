@@ -94,11 +94,10 @@ try {
     if (!is_file(BASE_PATH . '/.htaccess')) {
         @copy(BASE_PATH . '/.htaccess.dist', BASE_PATH . '/.htaccess');
     }
-    // uploads/.htaccess hardening (ships with repo; recreate if missing)
-    if (!is_file(BASE_PATH . '/uploads/.htaccess')) {
-        @file_put_contents(BASE_PATH . '/uploads/.htaccess',
-            "php_flag engine off\nOptions -Indexes\n<FilesMatch \"\\.(php|phtml|phar)$\">\nRequire all denied\n</FilesMatch>\n");
-    }
+    // uploads/.htaccess hardening (ships with repo; recreate if missing or unsafe).
+    // Hardening owns the content — an unguarded php_flag here would 500 every image on
+    // FPM hosting, so it must never be hand-written in two places.
+    App\Core\Hardening::fixUploadsHtaccess();
 
     // 7. Lock the installer
     if (!is_dir(BASE_PATH . '/storage')) {

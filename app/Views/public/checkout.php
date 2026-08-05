@@ -16,12 +16,6 @@
         <input name="address" class="form-control"></div>
       <div class="col-md-4"><label class="form-label">City</label>
         <input name="city" class="form-control"></div>
-      <div class="col-md-6"><label class="form-label">Pickup Branch *</label>
-        <select name="branch_id" class="form-select" required>
-          <?php foreach ($branches as $b): ?>
-            <option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?><?= $b['city'] ? ' — ' . e($b['city']) : '' ?></option>
-          <?php endforeach; ?>
-        </select></div>
       <div class="col-md-6"><label class="form-label">Delivery Preference</label>
         <select name="delivery_type" class="form-select">
           <option value="pickup">I will pick up</option>

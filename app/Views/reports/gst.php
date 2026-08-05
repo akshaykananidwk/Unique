@@ -1,6 +1,6 @@
 <?php use App\Core\View; $title = 'GST Summary'; ?>
 <h4 class="mb-3">GST Summary <small class="text-muted fs-6"><?= e(fmt_date($from)) ?> – <?= e(fmt_date($to)) ?></small></h4>
-<?= View::partial('reports/_filters', compact('branches', 'selectedBranch')) ?>
+<?= View::partial('reports/_filters', []) ?>
 <?php if (!$rows): ?><div class="empty-state"><i class="bi bi-percent"></i>No taxable sales in this period.</div>
 <?php else: $tt = 0; $tx = 0; ?>
 <table class="table table-sm table-bordered" style="max-width:640px">

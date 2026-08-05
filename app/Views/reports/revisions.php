@@ -1,6 +1,6 @@
 <?php use App\Core\View; $title = 'Design Revision Analysis'; ?>
 <h4 class="mb-3">Design Revision Analysis <small class="text-muted fs-6"><?= e(fmt_date($from)) ?> – <?= e(fmt_date($to)) ?></small></h4>
-<?= View::partial('reports/_filters', compact('branches', 'selectedBranch')) ?>
+<?= View::partial('reports/_filters', []) ?>
 <?php if (!$rows): ?><div class="empty-state"><i class="bi bi-arrow-repeat"></i>No revisions recorded in this period — excellent!</div>
 <?php else: ?>
 <div class="table-responsive"><table class="table table-sm table-bordered" style="max-width:720px">

@@ -1,12 +1,11 @@
 {
-    "version": "1.9.0",
+    "version": "2.0.0",
     "released_at": "2026-08-07",
     "changelog": [
-        "FIXED: \"Item 1 has no name\" on every order. The check added in 1.7.0 was reading the wrong field, so it complained about items that had a perfectly good name and refused to save. Nobody could take an order.",
-        "Designs are now accepted, not handed out. Unassigned design work sits on a shared board on My Jobs \u2014 press Accept and the job is yours from that moment.",
-        "Whoever accepts a job is the designer for it, whatever their job title, and that is what the design report counts.",
-        "Two people pressing Accept at the same instant can never both get it. The second one is told who got there first.",
-        "A job can be given back to the board while it is untouched. Once a proof has gone to the customer only a manager can move it.",
-        "Two separate monthly reports: User Performance now shows orders taken per person per month, and Designer Performance shows designs accepted per person per month."
+        "Branches are gone. This is one shop, so there is now one Main Branch and no branch question anywhere \u2014 not on New Order, not on the user form, not on the roles screen, not on any report.",
+        "The Branches screen has been removed, along with the three branch permissions that kept appearing while setting up roles.",
+        "\"Branch Manager\" is now simply \"Manager\".",
+        "Everything that existed has been moved onto the Main Branch \u2014 orders, payments, customers and users \u2014 so no past record was lost.",
+        "Also fixed: the GST report and the Sales report grouped by item or category were both failing with a database error. An unquoted column alias had been broken for a while and nobody had opened those two screens."
     ]
 }

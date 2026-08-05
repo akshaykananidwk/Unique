@@ -1,6 +1,6 @@
 <?php use App\Core\View; $title = 'Staff Performance'; ?>
 <h4 class="mb-3">Staff Performance <small class="text-muted fs-6"><?= e(fmt_date($from)) ?> – <?= e(fmt_date($to)) ?></small></h4>
-<?= View::partial('reports/_filters', compact('branches', 'selectedBranch')) ?>
+<?= View::partial('reports/_filters', []) ?>
 
 <?php if (!$rows): ?><div class="empty-state"><i class="bi bi-people"></i>No activity in this period.</div>
 <?php else: ?>

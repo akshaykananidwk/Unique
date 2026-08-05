@@ -3,14 +3,7 @@
   <h4 class="mb-0">Daily Cash Book</h4>
   <form method="get" class="d-flex gap-2">
     <input type="date" name="date" value="<?= e($date) ?>" class="form-control form-control-sm">
-    <?php if (count($branches) > 1): ?>
-    <select name="branch_id" class="form-select form-select-sm">
-      <option value="">All branches</option>
-      <?php foreach ($branches as $b): ?>
-        <option value="<?= (int)$b['id'] ?>" <?= $selectedBranch === (int)$b['id'] ? 'selected' : '' ?>><?= e($b['name']) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <?php endif; ?>
+
     <button class="btn btn-outline-primary btn-sm">Go</button>
     <button class="btn btn-outline-secondary btn-sm" type="button" onclick="window.print()"><i class="bi bi-printer"></i></button>
   </form>

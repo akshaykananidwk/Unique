@@ -6,7 +6,7 @@ $extraFilters = '<div class="col-6 col-md-2"><select name="group" class="form-se
     . '</select></div>';
 ?>
 <h4 class="mb-3">Sales Register <small class="text-muted fs-6"><?= e(fmt_date($from)) ?> – <?= e(fmt_date($to)) ?></small></h4>
-<?= View::partial('reports/_filters', compact('branches', 'selectedBranch', 'extraFilters')) ?>
+<?= View::partial('reports/_filters', compact('extraFilters')) ?>
 <?php if (!$rows): ?><div class="empty-state"><i class="bi bi-graph-up"></i>No sales in this period.</div>
 <?php else: ?>
 <div class="table-responsive"><table class="table table-sm table-bordered" style="font-size:.85rem">

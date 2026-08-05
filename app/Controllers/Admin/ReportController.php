@@ -310,8 +310,7 @@ class ReportController extends Controller
              GROUP BY ym, u.id, u.name ORDER BY ym",
             $bp
         );
-        $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order');
-        $this->render('reports/staff', compact('rows', 'monthly', 'from', 'to', 'branches', 'selectedBranch'));
+        $this->render('reports/staff', compact('rows', 'monthly', 'from', 'to'));
     }
 
     public function sales(): void
@@ -325,19 +324,18 @@ class ReportController extends Controller
 
         if ($group === 'order') {
             $rows = DB::all(
-                'SELECT o.job_no, o.order_date, c.name AS customer, b.name AS branch, o.subtotal, o.discount_amount,
+                'SELECT o.job_no, o.order_date, c.name AS customer, o.subtotal, o.discount_amount,
                         o.tax_amount, o.total, o.paid_amount, o.balance_amount, o.status
                  FROM `' . $ot . '` o
-                 JOIN `' . tbl('customers') . '` c ON c.id = o.customer_id
-                 JOIN `' . tbl('branches') . "` b ON b.id = o.branch_id
+                 JOIN `' . tbl('customers') . "` c ON c.id = o.customer_id
                  WHERE $bw AND o.deleted_at IS NULL AND o.is_cancelled = 0 AND o.order_date BETWEEN ? AND ?
                  ORDER BY o.order_date",
                 [...$bp, $from, $to]
             );
-            $headers = ['Job No', 'Date', 'Customer', 'Branch', 'Subtotal', 'Discount', 'Tax', 'Total', 'Paid', 'Balance', 'Status'];
+            $headers = ['Job No', 'Date', 'Customer', 'Subtotal', 'Discount', 'Tax', 'Total', 'Paid', 'Balance', 'Status'];
         } elseif ($group === 'item') {
             $rows = DB::all(
-                "SELECT oi.item_name_snapshot AS item, COUNT(*) AS lines, SUM(oi.qty) AS qty,
+                "SELECT oi.item_name_snapshot AS item, COUNT(*) AS `lines`, SUM(oi.qty) AS qty,
                         SUM(oi.amount) AS amount, SUM(oi.tax_amount) AS tax, SUM(oi.line_total) AS total
                  FROM `$oit` oi JOIN `$ot` o ON o.id = oi.order_id
                  WHERE $bw AND o.deleted_at IS NULL AND o.is_cancelled = 0 AND o.order_date BETWEEN ? AND ?
@@ -347,7 +345,7 @@ class ReportController extends Controller
             $headers = ['Item', 'Lines', 'Qty', 'Amount', 'Tax', 'Total'];
         } else {
             $rows = DB::all(
-                "SELECT oi.category_name_snapshot AS category, COUNT(*) AS lines, SUM(oi.qty) AS qty,
+                "SELECT oi.category_name_snapshot AS category, COUNT(*) AS `lines`, SUM(oi.qty) AS qty,
                         SUM(oi.amount) AS amount, SUM(oi.tax_amount) AS tax, SUM(oi.line_total) AS total
                  FROM `$oit` oi JOIN `$ot` o ON o.id = oi.order_id
                  WHERE $bw AND o.deleted_at IS NULL AND o.is_cancelled = 0 AND o.order_date BETWEEN ? AND ?
@@ -360,8 +358,7 @@ class ReportController extends Controller
         if (($_GET['export'] ?? '') === 'csv') {
             $this->csv('sales-' . $group, $headers, array_map('array_values', $rows));
         }
-        $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order');
-        $this->render('reports/sales', compact('rows', 'headers', 'group', 'from', 'to', 'branches', 'selectedBranch'));
+        $this->render('reports/sales', compact('rows', 'headers', 'group', 'from', 'to'));
     }
 
     public function outstanding(): void
@@ -379,21 +376,19 @@ class ReportController extends Controller
         $rows = DB::all(
             'SELECT o.id, o.job_no, o.order_date, o.total, o.paid_amount, o.balance_amount, o.status,
                     DATEDIFF(NOW(), o.order_date) AS age_days,
-                    c.id AS customer_id, c.name AS customer, c.phone, b.name AS branch
+                    c.id AS customer_id, c.name AS customer, c.phone
              FROM `' . tbl('orders') . '` o
-             JOIN `' . tbl('customers') . '` c ON c.id = o.customer_id
-             JOIN `' . tbl('branches') . "` b ON b.id = o.branch_id
+             JOIN `' . tbl('customers') . "` c ON c.id = o.customer_id
              WHERE $bw AND o.deleted_at IS NULL AND o.is_cancelled = 0 AND o.balance_amount > 0 $bucketSql
              ORDER BY o.balance_amount DESC",
             $bp
         );
         if (($_GET['export'] ?? '') === 'csv') {
-            $this->csv('outstanding', ['Job No', 'Date', 'Customer', 'Phone', 'Branch', 'Total', 'Paid', 'Balance', 'Age (days)'],
-                array_map(fn($r) => [$r['job_no'], $r['order_date'], $r['customer'], $r['phone'], $r['branch'],
+            $this->csv('outstanding', ['Job No', 'Date', 'Customer', 'Phone', 'Total', 'Paid', 'Balance', 'Age (days)'],
+                array_map(fn($r) => [$r['job_no'], $r['order_date'], $r['customer'], $r['phone'],
                     $r['total'], $r['paid_amount'], $r['balance_amount'], $r['age_days']], $rows));
         }
-        $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order');
-        $this->render('reports/outstanding', compact('rows', 'bucket', 'branches', 'selectedBranch'));
+        $this->render('reports/outstanding', compact('rows', 'bucket'));
     }
 
     /** Bulk WhatsApp balance reminders for selected orders. */
@@ -419,7 +414,8 @@ class ReportController extends Controller
         [$from, $to] = $this->dateRange();
         [$bw, $bp, $selectedBranch] = $this->branchScope('o.branch_id');
         $rows = DB::all(
-            'SELECT oi.tax_percent, COUNT(*) AS lines, SUM(oi.amount) AS taxable, SUM(oi.tax_amount) AS tax,
+            // `lines` is a reserved word in MariaDB — the alias has to be quoted.
+            'SELECT oi.tax_percent, COUNT(*) AS `lines`, SUM(oi.amount) AS taxable, SUM(oi.tax_amount) AS tax,
                     SUM(oi.line_total) AS total
              FROM `' . tbl('order_items') . '` oi JOIN `' . tbl('orders') . "` o ON o.id = oi.order_id
              WHERE $bw AND o.deleted_at IS NULL AND o.is_cancelled = 0 AND o.order_date BETWEEN ? AND ?
@@ -429,8 +425,7 @@ class ReportController extends Controller
         if (($_GET['export'] ?? '') === 'csv') {
             $this->csv('gst-summary', ['Tax %', 'Lines', 'Taxable Value', 'Tax Amount', 'Total'], array_map('array_values', $rows));
         }
-        $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order');
-        $this->render('reports/gst', compact('rows', 'from', 'to', 'branches', 'selectedBranch'));
+        $this->render('reports/gst', compact('rows', 'from', 'to'));
     }
 
     /** Which items cause the most design rework. */
@@ -451,8 +446,7 @@ class ReportController extends Controller
             $this->csv('revision-analysis', ['Item', 'Jobs', 'Total Revisions', 'Avg Revisions', 'Max Revisions'],
                 array_map('array_values', $rows));
         }
-        $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order');
-        $this->render('reports/revisions', compact('rows', 'from', 'to', 'branches', 'selectedBranch'));
+        $this->render('reports/revisions', compact('rows', 'from', 'to'));
     }
 
     public function cancelled(): void
@@ -475,8 +469,7 @@ class ReportController extends Controller
             $this->csv('cancelled-orders', ['Job No', 'Order Date', 'Cancelled At', 'Reason', 'Value', 'Customer', 'By', 'Branch'],
                 array_map('array_values', $rows));
         }
-        $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order');
-        $this->render('reports/cancelled', compact('rows', 'from', 'to', 'branches', 'selectedBranch'));
+        $this->render('reports/cancelled', compact('rows', 'from', 'to'));
     }
 
     public function activity(): void

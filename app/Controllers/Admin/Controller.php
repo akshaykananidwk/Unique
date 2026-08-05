@@ -27,15 +27,14 @@ abstract class Controller
         return in_array($this->user['role_slug'], ['super_admin', 'branch_manager'], true);
     }
 
-    /** Resolve + authorise the branch filter from ?branch_id. Returns [whereSql, params, selectedBranchId]. */
+    /**
+     * Kept so every list query keeps its shape, but this is a single shop: there is one
+     * Main Branch, nothing to choose between, and no ?branch_id to honour.
+     *
+     * @return array{0:string,1:array,2:null}
+     */
     protected function branchScope(string $column): array
     {
-        $selected = isset($_GET['branch_id']) && $_GET['branch_id'] !== '' ? (int)$_GET['branch_id'] : null;
-        if ($selected !== null) {
-            Acl::requireBranch($selected);
-            return ["$column = ?", [$selected], $selected];
-        }
-        [$sql, $params] = Acl::branchFilter($column);
-        return [$sql, $params, null];
+        return ['1=1', [], null];
     }
 }

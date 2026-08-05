@@ -19,16 +19,7 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
       <?php endforeach; ?>
     </select>
   </div>
-  <?php if (false && count($branches) > 1): // single shop — no branch filter ?>
-  <div class="col-6 col-md-2">
-    <select name="branch_id" class="form-select form-select-sm">
-      <option value="">All branches</option>
-      <?php foreach ($branches as $b): ?>
-        <option value="<?= (int)$b['id'] ?>" <?= $selectedBranch === (int)$b['id'] ? 'selected' : '' ?>><?= e($b['name']) ?></option>
-      <?php endforeach; ?>
-    </select>
-  </div>
-  <?php endif; ?>
+
   <div class="col-6 col-md-2"><input type="date" name="from" value="<?= e($_GET['from'] ?? '') ?>" class="form-control form-control-sm"></div>
   <div class="col-6 col-md-2"><input type="date" name="to" value="<?= e($_GET['to'] ?? '') ?>" class="form-control form-control-sm"></div>
   <div class="col-6 col-md-1"><button class="btn btn-outline-primary btn-sm w-100">Filter</button></div>
@@ -48,7 +39,6 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
         <a href="<?= e(admin_url('orders/' . $o['id'])) ?>" class="fw-semibold"><?= e($o['job_no']) ?></a>
         <?php if ((int)$o['needs_review']): ?><span class="badge bg-info badge-status">New — needs review</span><?php endif; ?>
         <?= priority_badge($o['priority']) ?>
-        <div class="small text-muted d-md-none"><?= e($o['branch_name']) ?></div>
       </td>
       <td data-label="Customer"><?= e($o['customer_name']) ?><div class="small text-muted"><?= e($o['customer_phone']) ?></div></td>
       <td data-label="Date / Due"><span class="small"><?= e(fmt_date($o['order_date'])) ?></span>

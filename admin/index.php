@@ -126,7 +126,7 @@ $router->post('/whatsapp/logs/{id}/resend', 'WhatsappController@resend');
 $router->post('/whatsapp/logs/resend-failed', 'WhatsappController@resendFailed');
 $router->get('/whatsapp/inbound', 'WhatsappController@inbound');
 
-// Users / roles / branches
+// Users / roles  (single shop — branches were removed)
 $router->get('/users', 'UserController@index');
 $router->get('/users/create', 'UserController@create');
 $router->post('/users', 'UserController@store');
@@ -137,9 +137,6 @@ $router->get('/roles', 'RoleController@index');
 $router->post('/roles', 'RoleController@store');
 $router->post('/roles/{id}/permissions', 'RoleController@savePermissions');
 $router->post('/roles/{id}/delete', 'RoleController@delete');
-$router->get('/branches', 'BranchController@index');
-$router->post('/branches', 'BranchController@store');
-$router->post('/branches/{id}/update', 'BranchController@update');
 
 // Settings + system
 $router->get('/settings', 'SettingsController@index');

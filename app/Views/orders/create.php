@@ -9,7 +9,6 @@
   <input type="hidden" name="items_json" id="items_json">
   <input type="hidden" name="customer_id" id="customer_id" value="<?= e(old('customer_id')) ?>">
   <input type="hidden" name="notify_customer" id="notify_customer" value="1">
-  <input type="hidden" name="branch_id" value="<?= (int)($branches[0]['id'] ?? 0) ?>">
 
   <!-- Step 1: Customer -->
   <div class="card mb-3"><div class="card-body">

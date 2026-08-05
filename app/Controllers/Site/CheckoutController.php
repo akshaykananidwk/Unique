@@ -63,7 +63,7 @@ class CheckoutController
             'phone' => $phone,
             'address' => trim((string)($_POST['address'] ?? '')),
             'city' => trim((string)($_POST['city'] ?? '')),
-            'branch_id' => (int)($_POST['branch_id'] ?? 0),
+            'branch_id' => \App\Core\Acl::mainBranchId(),
             'delivery_type' => ($_POST['delivery_type'] ?? '') === 'delivery' ? 'delivery' : 'pickup',
             'note' => trim((string)($_POST['note'] ?? '')),
         ];

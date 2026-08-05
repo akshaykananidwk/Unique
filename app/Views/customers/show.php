@@ -50,7 +50,7 @@
 <div class="card mb-3"><div class="card-body">
   <h6>Orders (<?= count($orders) ?>) <span class="text-muted fs-6">— everything this customer has given, from any of its numbers</span></h6>
   <div class="table-responsive"><table class="table table-sm table-mobile">
-    <thead><tr><th>Job No</th><th>Date</th><th>Given by</th><th>Branch</th><th>Status</th><th>Total</th><th>Balance</th></tr></thead>
+    <thead><tr><th>Job No</th><th>Date</th><th>Given by</th><th>Status</th><th>Total</th><th>Balance</th></tr></thead>
     <tbody>
     <?php foreach ($orders as $o): ?>
       <tr>
@@ -61,7 +61,6 @@
           <?= e($o['contact_name'] ?: '—') ?>
           <?php if (!empty($o['contact_phone'])): ?><div class="text-muted"><?= e($o['contact_phone']) ?></div><?php endif; ?>
         </td>
-        <td data-label="Branch"><?= e($o['branch_name']) ?></td>
         <td data-label="Status"><span class="badge bg-<?= e(Status::color((string)$o['status'])) ?>"><?= e(Status::label((string)$o['status'])) ?></span></td>
         <td data-label="Total"><?= e(fmt_money($o['total'])) ?></td>
         <td data-label="Balance" class="<?= (float)$o['balance_amount'] > 0 ? 'text-danger' : 'text-success' ?>"><?= e(fmt_money($o['balance_amount'])) ?></td>

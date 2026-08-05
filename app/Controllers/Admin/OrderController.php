@@ -124,8 +124,8 @@ class OrderController extends Controller
     public function store(): void
     {
         Acl::require('order.create');
-        $branchId = (int)($_POST['branch_id'] ?? 0);
-        Acl::requireBranch($branchId);
+        // Single shop: every order belongs to the one Main Branch, whatever was posted.
+        $branchId = Acl::mainBranchId();
 
         $itemsRaw = json_decode((string)($_POST['items_json'] ?? '[]'), true);
         if (!is_array($itemsRaw) || count($itemsRaw) === 0) {
@@ -623,9 +623,6 @@ class OrderController extends Controller
         if (!$order) {
             abort(404, 'Order not found.');
         }
-        if (!Acl::can('order.view_all')) {
-            Acl::requireBranch((int)$order['branch_id']);
-        }
-        return $order;
+        return $order;   // single shop — nothing to scope an order to
     }
 }

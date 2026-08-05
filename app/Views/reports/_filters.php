@@ -1,4 +1,4 @@
-<?php /** Shared report filter bar. Expects: $branches, $selectedBranch; optional $extraFilters html. */ ?>
+<?php /** Shared report filter bar. Expects: optional $extraFilters html. Single shop — no branch picker. */ ?>
 <form method="get" class="row g-2 mb-3 no-print">
   <div class="col-6 col-md-2">
     <select name="range" class="form-select form-select-sm" onchange="document.getElementById('customRange').style.display = this.value==='custom' ? '' : 'none'">
@@ -16,16 +16,6 @@
       <input type="date" name="to" value="<?= e($_GET['to'] ?? '') ?>" class="form-control">
     </div>
   </div>
-  <?php if (isset($branches) && count($branches) > 1): ?>
-  <div class="col-6 col-md-2">
-    <select name="branch_id" class="form-select form-select-sm">
-      <option value="">All branches</option>
-      <?php foreach ($branches as $b): ?>
-        <option value="<?= (int)$b['id'] ?>" <?= ($selectedBranch ?? null) === (int)$b['id'] ? 'selected' : '' ?>><?= e($b['name']) ?></option>
-      <?php endforeach; ?>
-    </select>
-  </div>
-  <?php endif; ?>
   <?= $extraFilters ?? '' ?>
   <div class="col-6 col-md-3 d-flex gap-1">
     <button class="btn btn-outline-primary btn-sm">Apply</button>

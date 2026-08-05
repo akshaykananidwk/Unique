@@ -14,7 +14,7 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
       <?php if ((int)$order['needs_review']): ?><span class="badge bg-info">New — needs review</span><?php endif; ?>
       <?php if ($overdue): ?><span class="badge bg-danger">OVERDUE</span><?php endif; ?>
     </h4>
-    <small class="text-muted"><?= e($branch['name']) ?> · <?= e(fmt_date($order['order_date'], true)) ?> ·
+    <small class="text-muted"><?= e(fmt_date($order['order_date'], true)) ?> ·
       Due <span class="<?= $overdue ? 'text-overdue fw-bold' : '' ?>"><?= e(fmt_date($order['due_date'], true)) ?></span></small>
   </div>
   <div class="btn-group">

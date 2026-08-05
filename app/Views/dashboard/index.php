@@ -1,16 +1,7 @@
 <?php use App\Models\Status; $title = 'Dashboard'; ?>
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
   <h4 class="mb-0">Dashboard</h4>
-  <?php if (false && count($branches) > 1): // single shop — no branch selector ?>
-  <form method="get" class="d-flex gap-2">
-    <select name="branch_id" class="form-select form-select-sm" onchange="this.form.submit()">
-      <option value="">All Branches</option>
-      <?php foreach ($branches as $b): ?>
-        <option value="<?= (int)$b['id'] ?>" <?= $selectedBranch === (int)$b['id'] ? 'selected' : '' ?>><?= e($b['name']) ?></option>
-      <?php endforeach; ?>
-    </select>
-  </form>
-  <?php endif; ?>
+
 </div>
 
 <div class="row g-2 mb-4">
@@ -165,12 +156,7 @@
   </div>
 </div>
 
-<?php if (false && $branchComparison): // single shop — nothing to compare ?>
-<div class="card mb-4"><div class="card-body">
-  <h6>Branch comparison — this month</h6>
-  <canvas id="branchChart" height="90"></canvas>
-</div></div>
-<?php endif; ?>
+
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -187,13 +173,6 @@ document.addEventListener('DOMContentLoaded', function () {
     data: { labels: stages.map(r => r.s), datasets: [{ data: stages.map(r => r.c), backgroundColor: '#6ea8fe' }] },
     options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { precision: 0 } } } }
   });
-  <?php if (false && $branchComparison): // single shop — nothing to compare ?>
-  const branches = <?= json_encode(array_map(fn($r) => ['n' => $r['name'], 'v' => (float)$r['value']], $branchComparison)) ?>;
-  new Chart(document.getElementById('branchChart'), {
-    type: 'bar',
-    data: { labels: branches.map(r => r.n), datasets: [{ label: 'Value', data: branches.map(r => r.v), backgroundColor: '#75b798' }] },
-    options: { plugins: { legend: { display: false } } }
-  });
-  <?php endif; ?>
+
 });
 </script>

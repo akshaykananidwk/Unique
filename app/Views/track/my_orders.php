@@ -33,7 +33,7 @@ $done = array_filter($orders, fn($o) => $o['status'] === 'completed');
           <span class="badge bg-<?= e($color) ?> align-middle"><?= e(Status::label((string)$o['status'])) ?></span>
           <?php if ($o['is_overdue']): ?><span class="badge bg-danger align-middle">Delayed</span><?php endif; ?>
         </div>
-        <div class="small text-muted">Ordered <?= e(fmt_date($o['order_date'], true)) ?> · <?= e($o['branch_name']) ?></div>
+        <div class="small text-muted">Ordered <?= e(fmt_date($o['order_date'], true)) ?></div>
       </div>
       <div class="text-end small">
         <?php if ($o['due_date'] && !in_array($o['status'], ['completed', 'cancelled'], true)): ?>

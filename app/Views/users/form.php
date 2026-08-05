@@ -15,23 +15,6 @@
           <option value="<?= (int)$r['id'] ?>" data-slug="<?= e($r['slug']) ?>" <?= (int)($staff['role_id'] ?? 0) === (int)$r['id'] ? 'selected' : '' ?>><?= e($r['name']) ?></option>
         <?php endforeach; ?>
       </select></div>
-    <div class="col-md-4"><label class="form-label">Primary Branch</label>
-      <select name="primary_branch_id" class="form-select">
-        <option value="">— None —</option>
-        <?php foreach ($branches as $b): ?>
-          <option value="<?= (int)$b['id'] ?>" <?= (int)($staff['primary_branch_id'] ?? 0) === (int)$b['id'] ? 'selected' : '' ?>><?= e($b['name']) ?></option>
-        <?php endforeach; ?>
-      </select></div>
-    <div class="col-md-4"><label class="form-label">Extra branches (multi-branch access)</label>
-      <div class="d-flex flex-wrap gap-2 pt-1">
-        <?php foreach ($branches as $b): ?>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="branch_ids[]" value="<?= (int)$b['id'] ?>"
-                 id="b<?= (int)$b['id'] ?>" <?= in_array((int)$b['id'], $userBranches, true) ? 'checked' : '' ?>>
-          <label class="form-check-label small" for="b<?= (int)$b['id'] ?>"><?= e($b['name']) ?></label>
-        </div>
-        <?php endforeach; ?>
-      </div></div>
     <div class="col-md-4"><label class="form-label">Password <?= $staff ? '<small class="text-muted">(leave blank to keep)</small>' : '* (min 8 chars)' ?></label>
       <input type="password" name="password" class="form-control" minlength="8" <?= $staff ? '' : 'required' ?> autocomplete="new-password" id="pwField">
       <div class="progress mt-1" style="height:5px"><div class="progress-bar" id="pwMeter" style="width:0%"></div></div></div>

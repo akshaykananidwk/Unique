@@ -56,53 +56,38 @@ class Acl
     }
 
     /** Branch ids the user may act in (all for super admin / all-branch viewers). */
+    /**
+     * This is a single shop. Branches were a chain feature and are gone from every screen —
+     * one Main Branch is all there is, so these helpers simply answer "yes" and stay in
+     * place because orders, payments and job numbers still hang off branch_id.
+     */
     public static function branchIds(): array
     {
-        $user = Auth::user();
-        if (!$user) {
-            return [];
-        }
-        if ($user['role_slug'] === 'super_admin' || self::can('order.view_all')) {
-            return array_map('intval', array_column(
-                DB::all('SELECT id FROM `' . tbl('branches') . '` WHERE is_active = 1'),
-                'id'
-            ));
-        }
-        if (isset($_SESSION['acl_branches']) && ($_SESSION['acl_user_id'] ?? 0) === (int)$user['id']) {
-            return $_SESSION['acl_branches'];
-        }
-        $ids = array_map('intval', array_column(
-            DB::all('SELECT branch_id FROM `' . tbl('user_branches') . '` WHERE user_id = ?', [(int)$user['id']]),
-            'branch_id'
+        return array_map('intval', array_column(
+            DB::all('SELECT id FROM `' . tbl('branches') . '` WHERE is_active = 1'),
+            'id'
         ));
-        if ($user['primary_branch_id'] && !in_array((int)$user['primary_branch_id'], $ids, true)) {
-            $ids[] = (int)$user['primary_branch_id'];
-        }
-        $_SESSION['acl_branches'] = $ids;
-        $_SESSION['acl_user_id'] = (int)$user['id'];
-        return $ids;
+    }
+
+    /** The one active branch every new record belongs to. */
+    public static function mainBranchId(): int
+    {
+        return (int)DB::val('SELECT id FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order, id LIMIT 1');
     }
 
     public static function canAccessBranch(int $branchId): bool
     {
-        return in_array($branchId, self::branchIds(), true);
+        return true;
     }
 
     public static function requireBranch(int $branchId): void
     {
-        if (!self::canAccessBranch($branchId)) {
-            abort(403, 'You do not have access to this branch.');
-        }
+        // Nothing to check with a single branch.
     }
 
-    /** SQL fragment + params limiting a query to accessible branches. */
+    /** SQL fragment + params limiting a query to accessible branches. Always everything now. */
     public static function branchFilter(string $column): array
     {
-        $ids = self::branchIds();
-        if (!$ids) {
-            return ['1=0', []];
-        }
-        $marks = implode(',', array_fill(0, count($ids), '?'));
-        return ["$column IN ($marks)", $ids];
+        return ['1=1', []];
     }
 }

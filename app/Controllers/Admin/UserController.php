@@ -134,19 +134,20 @@ class UserController extends Controller
             'phone' => $phone,
             'email' => trim((string)($_POST['email'] ?? '')) ?: null,
             'role_id' => $roleId,
-            'primary_branch_id' => !empty($_POST['primary_branch_id']) ? (int)$_POST['primary_branch_id'] : null,
+            // Single shop — everyone belongs to the one Main Branch.
+            'primary_branch_id' => \App\Core\Acl::mainBranchId(),
             'designer_capacity' => $_POST['designer_capacity'] !== '' ? max(1, (int)$_POST['designer_capacity']) : null,
             'is_active' => !empty($_POST['is_active']) ? 1 : 0,
         ];
     }
 
+    /** Single shop: everyone is on the one Main Branch, so there is nothing to choose. */
     private function syncBranches(int $userId): void
     {
         DB::delete('user_branches', ['user_id' => $userId]);
-        foreach (array_map('intval', (array)($_POST['branch_ids'] ?? [])) as $branchId) {
-            if ($branchId > 0) {
-                DB::run('INSERT IGNORE INTO `' . tbl('user_branches') . '` (user_id, branch_id) VALUES (?,?)', [$userId, $branchId]);
-            }
-        }
+        DB::run(
+            'INSERT IGNORE INTO `' . tbl('user_branches') . '` (user_id, branch_id) VALUES (?,?)',
+            [$userId, \App\Core\Acl::mainBranchId()]
+        );
     }
 }

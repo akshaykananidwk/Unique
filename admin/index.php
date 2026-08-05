@@ -148,6 +148,7 @@ $router->post('/system/backups/create', 'UpdateController@createBackup');
 $router->post('/system/backups/restore', 'UpdateController@restoreBackup');
 $router->post('/system/backups/delete', 'UpdateController@deleteBackup');
 $router->get('/system/update-history', 'UpdateController@history');
+$router->post('/system/repair', 'UpdateController@repair');
 // Cron: one screen for every background task
 $router->get('/system/cron', 'CronController@index');
 $router->get('/system/cron/history', 'CronController@history');

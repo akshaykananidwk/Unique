@@ -6,6 +6,7 @@ namespace App\Controllers\Admin;
 use App\Core\Acl;
 use App\Core\Backup;
 use App\Core\DB;
+use App\Core\Hardening;
 use App\Core\Logger;
 use App\Core\Settings;
 use App\Core\Updater;
@@ -28,7 +29,8 @@ class UpdateController extends Controller
             'current_commit' => (string)Settings::get('current_commit', ''),
             'last_update_check' => (string)Settings::get('last_update_check', ''),
         ];
-        $this->render('settings/updates', compact('meta', 'settings'));
+        $checks = Hardening::report();
+        $this->render('settings/updates', compact('meta', 'settings', 'checks'));
     }
 
     public function saveSettings(): void
@@ -46,6 +48,27 @@ class UpdateController extends Controller
         Settings::set('upd_keep_backups', (string)max(1, min(30, (int)($_POST['upd_keep_backups'] ?? 5))), 'update');
         Logger::activity('update', 'settings', null, null, 'Update settings saved');
         flash('success', 'Update settings saved.');
+        redirect(admin_url('system/updates'));
+    }
+
+    /** Re-apply the protective files an update is not allowed to overwrite. */
+    public function repair(): void
+    {
+        Acl::require('update.manage');
+        $before = Hardening::report();
+        $fixed = Hardening::run();
+        if ($fixed) {
+            Logger::activity('update', 'repair', null, null, implode('; ', $fixed));
+            flash('success', 'Repaired: ' . implode('; ', $fixed));
+        } else {
+            $broken = array_filter($before, fn($c) => $c['state'] !== 'ok');
+            flash(
+                $broken ? 'danger' : 'info',
+                $broken
+                    ? implode(' ', array_column($broken, 'detail'))
+                    : 'Everything already looks correct — nothing needed repairing.'
+            );
+        }
         redirect(admin_url('system/updates'));
     }
 

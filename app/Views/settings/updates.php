@@ -38,6 +38,40 @@
     </div></div>
   </div>
   <div class="col-lg-6">
+    <?php
+    // Server checks. These cover files an update is deliberately not allowed to overwrite
+    // (anything under uploads/), so when one of them goes wrong only a repair can fix it.
+    $badChecks = array_values(array_filter($checks ?? [], fn($c) => $c['state'] !== 'ok'));
+    ?>
+    <div class="card mb-3 <?= $badChecks ? 'border-danger' : '' ?>"><div class="card-body">
+      <h6>Server checks</h6>
+      <?php foreach (($checks ?? []) as $c): ?>
+        <div class="d-flex gap-2 align-items-start mb-1">
+          <span class="badge bg-<?= $c['state'] === 'ok' ? 'success' : 'danger' ?>">
+            <i class="bi bi-<?= $c['state'] === 'ok' ? 'check-lg' : 'exclamation-triangle' ?>"></i>
+          </span>
+          <div>
+            <div class="fw-semibold"><?= e($c['label']) ?></div>
+            <div class="small text-muted"><?= e($c['detail']) ?></div>
+          </div>
+        </div>
+      <?php endforeach; ?>
+      <form method="post" action="<?= e(admin_url('system/repair')) ?>" class="mt-2">
+        <?= Csrf::field() ?>
+        <button class="btn btn-sm <?= $badChecks ? 'btn-danger' : 'btn-outline-secondary' ?>">
+          <i class="bi bi-wrench-adjustable"></i> Repair now
+        </button>
+      </form>
+      <?php if ($badChecks): ?>
+        <div class="small text-muted mt-2">
+          If Repair now cannot fix it, the file belongs to another user. In aaPanel open
+          <strong>File Manager → uploads → .htaccess</strong> and delete the line
+          <code>php_flag engine off</code> that is <em>not</em> inside an
+          <code>&lt;IfModule&gt;</code> block.
+        </div>
+      <?php endif; ?>
+    </div></div>
+
     <div class="card"><div class="card-body">
       <h6>Status</h6>
       <table class="table table-sm">

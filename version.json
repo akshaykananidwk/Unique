@@ -1,10 +1,10 @@
 {
-    "version": "1.6.0",
+    "version": "1.6.1",
     "released_at": "2026-08-07",
     "changelog": [
-        "Edit Order now has a Reference Files box. Files already on the order are shown as thumbnails, and you can add more \u2014 a photo of the sample, the customer's artwork, an old bill, anything \u2014 without creating the order again.",
-        "Remove a file with the Remove button. Nothing is actually deleted until you press Save Changes, so a mis-click is undone by simply leaving the page.",
-        "Far more file types are accepted now: photos (JPG, PNG, HEIC, TIFF, GIF, BMP, WEBP), design files (PDF, CDR, AI, PSD, EPS, INDD, DWG, DXF), documents (Word, Excel, PowerPoint, text, CSV), fonts (TTF, OTF) and bundles (ZIP, RAR, 7z, TAR).",
-        "Anything that could run as a program is still refused, and the screen tells you which file was rejected and why."
+        "The uploads repair from 1.5.1 did not actually take on the live server \u2014 it tried to overwrite uploads/.htaccess, the file belonged to another user, the write was refused, and nothing said so. Fixed properly.",
+        "The repair now tries three ways: overwrite, then chmod and overwrite, then delete and recreate. The last one needs permission on the folder rather than on the file, and PHP always has that \u2014 it is where every upload is saved.",
+        "If it still cannot be done, it now says so out loud instead of staying silent, naming the file's owner and permissions.",
+        "System \u2192 Updates has a new Server checks box: it shows whether uploaded files are being served, with a Repair now button and, if that is not enough, the exact line to delete in aaPanel."
     ]
 }

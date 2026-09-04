@@ -1,8 +1,12 @@
 {
-    "version": "2.1.1",
+    "version": "2.2.0",
     "released_at": "2026-08-07",
     "changelog": [
-        "My Jobs now matches the Orders list and the Job Board: the customer's name is the blue link at the top of every card, on the shared \"Waiting to be accepted\" board and on your own cards alike.",
-        "The job number sits just below the item name, with the phone number on your own cards."
+        "Anyone can design now. There is no special \"designer\" role any more \u2014 a designer is whoever's role has the \"Design jobs\" permission ticked on the Roles screen.",
+        "So when the design staff are busy and the owner or a manager does a job, their name appears in the designer list, the job is recorded against them, and it counts in their month.",
+        "Tick or untick the permission for a role and those people appear or disappear everywhere designers are listed \u2014 the assign dropdown, the shared board, the dashboard and the reports. Nothing else to change.",
+        "Assigning a job now counts the same as accepting one, so work handed out by a manager is counted too.",
+        "The monthly design report keeps anyone who has ever done design work, so a person whose role changes later does not vanish from last month's figures.",
+        "Manager now has design access out of the box, alongside Super Admin and Designer."
     ]
 }

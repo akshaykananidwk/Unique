@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 
 use App\Core\Acl;
 use App\Core\DB;
+use App\Models\Designers;
 use App\Core\WaEvents;
 
 class ReportController extends Controller
@@ -170,8 +171,8 @@ class ReportController extends Controller
                    WHERE oi.assigned_designer_id = u.id AND o.deleted_at IS NULL
                    AND oi.status IN ('design_pending','design_in_progress','proof_sent','change_requested')) AS open_now
 
-             FROM `" . tbl('users') . "` u JOIN `" . tbl('roles') . "` r ON r.id = u.role_id
-             WHERE u.deleted_at IS NULL AND r.slug = 'designer'
+             FROM `" . tbl('users') . "` u
+             WHERE u.deleted_at IS NULL AND " . Designers::sqlReportPool('u') . "
              ORDER BY value_handled DESC, u.name",
             [$from, $to, $from, $to, $from, $to, $from, $to, $from, $to]
         );

@@ -15,7 +15,8 @@ class DesignerController extends Controller
     {
         Acl::require('design.view');
         $designerId = (int)$this->user['id'];
-        $seeAll = $this->user['role_slug'] !== 'designer' && Acl::can('order.assign');
+        // Managers see every designer's board; everyone else sees their own work.
+        $seeAll = Acl::can('order.assign');
 
         $sql = 'SELECT oi.*, o.job_no, o.priority, o.customer_note, o.id AS order_id,
                        c.name AS customer_name, c.phone AS customer_phone
@@ -95,7 +96,7 @@ class DesignerController extends Controller
         $result = OrderService::releaseDesign(
             (int)$itemId,
             (int)$this->user['id'],
-            $this->user['role_slug'] !== 'designer' && Acl::can('order.assign')
+            Acl::can('order.assign')
         );
         flash($result['ok'] ? 'success' : 'danger',
             $result['ok'] ? 'Put back on the board for someone else.' : $result['error']);
@@ -136,8 +137,10 @@ class DesignerController extends Controller
         if (!$item) {
             abort(404, 'Job not found.');
         }
-        // Designers may only touch their own jobs; managers/admins may touch any
-        if ($this->user['role_slug'] === 'designer' && (int)$item['assigned_designer_id'] !== (int)$this->user['id']) {
+        // You work on your own jobs. Whoever can reassign work (a manager) may touch any —
+        // the rule follows the permission, not a job title, because anyone can design now.
+        $isManager = Acl::can('order.assign');
+        if (!$isManager && (int)$item['assigned_designer_id'] !== (int)$this->user['id']) {
             abort(403, 'This job is not assigned to you.');
         }
         return $item;

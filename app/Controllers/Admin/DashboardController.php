@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 
 use App\Core\Acl;
 use App\Core\DB;
+use App\Models\Designers;
 
 class DashboardController extends Controller
 {
@@ -110,10 +111,9 @@ class DashboardController extends Controller
         $designerLoad = DB::all(
             "SELECT u.name, COUNT(oi.id) AS open_jobs
              FROM `" . tbl('users') . "` u
-             JOIN `" . tbl('roles') . "` r ON r.id=u.role_id AND r.slug='designer'
              LEFT JOIN `$oit` oi ON oi.assigned_designer_id=u.id
                AND oi.status IN ('design_pending','design_in_progress','proof_sent','change_requested')
-             WHERE u.is_active=1 AND u.deleted_at IS NULL
+             WHERE u.is_active=1 AND u.deleted_at IS NULL AND " . Designers::sqlCanDesign('u') . "
              GROUP BY u.id, u.name ORDER BY open_jobs DESC");
 
         $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active=1 ORDER BY sort_order');
@@ -148,8 +148,8 @@ class DashboardController extends Controller
                 (SELECT COALESCE(SUM(oi.line_total),0) FROM `$oit` oi JOIN `$ot` o ON o.id=oi.order_id
                    WHERE oi.assigned_designer_id=u.id AND o.deleted_at IS NULL AND o.is_cancelled=0
                    AND oi.status <> 'cancelled' AND o.order_date >= ?) AS value_handled
-             FROM `" . tbl('users') . "` u JOIN `" . tbl('roles') . "` r ON r.id=u.role_id
-             WHERE u.deleted_at IS NULL AND u.is_active=1 AND r.slug='designer'
+             FROM `" . tbl('users') . "` u
+             WHERE u.deleted_at IS NULL AND u.is_active=1 AND " . Designers::sqlCanDesign('u') . "
              ORDER BY value_handled DESC LIMIT 10",
             [$monthStart, $monthStart]
         );

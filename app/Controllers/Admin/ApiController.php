@@ -6,6 +6,7 @@ namespace App\Controllers\Admin;
 use App\Core\Acl;
 use App\Core\DB;
 use App\Models\CustomerBook;
+use App\Models\Designers;
 use App\Core\View;
 use App\Models\Pricing;
 
@@ -190,16 +191,7 @@ class ApiController extends Controller
     public function designers(): void
     {
         Acl::require('order.assign');
-        $rows = DB::all(
-            'SELECT u.id, u.name, u.designer_capacity,
-                    (SELECT COUNT(*) FROM `' . tbl('order_items') . "` oi
-                     WHERE oi.assigned_designer_id = u.id
-                       AND oi.status IN ('design_pending','design_in_progress','proof_sent','change_requested')) AS open_jobs
-             FROM `" . tbl('users') . '` u
-             JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
-             WHERE r.slug = 'designer' AND u.is_active = 1 AND u.deleted_at IS NULL
-             ORDER BY u.name"
-        );
+        $rows = Designers::all();
         json_response(['ok' => true, 'designers' => $rows]);
     }
 }

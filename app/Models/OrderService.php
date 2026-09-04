@@ -839,17 +839,19 @@ class OrderService
         if (!(bool)$item['requires_design']) {
             return ['ok' => false, 'error' => 'This item does not require design.'];
         }
-        $designer = DB::get(
-            'SELECT u.* FROM `' . tbl('users') . '` u JOIN `' . tbl('roles') . '` r ON r.id = u.role_id
-             WHERE u.id = ? AND r.slug = ? AND u.is_active = 1 AND u.deleted_at IS NULL',
-            [$designerId, 'designer']
-        );
-        if (!$designer) {
-            return ['ok' => false, 'error' => 'Designer not found.'];
+        // Anyone whose role can upload proofs may be given design work — the owner covering
+        // for a busy designer is a normal Tuesday, and the job must count as theirs.
+        if (!Designers::canDesign($designerId)) {
+            return ['ok' => false, 'error' => 'That user cannot be given design work. '
+                . 'Give their role the "Upload design proofs" permission on the Roles screen first.'];
         }
+        $designer = DB::get('SELECT * FROM `' . tbl('users') . '` WHERE id = ?', [$designerId]);
         DB::update('order_items', [
             'assigned_designer_id' => $designerId,
             'designer_assigned_at' => now(),
+            // Assigned counts the same as accepted: this is the moment it became theirs.
+            'claimed_at' => now(),
+            'claimed_by_user_id' => $userId ?? $designerId,
             'updated_at' => now(),
         ], ['id' => $itemId]);
         Logger::activity('order', 'assign', 'order_item', $itemId, 'Assigned designer ' . $designer['name']);
@@ -954,10 +956,8 @@ class OrderService
                     (SELECT MAX(oi2.designer_assigned_at) FROM `' . tbl('order_items') . '` oi2
                      WHERE oi2.assigned_designer_id = u.id) AS last_assigned
              FROM `' . tbl('users') . '` u
-             JOIN `' . tbl('roles') . '` r ON r.id = u.role_id
-             WHERE r.slug = ? AND u.is_active = 1 AND u.deleted_at IS NULL
-             ORDER BY open_jobs ASC, last_assigned ASC, u.id ASC',
-            ['designer']
+             WHERE u.is_active = 1 AND u.deleted_at IS NULL AND ' . Designers::sqlCanDesign('u') . '
+             ORDER BY open_jobs ASC, last_assigned ASC, u.id ASC'
         );
         foreach ($designers as $designer) {
             $capacity = $designer['designer_capacity'] !== null ? (int)$designer['designer_capacity'] : PHP_INT_MAX;
@@ -965,6 +965,8 @@ class OrderService
                 DB::update('order_items', [
                     'assigned_designer_id' => (int)$designer['id'],
                     'designer_assigned_at' => now(),
+                    'claimed_at' => now(),
+                    'claimed_by_user_id' => (int)$designer['id'],
                     'updated_at' => now(),
                 ], ['id' => $itemId]);
                 Logger::activity('order', 'auto_assign', 'order_item', $itemId,

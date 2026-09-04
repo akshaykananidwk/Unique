@@ -9,6 +9,7 @@ use App\Core\Logger;
 use App\Core\Uploader;
 use App\Core\WaEvents;
 use App\Core\Whatsapp;
+use App\Models\Designers;
 use App\Models\OrderService;
 use App\Models\Status;
 
@@ -104,13 +105,8 @@ class OrderController extends Controller
         $categories = DB::all(
             'SELECT * FROM `' . tbl('categories') . '` WHERE is_active = 1 ORDER BY sort_order, name'
         );
-        $designers = DB::all(
-            'SELECT u.id, u.name,
-                    (SELECT COUNT(*) FROM `' . tbl('order_items') . "` oi WHERE oi.assigned_designer_id = u.id
-                     AND oi.status IN ('design_pending','design_in_progress','proof_sent','change_requested')) AS open_jobs
-             FROM `" . tbl('users') . '` u JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
-             WHERE r.slug = 'designer' AND u.is_active = 1 AND u.deleted_at IS NULL ORDER BY u.name"
-        );
+        // Anyone whose role can upload proofs counts as a designer — see App\Models\Designers.
+        $designers = Designers::all();
         $staff = DB::all(
             'SELECT id, name FROM `' . tbl('users') . '` WHERE is_active = 1 AND deleted_at IS NULL ORDER BY name'
         );
@@ -242,10 +238,7 @@ class OrderController extends Controller
         $contact = !empty($order['contact_id'])
             ? \App\Models\CustomerBook::contact((int)$order['contact_id']) : null;
         $branch = DB::get('SELECT * FROM `' . tbl('branches') . '` WHERE id = ?', [(int)$order['branch_id']]);
-        $designers = DB::all(
-            'SELECT u.id, u.name FROM `' . tbl('users') . '` u JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
-             WHERE r.slug = 'designer' AND u.is_active = 1 AND u.deleted_at IS NULL ORDER BY u.name"
-        );
+        $designers = Designers::all();
         // Who owns this order end to end.
         $people = [
             'taken_by' => $order['taken_by_user_id']
@@ -285,10 +278,7 @@ class OrderController extends Controller
             [(int)$order['id']]
         );
         $categories = DB::all('SELECT * FROM `' . tbl('categories') . '` WHERE is_active = 1 ORDER BY sort_order, name');
-        $designers = DB::all(
-            'SELECT u.id, u.name FROM `' . tbl('users') . '` u JOIN `' . tbl('roles') . "` r ON r.id = u.role_id
-             WHERE r.slug = 'designer' AND u.is_active = 1 AND u.deleted_at IS NULL ORDER BY u.name"
-        );
+        $designers = Designers::all();
         $staff = DB::all('SELECT id, name FROM `' . tbl('users') . '` WHERE is_active = 1 AND deleted_at IS NULL ORDER BY name');
         $nameSuggestions = array_column(DB::all(
             'SELECT DISTINCT item_name_snapshot AS n FROM `' . tbl('order_items') . '` ORDER BY n LIMIT 400'

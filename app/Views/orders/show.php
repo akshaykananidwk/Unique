@@ -180,10 +180,35 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
         <span class="text-muted">Accepted by</span>
         <strong><?= e($people['accepted_by'] ?? '—') ?></strong>
       </div>
-      <div class="d-flex justify-content-between py-1 small">
+      <div class="d-flex justify-content-between border-bottom py-1 small">
         <span class="text-muted">Designing</span>
         <strong><?= $people['designers'] ? e(implode(', ', $people['designers'])) : '— not assigned —' ?></strong>
       </div>
+      <?php // The three names the bill prints. Prepared By follows the designer unless it
+      // is set by hand — someone else may have finished the job. ?>
+      <div class="d-flex justify-content-between border-bottom py-1 small">
+        <span class="text-muted">Prepared by <span class="text-muted">(on the bill)</span></span>
+        <strong><?= e($credits['prepared_by'] ?: '—') ?></strong>
+      </div>
+      <div class="d-flex justify-content-between py-1 small">
+        <span class="text-muted">Prepaid by</span>
+        <strong><?= e($credits['prepaid_by'] ?: '—') ?><?= $credits['advance'] > 0 ? ' · ' . e(fmt_money($credits['advance'])) : '' ?></strong>
+      </div>
+      <?php if (Acl::can('order.edit')): ?>
+      <form method="post" action="<?= e(admin_url('orders/' . $order['id'] . '/prepared-by')) ?>" class="mt-2">
+        <?= Csrf::field() ?>
+        <div class="input-group input-group-sm">
+          <select name="prepared_by_user_id" class="form-select">
+            <option value="">— follow the designer —</option>
+            <?php foreach ($designers as $d): ?>
+              <option value="<?= (int)$d['id'] ?>" <?= (int)($order['prepared_by_user_id'] ?? 0) === (int)$d['id'] ? 'selected' : '' ?>><?= e($d['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <button class="btn btn-outline-primary">Set</button>
+        </div>
+        <div class="form-text">Who made this job, for the bill.</div>
+      </form>
+      <?php endif; ?>
     </div></div>
 
     <!-- Money -->

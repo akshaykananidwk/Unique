@@ -59,6 +59,7 @@ $router->post('/order-items/{id}/status', 'OrderController@itemStatus');
 $router->post('/order-items/{id}/assign', 'OrderController@assignDesigner');
 $router->get('/orders/{id}/job-card', 'OrderController@jobCard');
 $router->post('/orders/{id}/whatsapp', 'OrderController@sendWhatsapp');
+$router->post('/orders/{id}/prepared-by', 'OrderController@setPreparedBy');
 
 // Customers
 $router->get('/customers', 'CustomerController@index');
@@ -105,6 +106,7 @@ $router->get('/cashbook', 'PaymentController@cashbook');
 $router->get('/reports', 'ReportController@index');
 $router->get('/reports/users', 'ReportController@users');
 $router->get('/reports/designers', 'ReportController@designers');
+$router->get('/reports/work', 'ReportController@work');
 $router->get('/reports/staff', 'ReportController@staff');
 $router->get('/reports/sales', 'ReportController@sales');
 $router->get('/reports/outstanding', 'ReportController@outstanding');

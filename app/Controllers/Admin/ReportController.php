@@ -6,6 +6,7 @@ namespace App\Controllers\Admin;
 use App\Core\Acl;
 use App\Core\DB;
 use App\Models\Designers;
+use App\Models\Status;
 use App\Core\WaEvents;
 
 class ReportController extends Controller
@@ -522,6 +523,78 @@ class ReportController extends Controller
             default => [date('Y-m-01'), $today],
         };
         return [$from . ' 00:00:00', $to . ' 23:59:59'];
+    }
+
+    /**
+     * Work Done — one row per job line: who took the order, who made it, who took the money.
+     *
+     * This is the "kone kaam karyu chhe" question in a form that opens in Excel, so a month
+     * can be sorted and totalled by whoever did the work.
+     */
+    public function work(): void
+    {
+        Acl::require('report.work');
+        [$from, $to] = $this->dateRange();
+        $ot = tbl('orders');
+        $oit = tbl('order_items');
+        $ut = tbl('users');
+
+        $rows = DB::all(
+            "SELECT o.job_no, o.order_date, o.status AS order_status,
+                    c.name AS customer, cc.name AS contact_person, cc.phone AS contact_phone,
+                    oi.item_name_snapshot AS item, oi.category_name_snapshot AS category,
+                    oi.qty, oi.rate, oi.line_total, oi.status AS item_status,
+                    oi.claimed_at,
+                    taken.name  AS order_by,
+                    accepted.name AS accepted_by,
+                    COALESCE(prep.name, designer.name) AS prepared_by,
+                    designer.name AS designer,
+                    (SELECT u2.name FROM `" . tbl('payments') . "` p
+                     LEFT JOIN `$ut` u2 ON u2.id = p.received_by_user_id
+                     WHERE p.order_id = o.id AND p.deleted_at IS NULL AND p.type = 'advance'
+                     ORDER BY p.paid_at LIMIT 1) AS prepaid_by
+             FROM `$oit` oi
+             JOIN `$ot` o ON o.id = oi.order_id
+             JOIN `" . tbl('customers') . "` c ON c.id = o.customer_id
+             LEFT JOIN `" . tbl('customer_contacts') . "` cc ON cc.id = o.contact_id
+             LEFT JOIN `$ut` taken     ON taken.id = o.taken_by_user_id
+             LEFT JOIN `$ut` accepted  ON accepted.id = o.accepted_by_user_id
+             LEFT JOIN `$ut` prep      ON prep.id = o.prepared_by_user_id
+             LEFT JOIN `$ut` designer  ON designer.id = oi.assigned_designer_id
+             WHERE o.deleted_at IS NULL AND o.is_cancelled = 0
+               AND o.order_date BETWEEN ? AND ?
+             ORDER BY o.order_date DESC, o.job_no, oi.sort_order",
+            [$from, $to]
+        );
+
+        if (($_GET['export'] ?? '') === 'csv') {
+            $this->csv(
+                'work-done',
+                ['Job No', 'Date', 'Customer', 'Contact Person', 'Contact Phone', 'Category', 'Item',
+                 'Qty', 'Rate', 'Amount', 'Order By', 'Accepted By', 'Prepared By', 'Designer',
+                 'Prepaid By', 'Job Status'],
+                array_map(fn($r) => [
+                    $r['job_no'], fmt_date($r['order_date']), $r['customer'], $r['contact_person'],
+                    $r['contact_phone'], $r['category'], $r['item'],
+                    rtrim(rtrim((string)$r['qty'], '0'), '.'), $r['rate'], $r['line_total'],
+                    $r['order_by'], $r['accepted_by'], $r['prepared_by'], $r['designer'],
+                    $r['prepaid_by'], Status::label((string)$r['item_status']),
+                ], $rows)
+            );
+        }
+
+        // Totals per person, so "how much did each of them do" is answered on screen too.
+        $byPerson = [];
+        foreach ($rows as $r) {
+            foreach (['order_by' => 'Orders taken', 'prepared_by' => 'Jobs prepared'] as $field => $_) {
+                $who = $r[$field] ?: '—';
+                $byPerson[$who][$field] = ($byPerson[$who][$field] ?? 0) + 1;
+                $byPerson[$who][$field . '_value'] = ($byPerson[$who][$field . '_value'] ?? 0) + (float)$r['line_total'];
+            }
+        }
+        ksort($byPerson);
+
+        $this->render('reports/work', compact('rows', 'byPerson', 'from', 'to'));
     }
 
     private function csv(string $name, array $headers, array $rows): never

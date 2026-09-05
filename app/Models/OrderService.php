@@ -489,22 +489,46 @@ class OrderService
         }
 
         // --- the number is already in the book ---------------------------------------
-        $contact = CustomerBook::findByPhone($phone);
+        // It may be under more than one firm: one man, two firms, one mobile. When it is,
+        // the order has to say which firm the bill belongs to.
+        $chosen = (int)($c['id'] ?? 0);
+        $matches = CustomerBook::findAllByPhone($phone);
+
+        // "Another firm on this number" — the counter said so explicitly, so skip the
+        // matching entirely and open a second account.
+        $newFirm = !empty($c['new_firm']) && trim((string)($c['name'] ?? '')) !== '';
+        if ($newFirm && $chosen <= 0) {
+            $matches = [];
+        }
+
+        if (count($matches) > 1 && $chosen <= 0) {
+            $names = implode(' / ', array_column($matches, 'customer_name'));
+            throw new \RuntimeException(
+                'This number is used by ' . count($matches) . ' customers (' . $names
+                . '). Pick which one the bill is for.'
+            );
+        }
+        $contact = $matches ? CustomerBook::findByPhone($phone, $chosen > 0 ? $chosen : null) : null;
+
+        // A known number with a DIFFERENT firm name typed against it is ambiguous: it is
+        // either the second firm of the same man, or a slip. Never guess — billing the
+        // wrong firm is worse than asking.
+        if ($contact && $chosen <= 0) {
+            $typed = trim((string)($c['name'] ?? ''));
+            if ($typed !== '' && mb_strtolower($typed) !== mb_strtolower((string)$contact['customer_name'])) {
+                throw new \RuntimeException(
+                    'This number is already under "' . $contact['customer_name'] . '". If "' . $typed
+                    . '" is a second firm on the same number, tick "Another firm on this number";'
+                    . ' otherwise leave the name blank to bill ' . $contact['customer_name'] . '.'
+                );
+            }
+        }
+
         if ($contact) {
             if ((int)$contact['is_blocked'] === 1) {
                 throw new \RuntimeException('This customer is blocked. Please contact the manager.');
             }
             $customerId = (int)$contact['customer_id'];
-
-            // The number decides the account, so if a different one was picked say so rather
-            // than quietly filing the job under the wrong customer.
-            $chosen = (int)($c['id'] ?? 0);
-            if ($chosen > 0 && $chosen !== $customerId) {
-                throw new \RuntimeException(
-                    'The number ' . $phone . ' already belongs to ' . $contact['customer_name']
-                    . ' (' . $contact['name'] . '). Move it from the customer screen first, or use a different number.'
-                );
-            }
 
             // Fill in a name only where there is not a real one yet — a placeholder contact
             // carries the account's own name. Renaming a person is done on the customer
@@ -518,8 +542,10 @@ class OrderService
             return [$customerId, (int)$contact['id']];
         }
 
-        // --- an existing company was picked: this is simply a new person there ---------
-        $chosenId = (int)($c['id'] ?? 0);
+        // --- an existing firm was picked: add this number there ------------------------
+        // Reached either because the number is brand new, or because it is known under a
+        // DIFFERENT firm and this order is for the other one. Both are normal.
+        $chosenId = $chosen;
         if ($chosenId > 0) {
             $customer = DB::get(
                 'SELECT * FROM `' . tbl('customers') . '` WHERE id = ? AND deleted_at IS NULL',
@@ -576,9 +602,12 @@ class OrderService
         if (!$existing) {
             return;
         }
+        // Only ever FILL BLANKS. Never overwrite what is already there, and never touch the
+        // name: a different name typed against a known number means a second firm on that
+        // number, not a rename, and renaming would quietly move every past order with it.
         $updates = [];
-        foreach (['name', 'address', 'gstin', 'email'] as $field) {
-            if (!empty($c[$field]) && (string)$c[$field] !== (string)$existing[$field]) {
+        foreach (['address', 'gstin', 'email'] as $field) {
+            if (!empty($c[$field]) && trim((string)$existing[$field]) === '') {
                 $updates[$field] = trim((string)$c[$field]);
             }
         }

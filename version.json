@@ -1,12 +1,12 @@
 {
-    "version": "2.2.0",
+    "version": "2.3.0",
     "released_at": "2026-08-07",
     "changelog": [
-        "Anyone can design now. There is no special \"designer\" role any more \u2014 a designer is whoever's role has the \"Design jobs\" permission ticked on the Roles screen.",
-        "So when the design staff are busy and the owner or a manager does a job, their name appears in the designer list, the job is recorded against them, and it counts in their month.",
-        "Tick or untick the permission for a role and those people appear or disappear everywhere designers are listed \u2014 the assign dropdown, the shared board, the dashboard and the reports. Nothing else to change.",
-        "Assigning a job now counts the same as accepting one, so work handed out by a manager is counted too.",
-        "The monthly design report keeps anyone who has ever done design work, so a person whose role changes later does not vanish from last month's figures.",
-        "Manager now has design access out of the box, alongside Super Admin and Designer."
+        "One man, two firms, one mobile. The same number can now be listed under two customers \u2014 type it on New Order and it asks which firm the bill is for.",
+        "Opening the second firm is deliberate: tick \"Another firm on this number\". If a different name is typed against a known number without ticking it, the order is refused and explains what to do, rather than guessing.",
+        "The order screen and job card now print all three names: Order By (who took it), Prepared By (who made it) and Prepaid By (who took the advance) \u2014 plus the Contact Person.",
+        "Prepared By follows the designer on its own, and can be set by hand on the order screen when someone else finished the job.",
+        "New report \u2014 Reports \u2192 Work Done: every job with the customer, contact person, item, amount and all three names, with an Excel export button.",
+        "Fixed: reusing a known number with a different name typed in used to RENAME the existing customer, which would have moved all their past orders to the new name."
     ]
 }

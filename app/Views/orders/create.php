@@ -50,13 +50,26 @@
         <div class="form-text">Who accepted this order.</div>
       </div>
     </div>
+    <?php // One man, two firms, one mobile: when the number is under more than one customer
+    // this is where he says which firm the bill is for. Filled in by the lookup. ?>
+    <div id="firmPicker"></div>
+
     <?php // Keep the new-customer row open if it was being filled in when the save failed.
     $reopenNew = old('customer_name') !== '' || (old('customer_phone') !== '' && old('customer_id') === ''); ?>
     <div id="newCustomerFields" class="row g-2 mt-2 <?= $reopenNew ? '' : 'd-none' ?>">
       <div class="col-12">
-        <div class="alert alert-info py-2 small mb-2">
+        <div class="alert alert-info py-2 small mb-2" id="newCustomerHint">
           This number is new. Either attach it to a customer you already have — handy when a
           company gives work through several people — or fill in a new one below.
+        </div>
+        <?php // One man, two firms, one mobile: this is how he opens the second firm without
+        // the system thinking he mistyped the first one's name. ?>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" name="new_firm" value="1" id="newFirm"
+                 <?= old('new_firm') ? 'checked' : '' ?>>
+          <label class="form-check-label small" for="newFirm">
+            <strong>Another firm on this number</strong> — same person, a different firm to bill
+          </label>
         </div>
         <label class="form-label">Attach to an existing customer</label>
         <div class="position-relative">

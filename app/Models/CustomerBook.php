@@ -18,20 +18,52 @@ use App\Core\DB;
  */
 class CustomerBook
 {
-    /** Find the contact who owns this number, with their company attached. */
-    public static function findByPhone(?string $rawPhone): ?array
+    /**
+     * Every firm this number appears under.
+     *
+     * One man often runs two firms and phones about both from the same mobile, so a number
+     * is not unique any more — it is unique per customer. Callers that need one answer say
+     * which firm they mean, or take the only match when there is only one.
+     *
+     * @return array<int,array<string,mixed>> newest first is not useful here, so oldest
+     *         first: the firm he dealt with first is the one he usually means.
+     */
+    public static function findAllByPhone(?string $rawPhone): array
     {
         $phone = local_phone((string)$rawPhone);
         if (!$phone) {
-            return null;
+            return [];
         }
-        return DB::get(
+        return DB::all(
             'SELECT cc.*, c.name AS customer_name, c.address, c.gstin, c.is_blocked, c.customer_type
              FROM `' . tbl('customer_contacts') . '` cc
              JOIN `' . tbl('customers') . '` c ON c.id = cc.customer_id
-             WHERE cc.phone = ? AND cc.deleted_at IS NULL AND c.deleted_at IS NULL',
+             WHERE cc.phone = ? AND cc.deleted_at IS NULL AND c.deleted_at IS NULL
+             ORDER BY cc.id',
             [$phone]
         );
+    }
+
+    /**
+     * The one contact meant by this number.
+     *
+     * @param int|null $customerId which firm, when the number is under more than one
+     */
+    public static function findByPhone(?string $rawPhone, ?int $customerId = null): ?array
+    {
+        $matches = self::findAllByPhone($rawPhone);
+        if (!$matches) {
+            return null;
+        }
+        if ($customerId) {
+            foreach ($matches as $m) {
+                if ((int)$m['customer_id'] === $customerId) {
+                    return $m;
+                }
+            }
+            return null;   // the number is known, but not under the firm that was asked for
+        }
+        return count($matches) === 1 ? $matches[0] : null;
     }
 
     /** @return array<int,array<string,mixed>> everyone in this account, primary first */
@@ -64,17 +96,14 @@ class CustomerBook
         if (!$phone) {
             throw new \RuntimeException('A valid 10-digit mobile number is required for a contact.');
         }
-        $taken = self::findByPhone($phone);
-        if ($taken) {
+        // The same number under another firm is fine and expected — one man, two firms.
+        // Twice inside the SAME firm is not.
+        foreach (self::findAllByPhone($phone) as $taken) {
             if ((int)$taken['customer_id'] === $customerId) {
-                // Already on this account — say so rather than pretending a row was added.
                 throw new \RuntimeException(
                     $phone . ' is already listed here, under ' . $taken['name'] . '.'
                 );
             }
-            throw new \RuntimeException(
-                'The number ' . $phone . ' is already listed under ' . $taken['customer_name'] . '.'
-            );
         }
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') {
@@ -113,11 +142,12 @@ class CustomerBook
                 throw new \RuntimeException('A valid 10-digit mobile number is required.');
             }
             if ($phone !== (string)$contact['phone']) {
-                $taken = self::findByPhone($phone);
-                if ($taken) {
-                    throw new \RuntimeException(
-                        'The number ' . $phone . ' is already listed under ' . $taken['customer_name'] . '.'
-                    );
+                foreach (self::findAllByPhone($phone) as $taken) {
+                    if ((int)$taken['customer_id'] === (int)$contact['customer_id']) {
+                        throw new \RuntimeException(
+                            $phone . ' is already listed here, under ' . $taken['name'] . '.'
+                        );
+                    }
                 }
                 $update['phone'] = $phone;
             }

@@ -136,7 +136,7 @@ class OrderController extends Controller
         // this is a genuinely new one and no existing customer was picked.
         if (empty($_POST['customer_id'])
             && trim((string)($_POST['customer_name'] ?? '')) === ''
-            && !\App\Models\CustomerBook::findByPhone((string)($_POST['customer_phone'] ?? ''))) {
+            && !\App\Models\CustomerBook::findAllByPhone((string)($_POST['customer_phone'] ?? ''))) {
             $this->backToCreate('This is a new customer — enter the customer or company name.');
         }
 
@@ -154,6 +154,8 @@ class OrderController extends Controller
                     'phone' => $_POST['customer_phone'] ?? '',
                     'name' => $_POST['customer_name'] ?? '',
                     'contact_name' => $_POST['contact_name'] ?? '',
+                    // "Another firm on this number" — open a second account deliberately.
+                    'new_firm' => !empty($_POST['new_firm']),
                     'whatsapp' => $_POST['customer_whatsapp'] ?? '',
                     'address' => $_POST['customer_address'] ?? '',
                     'gstin' => $_POST['customer_gstin'] ?? '',
@@ -183,6 +185,73 @@ class OrderController extends Controller
 
         flash('success', 'Order ' . $result['job_no'] . ' saved.');
         redirect(admin_url('orders/' . $result['order_id'] . '?print=1'));
+    }
+
+    /** Name who made this job, for the bill. Blank means "follow the designer". */
+    public function setPreparedBy(string $id): void
+    {
+        Acl::require('order.edit');
+        $order = $this->findOrder((int)$id);
+        $userId = (int)($_POST['prepared_by_user_id'] ?? 0);
+        if ($userId > 0 && !Designers::canDesign($userId)) {
+            flash('danger', 'That user cannot be credited with design work.');
+            redirect(admin_url('orders/' . $id));
+        }
+        DB::update('orders', [
+            'prepared_by_user_id' => $userId > 0 ? $userId : null,
+            'updated_at' => now(),
+        ], ['id' => (int)$id]);
+        Logger::activity('order', 'prepared_by', 'order', (int)$id,
+            'Prepared By set on ' . $order['job_no']);
+        flash('success', $userId > 0 ? 'Prepared By set.' : 'Prepared By now follows the designer.');
+        redirect(admin_url('orders/' . $id));
+    }
+
+    /**
+     * The three names a bill carries.
+     *
+     *   Order By    — who wrote the order up at the counter
+     *   Prepared By — who actually made the job (the designer, unless someone is named)
+     *   Prepaid By  — who took the advance at the counter
+     *
+     * @return array{order_by:?string,prepared_by:?string,prepaid_by:?string,advance:float}
+     */
+    private function orderCredits(int $orderId, array $order): array
+    {
+        $name = static function ($userId): ?string {
+            $userId = (int)$userId;
+            return $userId > 0
+                ? (DB::val('SELECT name FROM `' . tbl('users') . '` WHERE id = ?', [$userId]) ?: null)
+                : null;
+        };
+
+        // Whoever is named on the order wins; otherwise fall back to the designer who did it.
+        $preparedBy = $name($order['prepared_by_user_id'] ?? 0);
+        if ($preparedBy === null) {
+            $preparedBy = DB::val(
+                'SELECT u.name FROM `' . tbl('order_items') . '` oi
+                 JOIN `' . tbl('users') . '` u ON u.id = oi.assigned_designer_id
+                 WHERE oi.order_id = ? ORDER BY oi.sort_order, oi.id LIMIT 1',
+                [$orderId]
+            ) ?: null;
+        }
+
+        // The advance is the money taken up front, so that is the receipt this names.
+        $advance = DB::get(
+            'SELECT p.amount, u.name FROM `' . tbl('payments') . '` p
+             LEFT JOIN `' . tbl('users') . "` u ON u.id = p.received_by_user_id
+             WHERE p.order_id = ? AND p.deleted_at IS NULL AND p.type = 'advance'
+             ORDER BY p.paid_at LIMIT 1",
+            [$orderId]
+        );
+
+        return [
+            'order_by' => $name($order['taken_by_user_id'] ?? 0),
+            'accepted_by' => $name($order['accepted_by_user_id'] ?? 0),
+            'prepared_by' => $preparedBy,
+            'prepaid_by' => $advance['name'] ?? null,
+            'advance' => (float)($advance['amount'] ?? 0),
+        ];
     }
 
     /**
@@ -252,7 +321,8 @@ class OrderController extends Controller
                 [(int)$id]
             ), 'name'),
         ];
-        $this->render('orders/show', compact('order', 'items', 'payments', 'history', 'attachments', 'customer', 'contact', 'branch', 'designers', 'people'));
+        $credits = $this->orderCredits((int)$id, $order);
+        $this->render('orders/show', compact('order', 'items', 'payments', 'history', 'attachments', 'customer', 'contact', 'branch', 'designers', 'people', 'credits'));
     }
 
     public function edit(string $id): void
@@ -501,7 +571,14 @@ class OrderController extends Controller
         $customer = DB::get('SELECT * FROM `' . tbl('customers') . '` WHERE id = ?', [(int)$order['customer_id']]);
         $branch = DB::get('SELECT * FROM `' . tbl('branches') . '` WHERE id = ?', [(int)$order['branch_id']]);
         $format = ($_GET['format'] ?? 'a5') === 'thermal' ? 'thermal' : 'a5';
-        \App\Core\View::render('orders/job_card', compact('order', 'items', 'customer', 'branch', 'format'), 'layouts/print');
+        $credits = $this->orderCredits((int)$id, $order);
+        $contact = !empty($order['contact_id'])
+            ? \App\Models\CustomerBook::contact((int)$order['contact_id']) : null;
+        \App\Core\View::render(
+            'orders/job_card',
+            compact('order', 'items', 'customer', 'branch', 'format', 'credits', 'contact'),
+            'layouts/print'
+        );
     }
 
     /** Quick action: send tracking link or a custom text to the customer. */

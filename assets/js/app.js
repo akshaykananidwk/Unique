@@ -136,27 +136,88 @@
     if (chosen) chosen.innerHTML = '';
   };
 
+  /** Fill the form in from one firm's match. */
+  const applyMatch = m => {
+    state.customerId = m.customer.id;
+    setVal('customer_id', m.customer.id);
+    setVal('customer_name', m.customer.name);
+    setVal('customer_address', m.customer.address || '');
+    setVal('customer_gstin', m.customer.gstin || '');
+    if (m.contact && m.contact.name) setVal('contact_name', m.contact.name);
+    const person = m.contact ? esc(m.contact.name) : '';
+    customerBadge.innerHTML = m.customer.is_blocked == 1
+      ? '<span class="badge bg-danger">BLOCKED customer</span>'
+      : '<span class="badge bg-primary">' + esc(m.customer.name) + '</span> ' +
+        (person ? '<span class="badge bg-secondary">' + person + '</span> ' : '') +
+        (m.contact_count > 1 ? '<span class="badge bg-light text-dark">' + m.contact_count + ' contacts</span> ' : '') +
+        '<span class="badge bg-success">' + m.order_count + ' past orders</span> ' +
+        (m.outstanding > 0 ? '<span class="badge bg-warning text-dark">Outstanding ' + money(m.outstanding) + '</span>' : '') +
+        ' <button type="button" class="btn btn-sm btn-link p-0 align-baseline" id="firmChange">change firm</button>' +
+        ' <button type="button" class="btn btn-sm btn-link p-0 align-baseline" id="anotherFirm">+ another firm</button>';
+    newCustomerFields.classList.add('d-none');
+    const box = document.getElementById('firmPicker');
+    if (box) box.innerHTML = '';
+  };
+
+  /** Ask which firm the bill is for. Nothing is assumed until he picks. */
+  const pickFirm = matches => {
+    lastMatches = matches;
+    state.customerId = null;
+    setVal('customer_id', '');
+    customerBadge.innerHTML = '<span class="badge bg-warning text-dark">'
+      + matches.length + ' firms use this number — pick one</span>';
+    const box = document.getElementById('firmPicker');
+    if (!box) { return; }
+    box.innerHTML = '<div class="alert alert-warning py-2 mt-2 mb-0">'
+      + '<div class="small mb-1"><strong>Which firm is this bill for?</strong></div>'
+      + '<div class="d-flex flex-wrap gap-2">'
+      + matches.map(function (m, i) {
+          return '<button type="button" class="btn btn-sm btn-outline-primary kp-firm" data-i="' + i + '">'
+            + esc(m.customer.name)
+            + (m.contact && m.contact.name ? ' <span class="text-muted">· ' + esc(m.contact.name) + '</span>' : '')
+            + (m.outstanding > 0 ? ' <span class="badge bg-warning text-dark">due ' + money(m.outstanding) + '</span>' : '')
+            + '</button>';
+        }).join('')
+      + '<button type="button" class="btn btn-sm btn-outline-secondary" id="anotherFirm">'
+      + '+ Another firm on this number</button>'
+      + '</div></div>';
+  };
+
+  let lastMatches = [];
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.kp-firm');
+    if (btn) { applyMatch(lastMatches[parseInt(btn.dataset.i, 10)]); return; }
+    if (e.target.id === 'firmChange' && lastMatches.length > 1) { pickFirm(lastMatches); return; }
+    if (e.target.id === 'anotherFirm') {
+      // Open the new-customer block with the flag already ticked, so the server knows this
+      // is deliberate and not a mistyped name.
+      const flag = document.getElementById('newFirm');
+      if (flag) flag.checked = true;
+      const hint = document.getElementById('newCustomerHint');
+      if (hint) hint.textContent = 'A second firm for the same person. Fill in the new firm below.';
+      newCustomerFields.classList.remove('d-none');
+      setVal('customer_id', '');
+      setVal('customer_name', '');
+      const box = document.getElementById('firmPicker');
+      if (box) box.innerHTML = '';
+      const nameEl = document.getElementById('customer_name');
+      if (nameEl) nameEl.focus();
+    }
+  });
+
   if (phoneInput) phoneInput.addEventListener('input', async () => {
     const digits = localPhone(phoneInput.value);
     if (!digits) return;
     const data = await kpFetch(window.KP.adminUrl + '/api/customer-lookup?phone=' + digits);
     if (data.found) {
-      state.customerId = data.customer.id;
-      setVal('customer_id', data.customer.id);
-      setVal('customer_name', data.customer.name);
-      setVal('customer_address', data.customer.address || '');
-      setVal('customer_gstin', data.customer.gstin || '');
-      if (data.contact && data.contact.name) setVal('contact_name', data.contact.name);
-      const person = data.contact ? esc(data.contact.name) : '';
-      customerBadge.innerHTML = data.customer.is_blocked == 1
-        ? '<span class="badge bg-danger">BLOCKED customer</span>'
-        : '<span class="badge bg-primary">' + esc(data.customer.name) + '</span> ' +
-          (person ? '<span class="badge bg-secondary">' + person + '</span> ' : '') +
-          (data.contact_count > 1 ? '<span class="badge bg-light text-dark">' + data.contact_count + ' contacts</span> ' : '') +
-          '<span class="badge bg-success">' + data.order_count + ' past orders</span> ' +
-          (data.outstanding > 0 ? '<span class="badge bg-warning text-dark">Outstanding ' + money(data.outstanding) + '</span>' : '');
-      // Known number: nothing to fill in, so the new-customer block stays out of the way.
-      newCustomerFields.classList.add('d-none');
+      const matches = data.matches && data.matches.length ? data.matches : [data];
+      // One man can run two firms from one mobile. When the number is under more than one,
+      // he has to say which firm this bill is for before anything is filled in.
+      if (matches.length > 1) {
+        pickFirm(matches);
+        return;
+      }
+      applyMatch(matches[0]);
     } else {
       state.customerId = null;
       clearChosenCompany();

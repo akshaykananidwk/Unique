@@ -17,11 +17,26 @@ $wrapClass = $format === 'thermal' ? 'print-thermal' : 'print-a5';
   <table>
     <tr><td><strong>Customer:</strong> <?= e($customer['name']) ?> (<?= e($customer['phone']) ?>)</td>
         <td><strong>Date:</strong> <?= e(fmt_date($order['order_date'], true)) ?></td></tr>
+    <?php if (!empty($contact)): ?>
+    <tr><td colspan="2"><strong>Contact Person:</strong> <?= e($contact['name']) ?>
+      <?= $contact['designation'] ? '(' . e($contact['designation']) . ')' : '' ?>
+      <?= $contact['phone'] !== $customer['phone'] ? '— ' . e($contact['phone']) : '' ?></td></tr>
+    <?php endif; ?>
     <tr><td><strong>Priority:</strong> <?php $hot = in_array(strtolower((string)$order['priority']), ['urgent', 'rush'], true); ?>
         <span style="<?= $hot ? 'color:#dc3545;font-weight:700;font-size:1.1em' : '' ?>"><?= e(strtoupper((string)$order['priority'])) ?><?= $hot ? ' ⚡' : '' ?></span></td>
         <td><strong>Due:</strong> <?= e(fmt_date($order['due_date'], true)) ?></td></tr>
     <tr><td colspan="2"><strong>Delivery:</strong> <?= e(ucfirst((string)$order['delivery_type'])) ?>
       <?= $order['delivery_address'] ? '— ' . e($order['delivery_address']) : '' ?></td></tr>
+  </table>
+  <?php // Who wrote it up, who made it, who took the money — the three names a shop is
+  // asked for when a job is queried later. ?>
+  <table style="margin-top:4px">
+    <tr>
+      <td><strong>Order By:</strong> <?= e($credits['order_by'] ?: '—') ?></td>
+      <td><strong>Prepared By:</strong> <?= e($credits['prepared_by'] ?: '—') ?></td>
+      <td><strong>Prepaid By:</strong>
+        <?= e($credits['prepaid_by'] ?: '—') ?><?= $credits['advance'] > 0 ? ' (' . e(fmt_money($credits['advance'])) . ')' : '' ?></td>
+    </tr>
   </table>
   <table style="margin-top:6px">
     <thead><tr><th>#</th><th>Item &amp; specifications</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>

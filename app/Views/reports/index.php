@@ -5,6 +5,7 @@
 $reports = [
     ['report.staff', 'reports/users', 'person-badge', 'User Performance', 'Orders taken and their value, advance, recovered and pending per user'],
     ['report.staff', 'reports/designers', 'palette2', 'Designer Performance', 'Designs made, jobs and orders handled, total value handled'],
+    ['report.work', 'reports/work', 'clipboard-check', 'Work Done', 'Every job with who took it, who made it and who took the money — exports to Excel'],
     ['report.staff', 'reports/staff', 'people', 'Staff Performance (detailed)', 'Turnaround, revisions, first-time approval and on-time %'],
     ['report.sales', 'reports/sales', 'graph-up', 'Sales Register', 'Order-wise, item-wise and category-wise sales'],
     ['report.outstanding', 'reports/outstanding', 'cash-coin', 'Outstanding', 'Pending balances by age bucket, bulk WhatsApp reminders'],

@@ -12,41 +12,50 @@ use App\Models\Pricing;
 
 class ApiController extends Controller
 {
-    /** ?phone=98765xxxxx → the person, their company, and how that company is doing. */
+    /**
+     * ?phone=98765xxxxx → every firm this number is under, with how each is doing.
+     *
+     * Usually one. When a man runs two firms from one mobile it is two, and the order
+     * screen makes him pick which firm the bill is for.
+     */
     public function customerLookup(): void
     {
         Acl::require('customer.view');
-        $contact = CustomerBook::findByPhone((string)($_GET['phone'] ?? ''));
-        if (!$contact) {
-            json_response(['ok' => true, 'found' => false]);
+        $matches = CustomerBook::findAllByPhone((string)($_GET['phone'] ?? ''));
+        if (!$matches) {
+            json_response(['ok' => true, 'found' => false, 'matches' => []]);
         }
-        $customerId = (int)$contact['customer_id'];
-        $customer = DB::get(
-            'SELECT id, name, phone, whatsapp, email, address, pincode, gstin, customer_type, is_blocked
-             FROM `' . tbl('customers') . '` WHERE id = ?',
-            [$customerId]
-        );
-        $stats = DB::get(
-            'SELECT COUNT(*) AS order_count, COALESCE(SUM(balance_amount),0) AS outstanding
-             FROM `' . tbl('orders') . '` WHERE customer_id = ? AND deleted_at IS NULL AND is_cancelled = 0',
-            [$customerId]
-        );
-        json_response([
-            'ok' => true,
-            'found' => true,
-            'customer' => $customer,
-            'contact' => [
-                'id' => (int)$contact['id'],
-                'name' => $contact['name'],
-                'phone' => $contact['phone'],
-                'designation' => $contact['designation'],
-                'is_primary' => (int)$contact['is_primary'],
-            ],
-            // How many other people in this company — tells the counter it is a company account.
-            'contact_count' => count(CustomerBook::contacts($customerId)),
-            'order_count' => (int)$stats['order_count'],
-            'outstanding' => (float)$stats['outstanding'],
-        ]);
+
+        $out = [];
+        foreach ($matches as $contact) {
+            $customerId = (int)$contact['customer_id'];
+            $customer = DB::get(
+                'SELECT id, name, phone, whatsapp, email, address, pincode, gstin, customer_type, is_blocked
+                 FROM `' . tbl('customers') . '` WHERE id = ?',
+                [$customerId]
+            );
+            $stats = DB::get(
+                'SELECT COUNT(*) AS order_count, COALESCE(SUM(balance_amount),0) AS outstanding
+                 FROM `' . tbl('orders') . '` WHERE customer_id = ? AND deleted_at IS NULL AND is_cancelled = 0',
+                [$customerId]
+            );
+            $out[] = [
+                'customer' => $customer,
+                'contact' => [
+                    'id' => (int)$contact['id'],
+                    'name' => $contact['name'],
+                    'phone' => $contact['phone'],
+                    'designation' => $contact['designation'],
+                    'is_primary' => (int)$contact['is_primary'],
+                ],
+                'contact_count' => count(CustomerBook::contacts($customerId)),
+                'order_count' => (int)$stats['order_count'],
+                'outstanding' => (float)$stats['outstanding'],
+            ];
+        }
+
+        // First entry stays at the top level so nothing that reads the old shape breaks.
+        json_response(['ok' => true, 'found' => true, 'matches' => $out] + $out[0]);
     }
 
     /** ?q=tata → companies to attach a new number to. */

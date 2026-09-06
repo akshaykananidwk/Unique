@@ -45,6 +45,23 @@ class OrderController extends Controller
             $where[] = 'DATE(o.order_date) <= ?';
             $params[] = $_GET['to'];
         }
+        // Whose work is this? Lets one person's pending list be printed and handed to them.
+        $personId = (int)($_GET['person'] ?? 0);
+        $personRole = in_array($_GET['person_role'] ?? '', ['designer', 'taken', 'accepted'], true)
+            ? $_GET['person_role'] : 'designer';
+        if ($personId > 0) {
+            if ($personRole === 'taken') {
+                $where[] = 'o.taken_by_user_id = ?';
+                $params[] = $personId;
+            } elseif ($personRole === 'accepted') {
+                $where[] = 'o.accepted_by_user_id = ?';
+                $params[] = $personId;
+            } else {
+                $where[] = 'EXISTS (SELECT 1 FROM `' . tbl('order_items') . '` oi
+                                    WHERE oi.order_id = o.id AND oi.assigned_designer_id = ?)';
+                $params[] = $personId;
+            }
+        }
 
         $page = max(1, (int)($_GET['page'] ?? 1));
         $perPage = 25;
@@ -62,7 +79,103 @@ class OrderController extends Controller
             $params
         );
         $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order');
-        $this->render('orders/index', compact('orders', 'branches', 'selectedBranch', 'total', 'page', 'perPage', 'status', 'q'));
+        $staff = DB::all('SELECT id, name FROM `' . tbl('users') . '` WHERE is_active = 1 AND deleted_at IS NULL ORDER BY name');
+        $this->render('orders/index', compact('orders', 'branches', 'selectedBranch', 'total', 'page', 'perPage', 'status', 'q', 'staff', 'personId', 'personRole'));
+    }
+
+    /**
+     * The filtered order list as a printable sheet.
+     *
+     * The point is the daily hand-out: filter to one person and one status, print, and give
+     * it to them — "this is what you still have on". So it prints EVERY match, not just the
+     * page on screen, and it carries the filter in words at the top.
+     */
+    public function printList(): void
+    {
+        Acl::require('order.view');
+
+        $where = ['o.deleted_at IS NULL'];
+        $params = [];
+        $described = [];
+
+        $status = trim((string)($_GET['status'] ?? ''));
+        if ($status === 'overdue') {
+            $where[] = "o.due_date < NOW() AND o.status NOT IN ('delivered','completed','cancelled')";
+            $described[] = 'Overdue only';
+        } elseif ($status === 'pending') {
+            $where[] = "o.status NOT IN ('delivered','completed','cancelled')";
+            $described[] = 'Still pending';
+        } elseif ($status !== '') {
+            $where[] = 'o.status = ?';
+            $params[] = $status;
+            $described[] = 'Status: ' . Status::label($status);
+        }
+        $q = trim((string)($_GET['q'] ?? ''));
+        if ($q !== '') {
+            $where[] = '(o.job_no LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)';
+            $like = '%' . $q . '%';
+            array_push($params, $like, $like, $like);
+            $described[] = 'Search: ' . $q;
+        }
+        if (!empty($_GET['from'])) {
+            $where[] = 'DATE(o.order_date) >= ?';
+            $params[] = $_GET['from'];
+            $described[] = 'From ' . fmt_date((string)$_GET['from']);
+        }
+        if (!empty($_GET['to'])) {
+            $where[] = 'DATE(o.order_date) <= ?';
+            $params[] = $_GET['to'];
+            $described[] = 'To ' . fmt_date((string)$_GET['to']);
+        }
+
+        $personId = (int)($_GET['person'] ?? 0);
+        $personRole = in_array($_GET['person_role'] ?? '', ['designer', 'taken', 'accepted'], true)
+            ? $_GET['person_role'] : 'designer';
+        $personName = null;
+        if ($personId > 0) {
+            $personName = DB::val('SELECT name FROM `' . tbl('users') . '` WHERE id = ?', [$personId]);
+            if ($personRole === 'taken') {
+                $where[] = 'o.taken_by_user_id = ?';
+                $params[] = $personId;
+                $described[] = 'Orders taken by ' . $personName;
+            } elseif ($personRole === 'accepted') {
+                $where[] = 'o.accepted_by_user_id = ?';
+                $params[] = $personId;
+                $described[] = 'Accepted by ' . $personName;
+            } else {
+                $where[] = 'EXISTS (SELECT 1 FROM `' . tbl('order_items') . '` oi
+                                    WHERE oi.order_id = o.id AND oi.assigned_designer_id = ?)';
+                $params[] = $personId;
+                $described[] = 'Design work of ' . $personName;
+            }
+        }
+
+        $whereSql = implode(' AND ', $where);
+        // No LIMIT: the sheet is the whole filtered list, not one screen of it.
+        $orders = DB::all(
+            'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone,
+                    cc.name AS contact_name,
+                    (SELECT GROUP_CONCAT(DISTINCT oi.item_name_snapshot SEPARATOR ", ")
+                     FROM `' . tbl('order_items') . '` oi WHERE oi.order_id = o.id) AS items,
+                    (SELECT GROUP_CONCAT(DISTINCT u.name SEPARATOR ", ")
+                     FROM `' . tbl('order_items') . '` oi
+                     JOIN `' . tbl('users') . '` u ON u.id = oi.assigned_designer_id
+                     WHERE oi.order_id = o.id) AS designers
+             FROM `' . tbl('orders') . '` o
+             JOIN `' . tbl('customers') . '` c ON c.id = o.customer_id
+             LEFT JOIN `' . tbl('customer_contacts') . "` cc ON cc.id = o.contact_id
+             WHERE $whereSql
+             ORDER BY o.due_date IS NULL, o.due_date, o.job_no",
+            $params
+        );
+
+        $branch = DB::get('SELECT * FROM `' . tbl('branches') . '` WHERE id = ?', [Acl::mainBranchId()]);
+        $filterText = $described ? implode(' · ', $described) : 'All orders';
+        \App\Core\View::render(
+            'orders/print_list',
+            compact('orders', 'branch', 'filterText', 'personName'),
+            'layouts/print'
+        );
     }
 
     public function kanban(): void
@@ -203,7 +316,7 @@ class OrderController extends Controller
         ], ['id' => (int)$id]);
         Logger::activity('order', 'prepared_by', 'order', (int)$id,
             'Prepared By set on ' . $order['job_no']);
-        flash('success', $userId > 0 ? 'Prepared By set.' : 'Prepared By now follows the designer.');
+        flash('success', $userId > 0 ? 'Prepared By set.' : 'Prepared By will print blank.');
         redirect(admin_url('orders/' . $id));
     }
 
@@ -225,16 +338,18 @@ class OrderController extends Controller
                 : null;
         };
 
-        // Whoever is named on the order wins; otherwise fall back to the designer who did it.
+        // Only ever the name that was set by hand. It used to fall back to the designer,
+        // which meant a name appeared on a printed challan that nobody had chosen to put
+        // there — so the printed line stays blank until somebody fills it in.
         $preparedBy = $name($order['prepared_by_user_id'] ?? 0);
-        if ($preparedBy === null) {
-            $preparedBy = DB::val(
-                'SELECT u.name FROM `' . tbl('order_items') . '` oi
-                 JOIN `' . tbl('users') . '` u ON u.id = oi.assigned_designer_id
-                 WHERE oi.order_id = ? ORDER BY oi.sort_order, oi.id LIMIT 1',
-                [$orderId]
-            ) ?: null;
-        }
+
+        // Shown on screen only, as a suggestion for the picker — never printed.
+        $designerHint = DB::val(
+            'SELECT u.name FROM `' . tbl('order_items') . '` oi
+             JOIN `' . tbl('users') . '` u ON u.id = oi.assigned_designer_id
+             WHERE oi.order_id = ? ORDER BY oi.sort_order, oi.id LIMIT 1',
+            [$orderId]
+        ) ?: null;
 
         // The advance is the money taken up front, so that is the receipt this names.
         $advance = DB::get(
@@ -249,6 +364,7 @@ class OrderController extends Controller
             'order_by' => $name($order['taken_by_user_id'] ?? 0),
             'accepted_by' => $name($order['accepted_by_user_id'] ?? 0),
             'prepared_by' => $preparedBy,
+            'designer_hint' => $designerHint,
             'prepaid_by' => $advance['name'] ?? null,
             'advance' => (float)($advance['amount'] ?? 0),
         ];

@@ -4,7 +4,14 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <h4 class="mb-0">Orders <span class="text-muted fs-6">(<?= (int)$total ?>)</span></h4>
-  <a href="<?= e(admin_url('orders/create')) ?>" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New Order</a>
+  <div class="d-flex gap-2">
+    <?php // Print exactly what is filtered — the daily hand-out: "this is what you still have on". ?>
+    <a href="<?= e(admin_url('orders/print') . ($_GET ? '?' . http_build_query($_GET) : '')) ?>"
+       target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-printer"></i> Print list
+    </a>
+    <a href="<?= e(admin_url('orders/create')) ?>" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New Order</a>
+  </div>
 </div>
 
 <form method="get" class="row g-2 mb-3">
@@ -14,12 +21,28 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
       <option value="">All statuses</option>
       <option value="overdue" <?= $status === 'overdue' ? 'selected' : '' ?>>⚠ Overdue</option>
       <option value="needs_review" <?= $status === 'needs_review' ? 'selected' : '' ?>>🆕 Needs review</option>
+      <option value="pending" <?= $status === 'pending' ? 'selected' : '' ?>>⏳ Still pending (not delivered)</option>
       <?php foreach (array_merge(array_keys(Status::RANKS), Status::SPECIAL) as $s): ?>
         <option value="<?= e($s) ?>" <?= $status === $s ? 'selected' : '' ?>><?= e(Status::label($s)) ?></option>
       <?php endforeach; ?>
     </select>
   </div>
 
+  <div class="col-6 col-md-2">
+    <select name="person" class="form-select form-select-sm">
+      <option value="">Anyone</option>
+      <?php foreach ($staff as $sf): ?>
+        <option value="<?= (int)$sf['id'] ?>" <?= $personId === (int)$sf['id'] ? 'selected' : '' ?>><?= e($sf['name']) ?></option>
+      <?php endforeach; ?>
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <select name="person_role" class="form-select form-select-sm">
+      <option value="designer" <?= $personRole === 'designer' ? 'selected' : '' ?>>…is designing it</option>
+      <option value="taken" <?= $personRole === 'taken' ? 'selected' : '' ?>>…took the order</option>
+      <option value="accepted" <?= $personRole === 'accepted' ? 'selected' : '' ?>>…accepted it</option>
+    </select>
+  </div>
   <div class="col-6 col-md-2"><input type="date" name="from" value="<?= e($_GET['from'] ?? '') ?>" class="form-control form-control-sm"></div>
   <div class="col-6 col-md-2"><input type="date" name="to" value="<?= e($_GET['to'] ?? '') ?>" class="form-control form-control-sm"></div>
   <div class="col-6 col-md-1"><button class="btn btn-outline-primary btn-sm w-100">Filter</button></div>

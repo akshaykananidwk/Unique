@@ -2,8 +2,15 @@
 body.print-body { background: #fff; color: #000; font-family: system-ui, sans-serif; }
 .print-a5 { width: 148mm; margin: 0 auto; padding: 8mm; font-size: 11pt; }
 .print-thermal { width: 72mm; margin: 0 auto; padding: 2mm; font-size: 9pt; }
-.print-a5 table, .print-thermal table { width: 100%; border-collapse: collapse; }
-.print-a5 th, .print-a5 td { border-bottom: 1px dashed #999; padding: 3px 4px; text-align: left; font-size: 10pt; }
+/* A4 landscape-ish sheet for the daily work list — many rows, handed out and ticked off. */
+.print-a4 { width: 200mm; max-width: 100%; margin: 0 auto; padding: 8mm; font-size: 10pt; }
+.print-a5 table, .print-thermal table, .print-a4 table { width: 100%; border-collapse: collapse; }
+.print-a5 th, .print-a5 td, .print-a4 th, .print-a4 td { border-bottom: 1px dashed #999; padding: 3px 4px; text-align: left; font-size: 10pt; }
+.print-a4 th { border-bottom: 1px solid #000; font-size: 9.5pt; }
+.print-a4 td { font-size: 9.5pt; }
+/* Repeat the header on every page and never split a job across two. */
+.print-a4 thead { display: table-header-group; }
+.print-a4 tr { page-break-inside: avoid; }
 .print-thermal th, .print-thermal td { padding: 1px 2px; font-size: 8.5pt; }
 .print-head { text-align: center; margin-bottom: 6px; }
 .print-head h4 { margin: 0; }
@@ -15,4 +22,8 @@ body.print-body { background: #fff; color: #000; font-family: system-ui, sans-se
 @media print {
   .no-print { display: none !important; }
   @page { margin: 5mm; }
+}
+@media print {
+  /* The work list is wide, so it wants landscape. */
+  .print-a4 { width: auto; padding: 0; }
 }

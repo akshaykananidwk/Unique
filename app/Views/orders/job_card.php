@@ -10,7 +10,18 @@ $wrapClass = $format === 'thermal' ? 'print-thermal' : 'print-a5';
 <div class="<?= e($wrapClass) ?>">
   <div class="print-head">
     <h4><?= e($businessName) ?></h4>
-    <div class="print-muted"><?= e($branch['name']) ?> · <?= e($branch['address'] ?? '') ?> · Ph: <?= e($branch['phone'] ?? '') ?></div>
+    <?php // Shop line: branch, address and phone. The branch may carry none of these, so
+    // fall back to Settings → Business, and never print a stray separator for a blank. ?>
+    <?php
+    $shopPhone = trim((string)($branch['phone'] ?: Settings::get('business_phone', '')));
+    $shopAddress = trim((string)($branch['address'] ?: Settings::get('business_address', '')));
+    $headBits = array_filter([
+        trim((string)$branch['name']),
+        $shopAddress,
+        $shopPhone !== '' ? 'Ph: ' . $shopPhone : '',
+    ], fn($v) => $v !== '');
+    ?>
+    <div class="print-muted"><?= e(implode(' · ', $headBits)) ?></div>
     <?php if ($branch['gstin']): ?><div class="print-muted">GSTIN: <?= e($branch['gstin']) ?></div><?php endif; ?>
     <h3 style="margin:6px 0">JOB CARD — <?= e($order['job_no']) ?></h3>
   </div>
@@ -33,9 +44,9 @@ $wrapClass = $format === 'thermal' ? 'print-thermal' : 'print-a5';
   <table style="margin-top:4px">
     <tr>
       <td><strong>Order By:</strong> <?= e($credits['order_by'] ?: '—') ?></td>
-      <td><strong>Prepared By:</strong> <?= e($credits['prepared_by'] ?: '—') ?></td>
+      <td><strong>Prepared By:</strong> <?= e($credits['prepared_by'] ?: '____________') ?></td>
       <td><strong>Prepaid By:</strong>
-        <?= e($credits['prepaid_by'] ?: '—') ?><?= $credits['advance'] > 0 ? ' (' . e(fmt_money($credits['advance'])) . ')' : '' ?></td>
+        <?= e($credits['prepaid_by'] ?: '____________') ?><?= $credits['advance'] > 0 ? ' (' . e(fmt_money($credits['advance'])) . ')' : '' ?></td>
     </tr>
   </table>
   <table style="margin-top:6px">

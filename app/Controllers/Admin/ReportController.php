@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 
 use App\Core\Acl;
 use App\Core\DB;
+use App\Models\CashBook;
 use App\Models\Designers;
 use App\Models\Status;
 use App\Core\WaEvents;
@@ -59,15 +60,21 @@ class ReportController extends Controller
 
                 -- Still owed on the orders this user took (live figure, not period-bound)
                 (SELECT COALESCE(SUM(o.balance_amount),0) FROM `$ot` o WHERE o.taken_by_user_id = u.id
-                   AND o.deleted_at IS NULL AND o.is_cancelled = 0) AS pending_amount
+                   AND o.deleted_at IS NULL AND o.is_cancelled = 0) AS pending_amount,
+
+                -- Cash still in this person's pocket. Not period-bound either: it is a
+                -- running figure, and what matters is what is with them right now.
+                " . CashBook::sqlInHand('u') . " AS cash_in_hand
 
              FROM `$ut` u JOIN `" . tbl('roles') . "` r ON r.id = u.role_id
              WHERE u.deleted_at IS NULL
              ORDER BY order_value DESC, u.name",
             [$from, $to, $from, $to, $from, $to, $from, $to, $from, $to, $from, $to]
         );
+        // Somebody holding shop money belongs on this list even in a quiet month.
         $rows = array_values(array_filter($rows, fn($r) =>
-            (int)$r['orders_taken'] || (int)$r['orders_accepted'] || (float)$r['collected_total'] || (float)$r['pending_amount']));
+            (int)$r['orders_taken'] || (int)$r['orders_accepted'] || (float)$r['collected_total']
+            || (float)$r['pending_amount'] || (float)$r['cash_in_hand']));
 
         $totals = [
             'orders_taken' => array_sum(array_column($rows, 'orders_taken')),
@@ -76,13 +83,15 @@ class ReportController extends Controller
             'recovered' => array_sum(array_map('floatval', array_column($rows, 'recovered'))),
             'collected_total' => array_sum(array_map('floatval', array_column($rows, 'collected_total'))),
             'pending_amount' => array_sum(array_map('floatval', array_column($rows, 'pending_amount'))),
+            'cash_in_hand' => array_sum(array_map('floatval', array_column($rows, 'cash_in_hand'))),
         ];
 
         if (($_GET['export'] ?? '') === 'csv') {
             $this->csv('user-performance',
-                ['User', 'Role', 'Orders Taken', 'Order Value', 'Orders Accepted', 'Advance Taken', 'Recovered', 'Total Collected', 'Pending'],
+                ['User', 'Role', 'Orders Taken', 'Order Value', 'Orders Accepted', 'Advance Taken', 'Recovered', 'Total Collected', 'Pending', 'Cash In Hand'],
                 array_map(fn($r) => [$r['name'], $r['role_name'], $r['orders_taken'], $r['order_value'],
-                    $r['orders_accepted'], $r['advance_taken'], $r['recovered'], $r['collected_total'], $r['pending_amount']], $rows));
+                    $r['orders_accepted'], $r['advance_taken'], $r['recovered'], $r['collected_total'],
+                    $r['pending_amount'], $r['cash_in_hand']], $rows));
         }
         $monthly = $this->monthlyOrders($from, $to);
         $this->render('reports/users', compact('rows', 'totals', 'from', 'to', 'monthly'));

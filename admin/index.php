@@ -107,6 +107,14 @@ $router->post('/payments/{id}/delete', 'PaymentController@delete');
 $router->get('/payments/{id}/receipt', 'PaymentController@receipt');
 $router->get('/cashbook', 'PaymentController@cashbook');
 
+// Cash in hand — whose pocket the shop's money is in, and moving it between pockets
+$router->get('/cash', 'CashController@index');
+$router->post('/cash/handover', 'CashController@handover');
+$router->post('/cash/handover/{id}/confirm', 'CashController@confirm');
+$router->post('/cash/handover/{id}/decline', 'CashController@decline');
+$router->post('/cash/handover/{id}/cancel', 'CashController@cancel');
+$router->post('/cash/handover/{id}/reissue', 'CashController@reissue');
+
 // Reports
 $router->get('/reports', 'ReportController@index');
 $router->get('/reports/users', 'ReportController@users');

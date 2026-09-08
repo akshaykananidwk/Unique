@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 
 use App\Core\Acl;
 use App\Core\DB;
+use App\Models\CashBook;
 use App\Models\Designers;
 
 class DashboardController extends Controller
@@ -169,10 +170,15 @@ class DashboardController extends Controller
                  AND o.status IN ('delivered','completed')", $bp),
         ];
 
+        // Cash the person looking at this screen is holding, and anything waiting on them
+        // to read a code out. Money sitting in a pocket is easy to forget about.
+        $myCash = Acl::can('cash.view') ? CashBook::inHand((int)$this->user['id']) : null;
+        $cashWaiting = Acl::can('cash.view') ? CashBook::waitingForMe((int)$this->user['id']) : [];
+
         $this->render('dashboard/index', compact(
             'cards', 'byStage', 'trend', 'topItems', 'branchComparison',
             'attention', 'designerLoad', 'branches', 'selectedBranch',
-            'userWise', 'designerWise', 'overall'
+            'userWise', 'designerWise', 'overall', 'myCash', 'cashWaiting'
         ));
     }
 }

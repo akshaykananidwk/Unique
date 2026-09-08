@@ -30,6 +30,7 @@ class CronJobs
             'proof.reminders'            => [self::class, 'proofReminders'],
             'order.overdue'              => [self::class, 'overdueAlerts'],
             'payment.balance_reminders'  => [self::class, 'balanceReminders'],
+            'cash.handover_expiry'       => [self::class, 'cashHandoverExpiry'],
             'report.daily_summary'       => [self::class, 'dailySummary'],
             'system.backup'              => [self::class, 'backup'],
             'system.update_check'        => [self::class, 'updateCheck'],
@@ -185,6 +186,19 @@ class CronJobs
         return [
             'items' => $available ? 1 : 0,
             'message' => $available ? 'Update available: ' . ($result['latest_version'] ?? '?') : 'Already up to date.',
+        ];
+    }
+
+    /**
+     * Close cash handovers whose code was never used. Until this runs the money is shown
+     * as promised out, which is not true any more — it never left the sender's pocket.
+     */
+    public static function cashHandoverExpiry(): array
+    {
+        $n = \App\Models\CashBook::expireStale();
+        return [
+            'items' => $n,
+            'message' => $n ? "Expired $n unfinished handover(s)." : 'Nothing left hanging.',
         ];
     }
 

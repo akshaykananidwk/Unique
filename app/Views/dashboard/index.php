@@ -1,8 +1,26 @@
 <?php use App\Models\Status; $title = 'Dashboard'; ?>
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
   <h4 class="mb-0">Dashboard</h4>
-
+  <?php if ($myCash !== null): ?>
+    <a href="<?= e(admin_url('cash')) ?>" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-wallet2"></i> Cash with you: <strong><?= e(fmt_money($myCash)) ?></strong>
+    </a>
+  <?php endif; ?>
 </div>
+
+<?php // Somebody is standing there waiting to hand money over — this is the code they need. ?>
+<?php foreach ($cashWaiting as $w): ?>
+  <div class="alert alert-primary d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <div>
+      <strong><?= e($w['from_name']) ?></strong> is handing you <strong><?= e(fmt_money($w['amount'])) ?></strong>.
+      <?= $w['expired'] ? 'The code has run out — ask for a new one.' : 'Count it, then read out this code:' ?>
+    </div>
+    <?php if (!$w['expired']): ?>
+      <span class="fw-bold" style="font-size:1.6rem;letter-spacing:.3rem;font-family:monospace"><?= e($w['code']) ?></span>
+    <?php endif; ?>
+    <a href="<?= e(admin_url('cash')) ?>" class="btn btn-sm btn-primary">Open Cash in Hand</a>
+  </div>
+<?php endforeach; ?>
 
 <div class="row g-2 mb-4">
   <?php

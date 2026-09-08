@@ -27,6 +27,7 @@
     <th class="text-end">Accepted</th>
     <th class="text-end">Advance</th><th class="text-end">Recovered</th>
     <th class="text-end">Total Collected</th><th class="text-end">Pending</th>
+    <th class="text-end">Cash In Hand</th>
   </tr></thead>
   <tbody>
   <?php foreach ($rows as $r): ?>
@@ -40,6 +41,9 @@
       <td data-label="Recovered" class="text-end"><?= e(fmt_money($r['recovered'])) ?></td>
       <td data-label="Total Collected" class="text-end text-success fw-semibold"><?= e(fmt_money($r['collected_total'])) ?></td>
       <td data-label="Pending" class="text-end <?= (float)$r['pending_amount'] > 0 ? 'text-danger fw-semibold' : 'text-muted' ?>"><?= e(fmt_money($r['pending_amount'])) ?></td>
+      <?php // Shop money still in this person's pocket — a live figure, not a period one. ?>
+      <td data-label="Cash In Hand" class="text-end <?= (float)$r['cash_in_hand'] > 0 ? 'text-success fw-semibold' : 'text-muted' ?>">
+        <a class="text-decoration-none" href="<?= e(admin_url('cash') . '?user=' . (int)$r['id']) ?>"><?= e(fmt_money($r['cash_in_hand'])) ?></a></td>
     </tr>
   <?php endforeach; ?>
   </tbody>
@@ -52,6 +56,7 @@
     <td class="text-end"><?= e(fmt_money($totals['recovered'])) ?></td>
     <td class="text-end text-success"><?= e(fmt_money($totals['collected_total'])) ?></td>
     <td class="text-end text-danger"><?= e(fmt_money($totals['pending_amount'])) ?></td>
+    <td class="text-end text-success"><?= e(fmt_money($totals['cash_in_hand'])) ?></td>
   </tr></tfoot>
 </table></div>
 <p class="text-muted small">Advance and Recovered are money this person actually took in the period. Pending is what is still owed

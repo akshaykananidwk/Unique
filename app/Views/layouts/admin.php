@@ -26,6 +26,7 @@ $navGroups = [
     ],
     'Money & Reports' => [
         ['payment.view', 'payments', 'cash-coin', 'Payments'],
+        ['cash.view', 'cash', 'wallet2', 'Cash in Hand'],
         ['payment.view', 'cashbook', 'cash-stack', 'Cash Book'],
         ['report.staff', 'reports', 'graph-up-arrow', 'Reports'],
     ],
@@ -46,6 +47,10 @@ $navGroups = [
 ];
 $currentPath = trim((string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH), '/');
 $isActive = static function (string $path) use ($currentPath): bool {
+    // "cash" and "cashbook" are two different screens — one must not light up the other.
+    if ($path === 'cash') {
+        return (bool)preg_match('#/admin/cash(/|$)#', '/' . $currentPath);
+    }
     if ($path === 'orders') {
         return (bool)preg_match('#/admin/orders(/\d+|/create|$)#', '/' . $currentPath) && !str_contains($currentPath, 'kanban');
     }

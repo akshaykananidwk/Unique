@@ -1,9 +1,7 @@
 {
-    "version": "2.5.2",
+    "version": "2.5.3",
     "released_at": "2026-09-08",
     "changelog": [
-        "Items on an order can now be changed, not just deleted and re-typed. Tap an item's name (or the pencil button next to it) on New Order or Edit Order and the same box it was written in opens again with everything still filled in — category, item name, component, unit, all the category questions, size, rate, GST, due date, designer and instructions. Change what is wrong and press Update Item.",
-        "A saved line keeps its identity when it is changed, so its status, its designer and any design proofs stay with it instead of the line being thrown away and started over.",
-        "Item names in the order form are now blue and clickable, matching the rest of the app."
+        "The Orders list now has a Job No column of its own, between Customer and Date / Due. The job number is no longer tucked under the customer's name — the customer's phone number stays there instead."
     ]
 }

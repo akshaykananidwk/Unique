@@ -25,6 +25,7 @@ $navGroups = [
         ['category.manage', 'categories', 'tags', 'Categories'],
     ],
     'Money & Reports' => [
+        ['payment.view', 'payments', 'cash-coin', 'Payments'],
         ['payment.view', 'cashbook', 'cash-stack', 'Cash Book'],
         ['report.staff', 'reports', 'graph-up-arrow', 'Reports'],
     ],

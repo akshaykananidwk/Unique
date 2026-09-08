@@ -235,7 +235,13 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
       <form method="post" action="<?= e(admin_url('payments')) ?>" class="row g-1">
         <?= Csrf::field() ?>
         <input type="hidden" name="order_id" value="<?= (int)$order['id'] ?>">
-        <div class="col-4"><input type="number" step="0.01" min="0.01" name="amount" class="form-control form-control-sm" placeholder="₹" required></div>
+        <div class="col-4"><input type="number" step="0.01" min="0" name="amount" class="form-control form-control-sm" placeholder="Amount ₹"></div>
+        <?php // The party pays a little less and the rest is written off — the balance closes
+        // without pretending the money came in. ?>
+        <?php if (Acl::can('payment.discount')): ?>
+        <div class="col-4"><input type="number" step="0.01" min="0" name="discount_amount" class="form-control form-control-sm" placeholder="Discount ₹"></div>
+        <div class="col-4"><input type="datetime-local" name="paid_at" class="form-control form-control-sm" value="<?= e(date('Y-m-d\TH:i')) ?>"></div>
+        <?php endif; ?>
         <div class="col-4"><select name="type" class="form-select form-select-sm">
           <option value="part">Part</option><option value="advance">Advance</option><option value="final">Final</option>
           <?php if (Acl::can('payment.refund')): ?><option value="refund">Refund</option><?php endif; ?>

@@ -47,6 +47,43 @@
   </div>
 </div></div>
 
+<?php // Take money from the party against everything they owe — a customer hands over a
+// lump sum, not a payment per bill. ?>
+<?php if ($totals['outstanding'] > 0 && Acl::can('payment.create')): ?>
+<div class="card mb-3 border-danger"><div class="card-body">
+  <h6 class="mb-1"><i class="bi bi-cash-coin"></i> Collect from <?= e($customer['name']) ?></h6>
+  <p class="small text-muted mb-2">
+    <?= e(fmt_money($totals['outstanding'])) ?> outstanding across
+    <?= count(array_filter($orders, fn($o) => (float)$o['balance_amount'] > 0)) ?> unpaid bill(s).
+    What you enter is put against the oldest bills first.
+  </p>
+  <form method="post" action="<?= e(admin_url('customers/' . $customer['id'] . '/collect')) ?>" class="row g-2">
+    <?= Csrf::field() ?>
+    <div class="col-6 col-md-2"><label class="form-label small">Amount ₹</label>
+      <input type="number" step="0.01" min="0" name="amount" class="form-control form-control-sm"
+             placeholder="<?= e(number_format((float)$totals['outstanding'], 2, '.', '')) ?>"></div>
+    <?php if (Acl::can('payment.discount')): ?>
+    <div class="col-6 col-md-2"><label class="form-label small">Discount ₹</label>
+      <input type="number" step="0.01" min="0" name="discount_amount" class="form-control form-control-sm" placeholder="0">
+      <div class="form-text">If he pays less</div></div>
+    <?php endif; ?>
+    <div class="col-6 col-md-2"><label class="form-label small">Mode</label>
+      <select name="mode" class="form-select form-select-sm">
+        <?php foreach (['cash', 'upi', 'card', 'bank', 'cheque', 'credit'] as $m): ?>
+          <option value="<?= $m ?>"><?= ucfirst($m) ?></option>
+        <?php endforeach; ?>
+      </select></div>
+    <div class="col-6 col-md-2"><label class="form-label small">Date</label>
+      <input type="datetime-local" name="paid_at" class="form-control form-control-sm"
+             value="<?= e(date('Y-m-d\TH:i')) ?>"></div>
+    <div class="col-6 col-md-2"><label class="form-label small">Reference</label>
+      <input name="reference" class="form-control form-control-sm" placeholder="UPI / cheque"></div>
+    <div class="col-6 col-md-2 d-flex align-items-end">
+      <button class="btn btn-sm btn-danger w-100"><i class="bi bi-check-lg"></i> Settle</button></div>
+  </form>
+</div></div>
+<?php endif; ?>
+
 <div class="card mb-3"><div class="card-body">
   <h6>Orders (<?= count($orders) ?>) <span class="text-muted fs-6">— everything this customer has given, from any of its numbers</span></h6>
   <div class="table-responsive"><table class="table table-sm table-mobile">
@@ -73,7 +110,7 @@
 <div class="card"><div class="card-body">
   <h6>Payment ledger</h6>
   <div class="table-responsive"><table class="table table-sm table-mobile">
-    <thead><tr><th>Receipt</th><th>Job</th><th>Date</th><th>Type / Mode</th><th>Amount</th></tr></thead>
+    <thead><tr><th>Receipt</th><th>Job</th><th>Date</th><th>Type / Mode</th><th>Amount</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($payments as $p): ?>
       <tr>
@@ -81,7 +118,16 @@
         <td data-label="Job"><?= e($p['job_no']) ?></td>
         <td data-label="Date"><?= e(fmt_date($p['paid_at'], true)) ?></td>
         <td data-label="Type"><?= e($p['type']) ?> / <?= e($p['mode']) ?></td>
-        <td data-label="Amount"><?= e(fmt_money($p['amount'])) ?></td>
+        <td data-label="Amount"><?= e(fmt_money($p['amount'])) ?>
+          <?php if ((float)($p['discount_amount'] ?? 0) > 0): ?>
+            <div class="small text-warning-emphasis">+ <?= e(fmt_money($p['discount_amount'])) ?> disc.</div>
+          <?php endif; ?>
+        </td>
+        <td data-label="">
+          <?php if (Acl::can('payment.edit')): ?>
+            <a class="btn btn-sm btn-outline-primary" href="<?= e(admin_url('payments/' . $p['id'] . '/edit')) ?>"><i class="bi bi-pencil"></i></a>
+          <?php endif; ?>
+        </td>
       </tr>
     <?php endforeach; ?>
     </tbody>

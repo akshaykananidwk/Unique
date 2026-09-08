@@ -1,12 +1,12 @@
 {
-    "version": "2.4.0",
+    "version": "2.5.0",
     "released_at": "2026-08-07",
     "changelog": [
-        "Prepared By no longer fills itself in from the designer. A name is printed on the challan only when you set it on the order screen \u2014 otherwise a blank line is printed to write on.",
-        "The shop line on printed sheets now shows the phone number and address. It takes them from the branch, and falls back to Settings \u2192 Business, so set the mobile number there once. Blank parts no longer leave a stray dot.",
-        "Orders now has a Print list button. It prints exactly what is filtered on screen \u2014 every match, not just the page you can see \u2014 with a tick box against each job.",
-        "Orders can also be filtered by person: whose design it is, who took the order, or who accepted it. Filter to one person and press Print list, and you have their pending work to hand them.",
-        "New \"Still pending (not delivered)\" filter, which is what a hand-out sheet is usually for.",
-        "The sheet totals the jobs, what is still pending, the value and the balance due, and has Given to / Signature / Date at the foot."
+        "New Payments screen \u2014 every receipt in one place, searchable by receipt number, job number, customer or phone, and filterable by mode, type and date, with what came in and what was written off totalled at the top.",
+        "Payments can now be edited. Correct the amount, discount, mode, date, reference or note; the balance recalculates and the receipt keeps a change history showing what it used to be and who changed it.",
+        "Discount when settling: if the party pays a little less, put the shortfall in the Discount box and the bill closes. It is recorded as written off, never as money received, so the day's collection stays honest.",
+        "Collect from a party in one go. Open a customer and you see what they owe in total \u2014 enter a lump sum and it is put against their oldest unpaid bills automatically, telling you which bills it covered.",
+        "Overpaying is now refused. Entering the same receipt twice, or more than the bill, is stopped with a message saying what is actually owed instead of leaving a negative balance.",
+        "The customer screen shows the outstanding total, a Settle box, and an edit button on every receipt in the ledger."
     ]
 }

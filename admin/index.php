@@ -98,7 +98,11 @@ $router->post('/my-jobs/{itemId}/start', 'DesignerController@start');
 $router->post('/my-jobs/{itemId}/proof', 'DesignerController@uploadProof');
 
 // Payments
+$router->get('/payments', 'PaymentController@index');
 $router->post('/payments', 'PaymentController@store');
+$router->get('/payments/{id}/edit', 'PaymentController@edit');
+$router->post('/payments/{id}/update', 'PaymentController@update');
+$router->post('/customers/{customerId}/collect', 'PaymentController@collect');
 $router->post('/payments/{id}/delete', 'PaymentController@delete');
 $router->get('/payments/{id}/receipt', 'PaymentController@receipt');
 $router->get('/cashbook', 'PaymentController@cashbook');

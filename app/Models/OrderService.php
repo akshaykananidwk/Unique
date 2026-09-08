@@ -647,10 +647,29 @@ class OrderService
                 throw new \RuntimeException('Order not found.');
             }
             $amount = round((float)$p['amount'], 2);
-            if ($amount <= 0) {
-                throw new \RuntimeException('Payment amount must be greater than zero.');
+            // A settlement discount: the party pays a little less and the rest is written
+            // off. It is never counted as money received — see recalcPayments.
+            $discount = round(max(0.0, (float)($p['discount_amount'] ?? 0)), 2);
+            if ($amount < 0) {
+                throw new \RuntimeException('Payment amount cannot be negative. Use type "refund" to pay money back.');
+            }
+            if ($amount <= 0 && $discount <= 0) {
+                throw new \RuntimeException('Enter an amount, a discount, or both.');
             }
             $type = $p['type'] ?? 'part';
+
+            // Never take more than is owed. Entering the same receipt twice is the common
+            // slip, and a negative balance is worse than a refused entry.
+            $owed = round((float)$order['balance_amount'], 2);
+            if ($type !== 'refund' && $amount + $discount > $owed + 0.009) {
+                throw new \RuntimeException(sprintf(
+                    'That is more than is owed. %s outstanding on %s — you entered %s%s.',
+                    fmt_money($owed),
+                    $order['job_no'],
+                    fmt_money($amount),
+                    $discount > 0 ? ' plus ' . fmt_money($discount) . ' discount' : ''
+                ));
+            }
             $receiptNo = self::generateReceiptNo((int)$order['branch_id']);
             $id = DB::insert('payments', [
                 'order_id' => $orderId,
@@ -658,6 +677,7 @@ class OrderService
                 'branch_id' => (int)$order['branch_id'],
                 'receipt_no' => $receiptNo,
                 'amount' => $type === 'refund' ? -abs($amount) : $amount,
+                'discount_amount' => $type === 'refund' ? 0 : $discount,
                 'type' => $type,
                 'mode' => $p['mode'] ?? 'cash',
                 'reference' => $p['reference'] ?? null,
@@ -668,7 +688,9 @@ class OrderService
             ]);
             self::recalcPayments($orderId);
             Logger::activity('payment', 'create', 'payment', $id,
-                "Payment $receiptNo of ₹$amount ($type) on {$order['job_no']}");
+                "Payment $receiptNo of ₹$amount ($type)"
+                . ($discount > 0 ? " + ₹$discount discount" : '')
+                . " on {$order['job_no']}");
             return $id;
         });
         if ($fireEvents) {
@@ -678,16 +700,27 @@ class OrderService
         return $paymentId;
     }
 
+    /**
+     * Roll the receipts up onto the order.
+     *
+     * Money received and money written off are kept apart on purpose: paid_amount is cash
+     * that came in and settled_discount is what was allowed off, and only their sum closes
+     * the balance. Mixing them would make the day's collection look bigger than the till.
+     */
     public static function recalcPayments(int $orderId): void
     {
-        $paid = (float)DB::val(
-            'SELECT COALESCE(SUM(amount),0) FROM `' . tbl('payments') . '` WHERE order_id = ? AND deleted_at IS NULL',
+        $row = DB::get(
+            'SELECT COALESCE(SUM(amount),0) AS paid, COALESCE(SUM(discount_amount),0) AS discount
+             FROM `' . tbl('payments') . '` WHERE order_id = ? AND deleted_at IS NULL',
             [$orderId]
         );
+        $paid = (float)($row['paid'] ?? 0);
+        $discount = (float)($row['discount'] ?? 0);
         $total = (float)DB::val('SELECT total FROM `' . tbl('orders') . '` WHERE id = ?', [$orderId]);
         DB::update('orders', [
             'paid_amount' => $paid,
-            'balance_amount' => round($total - $paid, 2),
+            'settled_discount' => $discount,
+            'balance_amount' => round($total - $paid - $discount, 2),
             'updated_at' => now(),
         ], ['id' => $orderId]);
     }

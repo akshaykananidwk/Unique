@@ -1,12 +1,7 @@
 {
-    "version": "2.5.0",
+    "version": "2.5.1",
     "released_at": "2026-08-07",
     "changelog": [
-        "New Payments screen \u2014 every receipt in one place, searchable by receipt number, job number, customer or phone, and filterable by mode, type and date, with what came in and what was written off totalled at the top.",
-        "Payments can now be edited. Correct the amount, discount, mode, date, reference or note; the balance recalculates and the receipt keeps a change history showing what it used to be and who changed it.",
-        "Discount when settling: if the party pays a little less, put the shortfall in the Discount box and the bill closes. It is recorded as written off, never as money received, so the day's collection stays honest.",
-        "Collect from a party in one go. Open a customer and you see what they owe in total \u2014 enter a lump sum and it is put against their oldest unpaid bills automatically, telling you which bills it covered.",
-        "Overpaying is now refused. Entering the same receipt twice, or more than the bill, is stopped with a message saying what is actually owed instead of leaving a negative balance.",
-        "The customer screen shows the outstanding total, a Settle box, and an edit button on every receipt in the ledger."
+        "On the printed job card the customer's name is now the big heading, and the job card number has moved into the line below with the date. The phone number sits on its own line under it."
     ]
 }

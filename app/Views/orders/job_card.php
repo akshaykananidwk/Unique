@@ -23,11 +23,14 @@ $wrapClass = $format === 'thermal' ? 'print-thermal' : 'print-a5';
     ?>
     <div class="print-muted"><?= e(implode(' · ', $headBits)) ?></div>
     <?php if ($branch['gstin']): ?><div class="print-muted">GSTIN: <?= e($branch['gstin']) ?></div><?php endif; ?>
-    <h3 style="margin:6px 0">JOB CARD — <?= e($order['job_no']) ?></h3>
+    <?php // The customer is what the shop looks for first, so the name is the heading and
+    // the job number sits in the line below with the rest of the details. ?>
+    <h3 style="margin:6px 0"><?= e($customer['name']) ?></h3>
   </div>
   <table>
-    <tr><td><strong>Customer:</strong> <?= e($customer['name']) ?> (<?= e($customer['phone']) ?>)</td>
+    <tr><td><strong>Job Card No:</strong> <?= e($order['job_no']) ?></td>
         <td><strong>Date:</strong> <?= e(fmt_date($order['order_date'], true)) ?></td></tr>
+    <tr><td colspan="2"><strong>Phone:</strong> <?= e($customer['phone']) ?></td></tr>
     <?php if (!empty($contact)): ?>
     <tr><td colspan="2"><strong>Contact Person:</strong> <?= e($contact['name']) ?>
       <?= $contact['designation'] ? '(' . e($contact['designation']) . ')' : '' ?>

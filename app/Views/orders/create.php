@@ -109,12 +109,13 @@
           <th style="width:105px">Rate ₹</th>
           <th style="width:85px">GST %</th>
           <th style="width:120px" class="text-end">Amount</th>
-          <th style="width:44px"></th>
+          <th style="width:88px"></th>
         </tr></thead>
         <tbody id="itemsBody"></tbody>
       </table>
     </div>
-    <div class="form-text">Foot × foot items: Qty × Width × Height = Sq. Ft., then × Rate = Amount. Everything recalculates as you type.</div>
+    <div class="form-text">Foot × foot items: Qty × Width × Height = Sq. Ft., then × Rate = Amount. Everything recalculates as you type.<br>
+      Tap an item name (or the <i class="bi bi-pencil"></i> button) to change its category, name, size or options.</div>
   </div></div>
 
   <!-- Step 3: Files -->

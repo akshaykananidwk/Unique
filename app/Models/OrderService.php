@@ -229,6 +229,11 @@ class OrderService
                         $keptIds[] = $lineId; // leave cancelled lines untouched
                         continue;
                     }
+                    // A line whose category could not be resolved in the editor sends a 0 —
+                    // drop it so the fallback below can find the category from the line itself.
+                    if (empty($line['category_id'])) {
+                        unset($line['category_id']);
+                    }
                     // Recalculate through the SAME builder New Order uses, so every field on the
                     // line — name, category answers, qty, width, height, rate — is editable and
                     // the money always comes out identical to a freshly-taken order.

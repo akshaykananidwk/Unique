@@ -63,12 +63,13 @@
           <th style="width:105px">Rate ₹</th>
           <th style="width:85px">GST %</th>
           <th style="width:120px" class="text-end">Amount</th>
-          <th style="width:44px"></th>
+          <th style="width:88px"></th>
         </tr></thead>
         <tbody id="itemsBody"></tbody>
       </table>
     </div>
-    <div class="form-text">Foot × foot items: Qty × Width × Height = Sq. Ft., then × Rate = Amount.</div>
+    <div class="form-text">Foot × foot items: Qty × Width × Height = Sq. Ft., then × Rate = Amount.<br>
+      Tap an item name (or the <i class="bi bi-pencil"></i> button) to change its category, name, size or options.</div>
   </div></div>
 
   <!-- Reference files: the photo, artwork or old bill the customer handed over -->

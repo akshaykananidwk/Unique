@@ -1,7 +1,9 @@
 {
-    "version": "2.5.1",
-    "released_at": "2026-08-07",
+    "version": "2.5.2",
+    "released_at": "2026-09-08",
     "changelog": [
-        "On the printed job card the customer's name is now the big heading, and the job card number has moved into the line below with the date. The phone number sits on its own line under it."
+        "Items on an order can now be changed, not just deleted and re-typed. Tap an item's name (or the pencil button next to it) on New Order or Edit Order and the same box it was written in opens again with everything still filled in — category, item name, component, unit, all the category questions, size, rate, GST, due date, designer and instructions. Change what is wrong and press Update Item.",
+        "A saved line keeps its identity when it is changed, so its status, its designer and any design proofs stay with it instead of the line being thrown away and started over.",
+        "Item names in the order form are now blue and clickable, matching the rest of the app."
     ]
 }

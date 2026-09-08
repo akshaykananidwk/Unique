@@ -318,7 +318,10 @@
         '<input type="number" step="any" min="0" class="form-control form-control-sm ' + cls + '" data-i="' + i + '" value="' + (val == null ? '' : val) + '"' + (ph ? ' placeholder="' + ph + '"' : '') + '>';
       const tr = document.createElement('tr');
       tr.innerHTML =
-        '<td data-label="Item"><strong>' + esc(line.item_name) + '</strong>' +
+        // The name is the way back into the item — tapping it reopens the box it was
+        // written in, with the category answers and everything else still filled in.
+        '<td data-label="Item"><button type="button" class="btn btn-link p-0 fw-bold text-start align-baseline text-decoration-none" ' +
+          'data-ed="' + i + '" title="Change this item">' + esc(line.item_name) + '</button>' +
           (line.requires_design == 1 ? ' <span class="badge bg-info badge-status">Design</span>' : '') +
           '<div class="small text-muted">' + esc(line.category_name || '') +
           (line.spec_text ? ' · ' + esc(line.spec_text) : '') + '</div></td>' +
@@ -331,7 +334,10 @@
         '<td data-label="GST %">' + num('kp-gst', line.tax_percent) + '</td>' +
         '<td data-label="Amount" class="kp-amt fw-semibold text-end">' + money(line.amount || 0) +
           '<div class="small text-muted kp-gstamt">' + (line.tax_amount ? '+ ' + money(line.tax_amount) + ' GST' : '') + '</div></td>' +
-        '<td data-label=""><button type="button" class="btn btn-sm btn-outline-danger" data-rm="' + i + '"><i class="bi bi-trash"></i></button></td>';
+        '<td data-label=""><div class="btn-group btn-group-sm">' +
+          '<button type="button" class="btn btn-outline-secondary" data-ed="' + i + '" title="Change this item"><i class="bi bi-pencil"></i></button>' +
+          '<button type="button" class="btn btn-outline-danger" data-rm="' + i + '" title="Remove this item"><i class="bi bi-trash"></i></button>' +
+        '</div></td>';
       tbody.appendChild(tr);
     });
     recalcTotals();
@@ -363,6 +369,8 @@
       recalcTotals();
     });
     itemsBody.addEventListener('click', e => {
+      const edit = e.target.closest('[data-ed]');
+      if (edit) { openLineEditor(parseInt(edit.dataset.ed, 10)); return; }
       const btn = e.target.closest('[data-rm]');
       if (!btn) return;
       state.items.splice(parseInt(btn.dataset.rm, 10), 1);
@@ -400,8 +408,12 @@
   const componentSelect = document.getElementById('modalComponent');
   const unitInput = document.getElementById('modalUnit');
   let currentComponent = null;
+  // A line being re-opened remembers how it was worked out, even when its category has
+  // since been changed or the component it was typed against is gone.
+  let modeOverride = null;
   const activeMode = () => {
     if (currentComponent) return currentComponent.calc_mode;
+    if (modeOverride) return modeOverride;
     if (!currentCategory) return 'simple';
     return currentCategory.calc_mode === 'sqft' ? 'sqft' : 'simple';
   };
@@ -420,6 +432,7 @@
 
   if (componentSelect) componentSelect.addEventListener('change', () => {
     const list = (currentCategory && currentCategory._components) || [];
+    modeOverride = null;   // he picked one himself — that decides now
     currentComponent = componentSelect.value === '' ? null : list[parseInt(componentSelect.value, 10)];
     if (currentComponent) {
       nameInput.value = currentComponent.name;
@@ -444,23 +457,33 @@
     setText('modalAmount', money(c.amount));
   }
 
-  if (categorySelect) categorySelect.addEventListener('change', async () => {
-    if (!categorySelect.value) { optionsBox.innerHTML = ''; currentCategory = null; showSqftFields(false); return; }
+  /**
+   * Load one category's question set into the modal.
+   * Used both when the category is picked by hand and when a line is re-opened for editing.
+   * @returns {Promise<boolean>} true when the category is loaded and ready
+   */
+  async function loadCategory(catId, prefillGst) {
+    modeOverride = null;
+    if (!catId) { optionsBox.innerHTML = ''; currentCategory = null; currentComponent = null; showSqftFields(false); return false; }
     optionsBox.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm"></div></div>';
-    const data = await kpFetch(window.KP.adminUrl + '/api/category-options/' + categorySelect.value);
-    if (!data.ok) { optionsBox.innerHTML = '<div class="alert alert-danger">Could not load this category.</div>'; return; }
+    const data = await kpFetch(window.KP.adminUrl + '/api/category-options/' + catId);
+    if (!data.ok) { optionsBox.innerHTML = '<div class="alert alert-danger">Could not load this category.</div>'; return false; }
     currentCategory = data.category;
     currentCategory._components = data.components || [];
     currentComponent = null;
     optionsBox.innerHTML = data.html;
     paintComponents(currentCategory._components);
-    // Prefill GST from the category (which already falls back to the shop default).
-    if (el('modalGst')) el('modalGst').value = currentCategory.tax_percent || 0;
+    // Prefill GST from the category (which already falls back to the shop default) — but not
+    // when re-opening a line, whose own GST is put back afterwards.
+    if (prefillGst !== false && el('modalGst')) el('modalGst').value = currentCategory.tax_percent || 0;
     showSqftFields(activeMode() === 'sqft');
     const dw = el('modalDesignerWrap');
     if (dw) dw.style.display = currentCategory.requires_design == 1 ? '' : 'none';
     modalCalc();
-  });
+    return true;
+  }
+
+  if (categorySelect) categorySelect.addEventListener('change', () => loadCategory(categorySelect.value, true));
 
   ['modalQty', 'modalWidth', 'modalHeight', 'modalRate'].forEach(id => {
     const node = el(id);
@@ -524,16 +547,97 @@
     };
     const c = calcLine(line);
     line.total_sqft = c.sqft; line.amount = c.amount; line.tax_amount = c.tax;
-    state.items.push(line);
+    if (editIndex !== null && state.items[editIndex]) {
+      const was = state.items[editIndex];
+      // A line already saved keeps its id, so the server updates it where it stands and it
+      // holds on to its status, its designer and any proofs instead of starting over.
+      if (was.id) { line.id = was.id; line.requires_design = was.requires_design; }
+      state.items[editIndex] = line;
+    } else {
+      state.items.push(line);
+    }
     renderItems();
     itemModal.hide();
   });
 
+  // ---------------------------------------------------------------- editing a line
+  // The same box that wrote the line opens it again, so anything typed the first time —
+  // the category answers, the size, the rate — can be typed differently.
+  let editIndex = null;
+  const modalTitle = itemModalEl ? itemModalEl.querySelector('.modal-title') : null;
+
+  function setModalMode(editing) {
+    if (modalTitle) modalTitle.textContent = editing ? 'Edit Item' : 'Add Item';
+    if (addBtn) {
+      addBtn.innerHTML = editing
+        ? '<i class="bi bi-check-lg"></i> Update Item'
+        : '<i class="bi bi-plus-lg"></i> Add to Order';
+    }
+  }
+
+  /** Put a line's saved answers back into the freshly-rendered question set. */
+  function applySpec(spec) {
+    if (!optionsBox) return;
+    const answers = spec || {};
+    optionsBox.querySelectorAll('[data-spec-key]').forEach(node => {
+      const val = answers[node.getAttribute('data-spec-key')];
+      if (node.type === 'radio') {
+        node.checked = val != null && String(val) === node.value;
+      } else if (node.type === 'checkbox') {
+        node.checked = Array.isArray(val)
+          ? val.map(String).indexOf(node.value) !== -1
+          : (val != null && String(val) === node.value);
+      } else {
+        node.value = val == null ? '' : (Array.isArray(val) ? val.join(', ') : val);
+      }
+    });
+  }
+
+  async function openLineEditor(i) {
+    const line = state.items[i];
+    if (!line || !itemModal) return;
+    editIndex = i;
+    setModalMode(true);
+    itemModal.show();
+
+    if (categorySelect) {
+      categorySelect.value = line.category_id ? String(line.category_id) : '';
+      await loadCategory(categorySelect.value, false);
+    }
+    // The component it was typed against, when it still exists — otherwise it is a
+    // custom name and the unit stands on its own.
+    if (componentSelect) {
+      const list = (currentCategory && currentCategory._components) || [];
+      let found = -1;
+      list.forEach((c, n) => { if (found < 0 && c.name === line.item_name) found = n; });
+      componentSelect.value = found >= 0 ? String(found) : '';
+      currentComponent = found >= 0 ? list[found] : null;
+    }
+    if (unitInput) unitInput.value = line.unit || '';
+    if (nameInput) nameInput.value = line.item_name || '';
+    applySpec(line.spec);
+    const put = (id, v) => { if (el(id)) el(id).value = v; };
+    put('modalQty', line.qty == null ? 1 : line.qty);
+    put('modalWidth', line.width_ft == null ? 0 : line.width_ft);
+    put('modalHeight', line.height_ft == null ? 0 : line.height_ft);
+    put('modalRate', line.rate == null ? 0 : line.rate);
+    put('modalGst', line.tax_percent == null ? 0 : line.tax_percent);
+    put('modalDue', line.due_date || '');
+    put('modalDesigner', line.designer_id ? String(line.designer_id) : '');
+    put('modalInstructions', line.special_instructions || '');
+    modeOverride = line.calc_mode || null;
+    showSqftFields(activeMode() === 'sqft');
+    modalCalc();
+  }
+
   if (itemModalEl) itemModalEl.addEventListener('hidden.bs.modal', () => {
+    editIndex = null;
+    modeOverride = null;
+    setModalMode(false);
     if (nameInput) nameInput.value = '';
     ['modalQty'].forEach(id => { if (el(id)) el(id).value = 1; });
     ['modalWidth', 'modalHeight', 'modalRate'].forEach(id => { if (el(id)) el(id).value = 0; });
-    if (el('modalInstructions')) el('modalInstructions').value = '';
+    ['modalInstructions', 'modalDue', 'modalDesigner'].forEach(id => { if (el(id)) el(id).value = ''; });
     if (optionsBox) optionsBox.innerHTML = '';
     if (categorySelect) categorySelect.value = '';
     if (componentSelect) { componentSelect.innerHTML = ''; componentSelect.closest('.kp-component-wrap').style.display = 'none'; }

@@ -15,94 +15,44 @@ use App\Models\Status;
 
 class OrderController extends Controller
 {
-    public function index(): void
-    {
-        Acl::require('order.view');
-        [$bw, $bp, $selectedBranch] = $this->branchScope('o.branch_id');
-        $where = [$bw, 'o.deleted_at IS NULL'];
-        $params = $bp;
-
-        $status = trim((string)($_GET['status'] ?? ''));
-        if ($status === 'overdue') {
-            $where[] = "o.due_date < NOW() AND o.status NOT IN ('delivered','completed','cancelled')";
-        } elseif ($status === 'needs_review') {
-            $where[] = 'o.needs_review = 1';
-        } elseif ($status !== '') {
-            $where[] = 'o.status = ?';
-            $params[] = $status;
-        }
-        $q = trim((string)($_GET['q'] ?? ''));
-        if ($q !== '') {
-            $where[] = '(o.job_no LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)';
-            $like = '%' . $q . '%';
-            array_push($params, $like, $like, $like);
-        }
-        if (!empty($_GET['from'])) {
-            $where[] = 'DATE(o.order_date) >= ?';
-            $params[] = $_GET['from'];
-        }
-        if (!empty($_GET['to'])) {
-            $where[] = 'DATE(o.order_date) <= ?';
-            $params[] = $_GET['to'];
-        }
-        // Whose work is this? Lets one person's pending list be printed and handed to them.
-        $personId = (int)($_GET['person'] ?? 0);
-        $personRole = in_array($_GET['person_role'] ?? '', ['designer', 'taken', 'accepted'], true)
-            ? $_GET['person_role'] : 'designer';
-        if ($personId > 0) {
-            if ($personRole === 'taken') {
-                $where[] = 'o.taken_by_user_id = ?';
-                $params[] = $personId;
-            } elseif ($personRole === 'accepted') {
-                $where[] = 'o.accepted_by_user_id = ?';
-                $params[] = $personId;
-            } else {
-                $where[] = 'EXISTS (SELECT 1 FROM `' . tbl('order_items') . '` oi
-                                    WHERE oi.order_id = o.id AND oi.assigned_designer_id = ?)';
-                $params[] = $personId;
-            }
-        }
-
-        $page = max(1, (int)($_GET['page'] ?? 1));
-        $perPage = 25;
-        $whereSql = implode(' AND ', $where);
-        $total = (int)DB::val(
-            'SELECT COUNT(*) FROM `' . tbl('orders') . '` o JOIN `' . tbl('customers') . "` c ON c.id=o.customer_id WHERE $whereSql",
-            $params
-        );
-        $orders = DB::all(
-            'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone, b.name AS branch_name
-             FROM `' . tbl('orders') . '` o
-             JOIN `' . tbl('customers') . '` c ON c.id = o.customer_id
-             JOIN `' . tbl('branches') . "` b ON b.id = o.branch_id
-             WHERE $whereSql ORDER BY o.created_at DESC LIMIT $perPage OFFSET " . (($page - 1) * $perPage),
-            $params
-        );
-        $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order');
-        $staff = DB::all('SELECT id, name FROM `' . tbl('users') . '` WHERE is_active = 1 AND deleted_at IS NULL ORDER BY name');
-        $this->render('orders/index', compact('orders', 'branches', 'selectedBranch', 'total', 'page', 'perPage', 'status', 'q', 'staff', 'personId', 'personRole'));
-    }
-
     /**
-     * The filtered order list as a printable sheet.
+     * The Orders filter, understood in exactly one place.
      *
-     * The point is the daily hand-out: filter to one person and one status, print, and give
-     * it to them — "this is what you still have on". So it prints EVERY match, not just the
-     * page on screen, and it carries the filter in words at the top.
+     * The screen, the printed sheet and the Excel file all read the same query string, so
+     * what you print is always what you were looking at — including a hand-picked set of
+     * rows, which arrives as ?ids=3,7,9.
+     *
+     * @return array{where:string, params:array, described:array<int,string>,
+     *               person_id:int, person_role:string, person_name:?string, ids:array<int,int>}
      */
-    public function printList(): void
+    private function orderFilter(): array
     {
-        Acl::require('order.view');
-
         $where = ['o.deleted_at IS NULL'];
         $params = [];
         $described = [];
+
+        // Hand-picked rows win over everything else: the user ticked exactly these.
+        $ids = array_values(array_filter(array_map(
+            'intval',
+            preg_split('/[^0-9]+/', (string)($_GET['ids'] ?? '')) ?: []
+        )));
+        $ids = array_slice(array_unique($ids), 0, 500);
+        if ($ids) {
+            $where[] = 'o.id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+            array_push($params, ...$ids);
+            $described[] = count($ids) . ' selected ' . (count($ids) === 1 ? 'order' : 'orders');
+        }
 
         $status = trim((string)($_GET['status'] ?? ''));
         if ($status === 'overdue') {
             $where[] = "o.due_date < NOW() AND o.status NOT IN ('delivered','completed','cancelled')";
             $described[] = 'Overdue only';
+        } elseif ($status === 'needs_review') {
+            $where[] = 'o.needs_review = 1';
+            $described[] = 'Needs review';
         } elseif ($status === 'pending') {
+            // The dropdown says "still pending (not delivered)", so that is what it means —
+            // on the screen and on the sheet alike.
             $where[] = "o.status NOT IN ('delivered','completed','cancelled')";
             $described[] = 'Still pending';
         } elseif ($status !== '') {
@@ -110,6 +60,7 @@ class OrderController extends Controller
             $params[] = $status;
             $described[] = 'Status: ' . Status::label($status);
         }
+
         $q = trim((string)($_GET['q'] ?? ''));
         if ($q !== '') {
             $where[] = '(o.job_no LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)';
@@ -128,6 +79,7 @@ class OrderController extends Controller
             $described[] = 'To ' . fmt_date((string)$_GET['to']);
         }
 
+        // Whose work is this? Lets one person's pending list be printed and handed to them.
         $personId = (int)($_GET['person'] ?? 0);
         $personRole = in_array($_GET['person_role'] ?? '', ['designer', 'taken', 'accepted'], true)
             ? $_GET['person_role'] : 'designer';
@@ -150,7 +102,158 @@ class OrderController extends Controller
             }
         }
 
-        $whereSql = implode(' AND ', $where);
+        return [
+            'where' => implode(' AND ', $where),
+            'params' => $params,
+            'described' => $described,
+            'person_id' => $personId,
+            'person_role' => $personRole,
+            'person_name' => $personName !== null ? (string)$personName : null,
+            'ids' => $ids,
+        ];
+    }
+
+    /** Which column the list is sorted by, and which way. Only these columns are allowed. */
+    private const SORTS = [
+        'customer' => 'c.name',
+        'job' => 'o.job_no',
+        'date' => 'o.order_date',
+        'due' => 'o.due_date',
+        'status' => 'o.status',
+        'total' => 'o.total',
+        'balance' => 'o.balance_amount',
+    ];
+
+    /** @return array{0:string,1:string,2:string} order-by SQL, sort key, direction */
+    private function orderSort(): array
+    {
+        $sort = (string)($_GET['sort'] ?? '');
+        $dir = strtolower((string)($_GET['dir'] ?? '')) === 'asc' ? 'ASC' : 'DESC';
+        if (!isset(self::SORTS[$sort])) {
+            return ['o.created_at DESC', '', 'desc'];
+        }
+        // NULL due dates belong at the end whichever way it is sorted — a job with no date
+        // is not the most urgent thing in the shop.
+        $col = self::SORTS[$sort];
+        $nulls = $sort === 'due' ? $col . ' IS NULL, ' : '';
+        return [$nulls . $col . ' ' . $dir . ', o.id DESC', $sort, strtolower($dir)];
+    }
+
+    public function index(): void
+    {
+        Acl::require('order.view');
+        [$bw, $bp, $selectedBranch] = $this->branchScope('o.branch_id');
+        $f = $this->orderFilter();
+        $whereSql = $bw . ' AND ' . $f['where'];
+        $params = array_merge($bp, $f['params']);
+        [$orderBy, $sort, $dir] = $this->orderSort();
+        $status = trim((string)($_GET['status'] ?? ''));
+        $q = trim((string)($_GET['q'] ?? ''));
+        $personId = $f['person_id'];
+        $personRole = $f['person_role'];
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 25;
+        $total = (int)DB::val(
+            'SELECT COUNT(*) FROM `' . tbl('orders') . '` o JOIN `' . tbl('customers') . "` c ON c.id=o.customer_id WHERE $whereSql",
+            $params
+        );
+        $orders = DB::all(
+            'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone, b.name AS branch_name
+             FROM `' . tbl('orders') . '` o
+             JOIN `' . tbl('customers') . '` c ON c.id = o.customer_id
+             JOIN `' . tbl('branches') . "` b ON b.id = o.branch_id
+             WHERE $whereSql ORDER BY $orderBy LIMIT $perPage OFFSET " . (($page - 1) * $perPage),
+            $params
+        );
+        // What the whole filtered set comes to, not just this page — the figure that gets
+        // read out when the sheet is handed over.
+        $sums = DB::get(
+            'SELECT COALESCE(SUM(o.total),0) AS total, COALESCE(SUM(o.balance_amount),0) AS balance
+             FROM `' . tbl('orders') . '` o
+             JOIN `' . tbl('customers') . "` c ON c.id = o.customer_id
+             WHERE $whereSql",
+            $params
+        ) ?: ['total' => 0, 'balance' => 0];
+
+        $branches = DB::all('SELECT id, name FROM `' . tbl('branches') . '` WHERE is_active = 1 ORDER BY sort_order');
+        $staff = DB::all('SELECT id, name FROM `' . tbl('users') . '` WHERE is_active = 1 AND deleted_at IS NULL ORDER BY name');
+        $this->render('orders/index', compact('orders', 'branches', 'selectedBranch', 'total', 'page', 'perPage',
+            'status', 'q', 'staff', 'personId', 'personRole', 'sort', 'dir', 'sums'));
+    }
+
+    /**
+     * The same list as a spreadsheet.
+     *
+     * Whatever is on the screen — a filter, a search, or a handful of ticked rows — comes
+     * out as one file that opens straight in Excel, with the money as plain numbers so it
+     * can be totted up there.
+     */
+    public function export(): void
+    {
+        Acl::require('order.view');
+        $f = $this->orderFilter();
+        $whereSql = $f['where'];
+        [$orderBy] = $this->orderSort();
+
+        $rows = DB::all(
+            'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone,
+                    cc.name AS contact_name, ut.name AS taken_by,
+                    (SELECT GROUP_CONCAT(DISTINCT oi.item_name_snapshot SEPARATOR ", ")
+                     FROM `' . tbl('order_items') . '` oi WHERE oi.order_id = o.id) AS items,
+                    (SELECT GROUP_CONCAT(DISTINCT u.name SEPARATOR ", ")
+                     FROM `' . tbl('order_items') . '` oi
+                     JOIN `' . tbl('users') . '` u ON u.id = oi.assigned_designer_id
+                     WHERE oi.order_id = o.id) AS designers
+             FROM `' . tbl('orders') . '` o
+             JOIN `' . tbl('customers') . '` c ON c.id = o.customer_id
+             LEFT JOIN `' . tbl('customer_contacts') . '` cc ON cc.id = o.contact_id
+             LEFT JOIN `' . tbl('users') . "` ut ON ut.id = o.taken_by_user_id
+             WHERE $whereSql ORDER BY $orderBy",
+            $f['params']
+        );
+
+        $this->exportCsv('orders', [
+            'Job No', 'Customer', 'Phone', 'Contact Person', 'Order Date', 'Due Date', 'Status',
+            'Items', 'Designer', 'Taken By', 'Priority', 'Total', 'Paid', 'Discount', 'Balance', 'Note',
+        ], array_map(fn($o) => [
+            $o['job_no'],
+            $o['customer_name'],
+            $o['customer_phone'],
+            $o['contact_name'],
+            $o['order_date'] ? fmt_date($o['order_date'], true) : '',
+            $o['due_date'] ? fmt_date($o['due_date'], true) : '',
+            Status::label((string)$o['status']),
+            $o['items'],
+            $o['designers'],
+            $o['taken_by'],
+            ucfirst((string)$o['priority']),
+            number_format((float)$o['total'], 2, '.', ''),
+            number_format((float)$o['paid_amount'], 2, '.', ''),
+            number_format((float)($o['settled_discount'] ?? 0), 2, '.', ''),
+            number_format((float)$o['balance_amount'], 2, '.', ''),
+            $o['customer_note'],
+        ], $rows));
+    }
+
+    /**
+     * The filtered order list as a printable sheet.
+     *
+     * The point is the daily hand-out: filter to one person and one status, print, and give
+     * it to them — "this is what you still have on". So it prints EVERY match, not just the
+     * page on screen, and it carries the filter in words at the top.
+     */
+    public function printList(): void
+    {
+        Acl::require('order.view');
+        $f = $this->orderFilter();
+        $whereSql = $f['where'];
+        [$orderBy] = $this->orderSort();
+        // A sheet with no sort asked for reads best by due date: the most urgent at the top.
+        if (empty($_GET['sort'])) {
+            $orderBy = 'o.due_date IS NULL, o.due_date, o.job_no';
+        }
+
         // No LIMIT: the sheet is the whole filtered list, not one screen of it.
         $orders = DB::all(
             'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone,
@@ -165,12 +268,13 @@ class OrderController extends Controller
              JOIN `' . tbl('customers') . '` c ON c.id = o.customer_id
              LEFT JOIN `' . tbl('customer_contacts') . "` cc ON cc.id = o.contact_id
              WHERE $whereSql
-             ORDER BY o.due_date IS NULL, o.due_date, o.job_no",
-            $params
+             ORDER BY $orderBy",
+            $f['params']
         );
 
         $branch = DB::get('SELECT * FROM `' . tbl('branches') . '` WHERE id = ?', [Acl::mainBranchId()]);
-        $filterText = $described ? implode(' · ', $described) : 'All orders';
+        $filterText = $f['described'] ? implode(' · ', $f['described']) : 'All orders';
+        $personName = $f['person_name'];
         \App\Core\View::render(
             'orders/print_list',
             compact('orders', 'branch', 'filterText', 'personName'),

@@ -49,6 +49,7 @@ $router->get('/orders/create', 'OrderController@create');
 $router->post('/orders', 'OrderController@store');
 $router->get('/orders/kanban', 'OrderController@kanban');
 $router->get('/orders/print', 'OrderController@printList');
+$router->get('/orders/export', 'OrderController@export');
 $router->get('/orders/{id}', 'OrderController@show');
 $router->get('/orders/{id}/edit', 'OrderController@edit');
 $router->post('/orders/{id}/update', 'OrderController@update');

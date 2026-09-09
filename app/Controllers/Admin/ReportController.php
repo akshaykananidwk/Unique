@@ -609,15 +609,6 @@ class ReportController extends Controller
     private function csv(string $name, array $headers, array $rows): never
     {
         Acl::require('report.export');
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $name . '-' . date('Ymd') . '.csv"');
-        $out = fopen('php://output', 'w');
-        fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
-        fputcsv($out, $headers);
-        foreach ($rows as $row) {
-            fputcsv($out, array_map(fn($v) => $v ?? '', $row));
-        }
-        fclose($out);
-        exit;
+        $this->exportCsv($name, $headers, $rows);
     }
 }

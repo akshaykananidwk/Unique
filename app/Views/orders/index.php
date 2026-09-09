@@ -1,20 +1,48 @@
 <?php use App\Core\Acl; use App\Core\Csrf; use App\Models\Status;
 $title = 'Orders';
 $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
+$qs = $_GET;
+unset($qs['page']);
+$filterQs = http_build_query($qs);
+
+/** A column heading that sorts. Clicking the one already in use turns it round. */
+$sortLink = function (string $key, string $label) use ($qs, $sort, $dir): string {
+    $next = ($sort === $key && $dir === 'asc') ? 'desc' : 'asc';
+    $arrow = $sort === $key ? ($dir === 'asc' ? ' <i class="bi bi-caret-up-fill"></i>' : ' <i class="bi bi-caret-down-fill"></i>') : '';
+    $url = '?' . http_build_query(array_merge($qs, ['sort' => $key, 'dir' => $next, 'page' => 1]));
+    $cls = $sort === $key ? 'text-body fw-bold' : 'text-body-secondary';
+    return '<a class="text-decoration-none ' . $cls . '" href="' . e($url) . '" title="Sort by ' . e($label) . '">'
+        . e($label) . $arrow . '</a>';
+};
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <h4 class="mb-0">Orders <span class="text-muted fs-6">(<?= (int)$total ?>)</span></h4>
-  <div class="d-flex gap-2">
-    <?php // Print exactly what is filtered — the daily hand-out: "this is what you still have on". ?>
-    <a href="<?= e(admin_url('orders/print') . ($_GET ? '?' . http_build_query($_GET) : '')) ?>"
-       target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+  <div class="d-flex flex-wrap gap-2">
+    <?php // The tick-all lives here as well as in the heading — on a phone the heading row
+    // is not drawn at all, and picking rows has to work there too. ?>
+    <?php if ($orders): ?>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="orderSelectAllBtn"
+              title="Tick every order on this page"><i class="bi bi-check2-square"></i> Select all</button>
+    <?php endif; ?>
+    <?php // Print or export exactly what is filtered — the daily hand-out. ?>
+    <a href="<?= e(admin_url('orders/print') . ($filterQs ? '?' . $filterQs : '')) ?>"
+       target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" id="printAll">
       <i class="bi bi-printer"></i> Print list
+    </a>
+    <a href="<?= e(admin_url('orders/export') . ($filterQs ? '?' . $filterQs : '')) ?>"
+       class="btn btn-outline-success btn-sm" id="excelAll">
+      <i class="bi bi-file-earmark-spreadsheet"></i> Excel
     </a>
     <a href="<?= e(admin_url('orders/create')) ?>" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New Order</a>
   </div>
 </div>
 
 <form method="get" class="row g-2 mb-3">
+  <?php // Sorting is part of the view, so it must survive a filter. ?>
+  <?php if ($sort): ?>
+    <input type="hidden" name="sort" value="<?= e($sort) ?>">
+    <input type="hidden" name="dir" value="<?= e($dir) ?>">
+  <?php endif; ?>
   <div class="col-6 col-md-3"><input name="q" value="<?= e($q) ?>" class="form-control form-control-sm" placeholder="Job no / customer / phone"></div>
   <div class="col-6 col-md-2">
     <select name="status" class="form-select form-select-sm">
@@ -46,18 +74,51 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
   <div class="col-6 col-md-2"><input type="date" name="from" value="<?= e($_GET['from'] ?? '') ?>" class="form-control form-control-sm"></div>
   <div class="col-6 col-md-2"><input type="date" name="to" value="<?= e($_GET['to'] ?? '') ?>" class="form-control form-control-sm"></div>
   <div class="col-6 col-md-1"><button class="btn btn-outline-primary btn-sm w-100">Filter</button></div>
+  <?php if ($q !== '' || $status !== '' || $personId || !empty($_GET['from']) || !empty($_GET['to']) || $sort): ?>
+    <div class="col-6 col-md-2"><a class="btn btn-outline-secondary btn-sm w-100" href="<?= e(admin_url('orders')) ?>">Clear</a></div>
+  <?php endif; ?>
 </form>
 
 <?php if (!$orders): ?>
   <div class="empty-state"><i class="bi bi-receipt"></i>No orders match. <a href="<?= e(admin_url('orders/create')) ?>">Create the first one</a>.</div>
 <?php else: ?>
+
+<?php // Ticked rows travel to the printer and to Excel as ?ids=… — see kpOrderSelect in app.js ?>
+<div id="orderSelectBar" class="alert alert-primary d-none d-flex flex-wrap align-items-center gap-2 py-2">
+  <strong><span id="orderSelectCount">0</span> selected</strong>
+  <div class="ms-auto d-flex flex-wrap gap-2">
+    <a href="#" id="printSelected" target="_blank" rel="noopener" class="btn btn-sm btn-primary">
+      <i class="bi bi-printer"></i> Print selected</a>
+    <a href="#" id="excelSelected" class="btn btn-sm btn-success">
+      <i class="bi bi-file-earmark-spreadsheet"></i> Selected to Excel</a>
+    <button type="button" id="clearSelected" class="btn btn-sm btn-outline-secondary">Clear</button>
+  </div>
+</div>
+
 <div class="table-responsive">
-<table class="table table-sm table-hover align-middle table-mobile">
-  <thead><tr><th>Customer</th><th>Job No</th><th>Date / Due</th><th>Status</th><th>Total</th><th>Balance</th><th>Actions</th></tr></thead>
+<table class="table table-sm table-hover align-middle table-mobile" id="ordersTable"
+       data-print-url="<?= e(admin_url('orders/print')) ?>"
+       data-excel-url="<?= e(admin_url('orders/export')) ?>">
+  <thead><tr>
+    <th style="width:34px" class="kp-pick">
+      <input type="checkbox" class="form-check-input" id="orderSelectAll" title="Select everything on this page">
+    </th>
+    <th><?= $sortLink('customer', 'Customer') ?></th>
+    <th><?= $sortLink('job', 'Job No') ?></th>
+    <th><?= $sortLink('date', 'Date') ?> / <?= $sortLink('due', 'Due') ?></th>
+    <th><?= $sortLink('status', 'Status') ?></th>
+    <th class="text-end"><?= $sortLink('total', 'Total') ?></th>
+    <th class="text-end"><?= $sortLink('balance', 'Balance') ?></th>
+    <th>Actions</th>
+  </tr></thead>
   <tbody>
   <?php foreach ($orders as $o):
       $overdue = Status::isOverdue($o['due_date'], (string)$o['status']); ?>
     <tr class="<?= $overdue ? 'row-overdue' : e(priority_class($o['priority'])) ?>">
+      <td data-label="Select" class="kp-pick">
+        <input type="checkbox" class="form-check-input kp-order-pick" value="<?= (int)$o['id'] ?>"
+               aria-label="Select <?= e($o['job_no']) ?>">
+      </td>
       <?php // The customer is what the shop actually looks for, so that is the link, with the
       // number to ring underneath. The job number is a column of its own — it is read out,
       // written on the challan and searched for, so it should not have to be hunted for. ?>
@@ -92,8 +153,8 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
           <span class="badge bg-<?= e(Status::color((string)$o['status'])) ?>"><?= e(Status::label((string)$o['status'])) ?></span>
         <?php endif; ?>
       </td>
-      <td data-label="Total"><?= e(fmt_money($o['total'])) ?></td>
-      <td data-label="Balance" class="<?= (float)$o['balance_amount'] > 0 ? 'text-danger fw-semibold' : 'text-success' ?>"><?= e(fmt_money($o['balance_amount'])) ?></td>
+      <td data-label="Total" class="text-end"><?= e(fmt_money($o['total'])) ?></td>
+      <td data-label="Balance" class="text-end <?= (float)$o['balance_amount'] > 0 ? 'text-danger fw-semibold' : 'text-success' ?>"><?= e(fmt_money($o['balance_amount'])) ?></td>
       <td data-label="Actions">
         <div class="btn-group btn-group-sm">
           <a class="btn btn-outline-secondary" title="Open" href="<?= e(admin_url('orders/' . $o['id'])) ?>"><i class="bi bi-eye"></i></a>
@@ -109,12 +170,18 @@ $backUrl = admin_url('orders') . ($_GET ? '?' . http_build_query($_GET) : '');
     </tr>
   <?php endforeach; ?>
   </tbody>
+  <tfoot><tr class="fw-semibold">
+    <td colspan="5" class="text-end">All <?= (int)$total ?> matching orders</td>
+    <td class="text-end"><?= e(fmt_money($sums['total'])) ?></td>
+    <td class="text-end text-danger"><?= e(fmt_money($sums['balance'])) ?></td>
+    <td></td>
+  </tr></tfoot>
 </table>
 </div>
 <?php $pages = (int)ceil($total / $perPage); if ($pages > 1): ?>
 <nav><ul class="pagination pagination-sm">
-  <?php for ($p = 1; $p <= $pages; $p++): $qs = $_GET; $qs['page'] = $p; ?>
-    <li class="page-item <?= $p === $page ? 'active' : '' ?>"><a class="page-link" href="?<?= e(http_build_query($qs)) ?>"><?= $p ?></a></li>
+  <?php for ($p = 1; $p <= $pages; $p++): $pq = $_GET; $pq['page'] = $p; ?>
+    <li class="page-item <?= $p === $page ? 'active' : '' ?>"><a class="page-link" href="?<?= e(http_build_query($pq)) ?>"><?= $p ?></a></li>
   <?php endfor; ?>
 </ul></nav>
 <?php endif; endif; ?>

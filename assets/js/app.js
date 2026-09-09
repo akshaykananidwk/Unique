@@ -94,6 +94,61 @@
     });
   }
 
+  // ---------------------------------------------------------------- picking rows on Orders
+  // Tick the rows you want and the Print and Excel buttons carry exactly those, as ?ids=…
+  // Nothing is ticked to begin with, so the plain buttons still take the whole filter.
+  const ordersTable = document.getElementById('ordersTable');
+  if (ordersTable) {
+    const bar = document.getElementById('orderSelectBar');
+    const countEl = document.getElementById('orderSelectCount');
+    const headBox = document.getElementById('orderSelectAll');
+    const allBtn = document.getElementById('orderSelectAllBtn');
+    const boxes = () => Array.from(ordersTable.querySelectorAll('.kp-order-pick'));
+
+    const paint = () => {
+      const all = boxes();
+      const ids = all.filter(b => b.checked).map(b => b.value);
+      countEl.textContent = String(ids.length);
+      bar.classList.toggle('d-none', ids.length === 0);
+      if (headBox) {
+        headBox.checked = ids.length > 0 && ids.length === all.length;
+        headBox.indeterminate = ids.length > 0 && ids.length < all.length;
+      }
+      if (allBtn) {
+        allBtn.innerHTML = ids.length === all.length && all.length
+          ? '<i class="bi bi-square"></i> Select none'
+          : '<i class="bi bi-check2-square"></i> Select all';
+      }
+      const qs = '?ids=' + ids.join(',');
+      document.getElementById('printSelected').href = ordersTable.dataset.printUrl + qs;
+      document.getElementById('excelSelected').href = ordersTable.dataset.excelUrl + qs;
+      all.forEach(b => b.closest('tr').classList.toggle('table-active', b.checked));
+    };
+
+    const setAll = on => { boxes().forEach(b => { b.checked = on; }); paint(); };
+    if (headBox) headBox.addEventListener('change', () => setAll(headBox.checked));
+    if (allBtn) allBtn.addEventListener('click', () => setAll(boxes().some(b => !b.checked)));
+
+    // Shift-click ticks a whole run of rows, the way a spreadsheet does.
+    let lastIndex = null;
+    ordersTable.addEventListener('click', e => {
+      const box = e.target.closest('.kp-order-pick');
+      if (!box) return;
+      const list = boxes();
+      const i = list.indexOf(box);
+      if (e.shiftKey && lastIndex !== null) {
+        const from = Math.min(lastIndex, i), to = Math.max(lastIndex, i);
+        for (let n = from; n <= to; n++) list[n].checked = box.checked;
+      }
+      lastIndex = i;
+      paint();
+    });
+
+    const clearBtn = document.getElementById('clearSelected');
+    if (clearBtn) clearBtn.addEventListener('click', () => setAll(false));
+    paint();
+  }
+
   // ---------------------------------------------------------------- order create / edit page
   const orderForm = document.getElementById('orderCreateForm') || document.getElementById('orderEditForm');
   if (!orderForm) return;

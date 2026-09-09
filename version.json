@@ -1,12 +1,12 @@
 {
-    "version": "2.6.0",
-    "released_at": "2026-09-08",
+    "version": "2.7.0",
+    "released_at": "2026-09-09",
     "changelog": [
-        "Cash in Hand — a new screen under Money & Reports. Every cash receipt now stays on the book of the person who took it, so you can see at a glance how much of the shop's money is in whose pocket. Managers see everybody; each person always sees their own.",
-        "Handing cash over: pick the person, enter the amount, press Hand over. A 6-digit code appears on THEIR screen. They count the money, read the code out, you type it in — only then is it taken off your book and put on theirs. Neither person can move money alone.",
-        "A code lasts 30 minutes and locks after 5 wrong tries; a new one can be issued at any time. The receiver can turn a handover down, the sender can cancel it, and one nobody finished expires on its own — in every case the money simply stays where it was.",
-        "You cannot hand over more than you are holding, and money already promised in an unfinished handover is not counted as free.",
-        "The User Performance report has a new Cash In Hand column (also in the Excel export), and the dashboard shows what you are holding plus the code for anyone waiting to hand you money.",
-        "Every handover is kept for good with a reference number, both names, the amount and the outcome. Completed handovers are never edited or deleted — a mistake is put right by handing the money back the other way."
+        "Sort the Orders list by tapping a column heading — Customer, Job No, Date, Due, Status, Total or Balance. Tapping the same heading again turns the order round, and the sort stays put while you filter.",
+        "Tick boxes on every row. Pick the ones you want and a bar appears: Print selected, or Selected to Excel. Shift-click ticks a whole run of rows at once, and Select all takes the page in one go.",
+        "New Excel button: the list you are looking at comes down as a spreadsheet — job no, customer, phone, contact person, dates, status, items, designer, who took it, priority, total, paid, discount, balance and note. Money is written as plain numbers so Excel can add it up.",
+        "The Orders list now shows what the whole filtered set comes to — total and balance due — under the table, not just the page you are on.",
+        "Fixed: \"Still pending (not delivered)\" meant one thing on the screen and another on the printed sheet, so the two did not match. The screen, the sheet and the Excel file now read the filter in exactly one place and always agree.",
+        "A Clear button next to Filter puts the list back to normal in one tap."
     ]
 }

@@ -22,6 +22,29 @@ abstract class Controller
         View::render($view, $data, 'layouts/admin');
     }
 
+    /**
+     * Send rows to the browser as a spreadsheet file.
+     *
+     * Excel reads a UTF-8 CSV only when it is told the encoding up front, so the byte-order
+     * mark goes first — without it Gujarati names and the ₹ sign come out as rubbish.
+     *
+     * @param array<int,string> $headers
+     * @param array<int,array<int,mixed>> $rows
+     */
+    protected function exportCsv(string $name, array $headers, array $rows): never
+    {
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $name . '-' . date('Ymd-Hi') . '.csv"');
+        $out = fopen('php://output', 'w');
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, $headers);
+        foreach ($rows as $row) {
+            fputcsv($out, array_map(fn($v) => $v ?? '', $row));
+        }
+        fclose($out);
+        exit;
+    }
+
     protected function isManager(): bool
     {
         return in_array($this->user['role_slug'], ['super_admin', 'branch_manager'], true);

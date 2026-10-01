@@ -74,15 +74,4 @@ class Designers
                  OR EXISTS (SELECT 1 FROM `$oi` oi2 WHERE oi2.assigned_designer_id = $userAlias.id)
                  OR EXISTS (SELECT 1 FROM `$dp` dp2 WHERE dp2.uploaded_by_user_id = $userAlias.id))";
     }
-
-    /** The least-loaded designer, for auto-assignment. Null when nobody can design. */
-    public static function leastLoaded(): ?int
-    {
-        $rows = self::all();
-        if (!$rows) {
-            return null;
-        }
-        usort($rows, fn($a, $b) => (int)$a['open_jobs'] <=> (int)$b['open_jobs']);
-        return (int)$rows[0]['id'];
-    }
 }

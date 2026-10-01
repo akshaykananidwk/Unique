@@ -17,7 +17,7 @@ class SettingsController extends Controller
     ];
 
     private const APP_KEYS = [
-        'base_url', 'job_prefix', 'idle_timeout_minutes', 'auto_assign_designer', 'revision_flag_threshold',
+        'base_url', 'job_prefix', 'idle_timeout_minutes', 'revision_flag_threshold',
         'proof_max_upload_mb', 'upload_max_mb', 'public_order_auto_confirm', 'public_otp_required',
         'otp_expiry_minutes', 'balance_reminder_days', 'proof_reminder_hours', 'feedback_stale_hours',
     ];
@@ -46,7 +46,7 @@ class SettingsController extends Controller
             }
         }
         // Checkbox toggles come as missing keys when unticked
-        foreach (['auto_assign_designer', 'public_order_auto_confirm', 'public_otp_required'] as $toggle) {
+        foreach (['public_order_auto_confirm', 'public_otp_required'] as $toggle) {
             Settings::set($toggle, !empty($_POST[$toggle]) ? '1' : '0', 'app');
         }
         if (!empty($_FILES['business_logo']['name'])) {

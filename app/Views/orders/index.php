@@ -128,8 +128,21 @@ $sortLink = function (string $key, string $label) use ($qs, $sort, $dir): string
         <?= priority_badge($o['priority']) ?>
         <div class="small text-muted"><?= e($o['customer_phone']) ?></div>
       </td>
+      <?php // The counter often writes its own number on the slip before the job is entered,
+      // so the number has to be correctable here without opening the order. Type over it and
+      // tab away — Escape puts the old one back. ?>
       <td data-label="Job No" class="text-nowrap">
-        <a href="<?= e(admin_url('orders/' . $o['id'])) ?>" class="text-body text-decoration-none"><code class="small"><?= e($o['job_no']) ?></code></a>
+        <?php if (Acl::can('order.edit')): ?>
+          <form method="post" action="<?= e(admin_url('orders/' . $o['id'] . '/job-no')) ?>" class="d-inline">
+            <?= Csrf::field() ?>
+            <input type="hidden" name="back" value="<?= e($backUrl) ?>">
+            <input name="job_no" value="<?= e($o['job_no']) ?>" maxlength="40" data-auto-submit
+                   class="form-control form-control-sm kp-jobno" autocomplete="off"
+                   title="Type a different job number and press Enter">
+          </form>
+        <?php else: ?>
+          <a href="<?= e(admin_url('orders/' . $o['id'])) ?>" class="text-body text-decoration-none"><code class="small"><?= e($o['job_no']) ?></code></a>
+        <?php endif; ?>
       </td>
       <td data-label="Date / Due"><span class="small"><?= e(fmt_date($o['order_date'])) ?></span>
         <div class="small <?= $overdue ? 'text-overdue fw-bold' : 'text-muted' ?>">Due <?= e(fmt_date($o['due_date'], true)) ?></div></td>

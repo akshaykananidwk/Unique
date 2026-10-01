@@ -405,6 +405,64 @@ class OrderController extends Controller
     }
 
     /** Name who made this job, for the bill. Blank means "follow the designer". */
+    /**
+     * Give an order a different job number.
+     *
+     * The number is what the shop calls the job by, so it has to be free to re-type — but
+     * it also has to stay one of a kind, because the challan, the search box and every
+     * list find a job by it. A soft-deleted order still holds its number: the unique key
+     * covers those rows too, so they are counted here as taken.
+     *
+     * @throws \RuntimeException with a message meant to be shown as it is
+     */
+    private function applyJobNo(array $order, string $raw): string
+    {
+        $jobNo = trim($raw);
+        if ($jobNo === '' || $jobNo === (string)$order['job_no']) {
+            return (string)$order['job_no'];
+        }
+        if (mb_strlen($jobNo) > 40) {
+            throw new \RuntimeException('A job number can be at most 40 characters.');
+        }
+        $taken = DB::get(
+            'SELECT id, deleted_at FROM `' . tbl('orders') . '` WHERE job_no = ? AND id <> ?',
+            [$jobNo, (int)$order['id']]
+        );
+        if ($taken) {
+            throw new \RuntimeException(sprintf(
+                'Job number “%s” is already used by another order%s.',
+                $jobNo,
+                $taken['deleted_at'] ? ' (a deleted one — its number is still reserved)' : ''
+            ));
+        }
+        Logger::activity('order', 'job_no', 'order', (int)$order['id'],
+            'Job number ' . $order['job_no'] . ' → ' . $jobNo);
+        return $jobNo;
+    }
+
+    /**
+     * Re-type a job number straight from the list.
+     *
+     * The counter writes a number on the slip before the job is entered, so the one the
+     * system made up has to be correctable without opening the whole order.
+     */
+    public function setJobNo(string $id): void
+    {
+        Acl::require('order.edit');
+        $order = $this->findOrder((int)$id);
+        $back = (string)($_POST['back'] ?? '') ?: admin_url('orders');
+        try {
+            $jobNo = $this->applyJobNo($order, (string)($_POST['job_no'] ?? ''));
+            if ($jobNo !== (string)$order['job_no']) {
+                DB::update('orders', ['job_no' => $jobNo, 'updated_at' => now()], ['id' => (int)$id]);
+                flash('success', 'Job number changed to ' . e($jobNo) . '.');
+            }
+        } catch (\Throwable $e) {
+            flash('danger', e($e->getMessage()));
+        }
+        redirect($back);
+    }
+
     public function setPreparedBy(string $id): void
     {
         Acl::require('order.edit');
@@ -607,17 +665,12 @@ class OrderController extends Controller
         }
 
         // Job number can be re-typed at any time; it just has to stay unique.
-        $jobNo = trim((string)($_POST['job_no'] ?? ''));
-        if ($jobNo === '') {
-            $jobNo = (string)$order['job_no'];
-        } elseif ($jobNo !== (string)$order['job_no']) {
-            $taken = DB::val('SELECT id FROM `' . tbl('orders') . '` WHERE job_no = ? AND id <> ?', [$jobNo, (int)$id]);
-            if ($taken) {
-                flash('danger', 'Job number “' . $jobNo . '” is already used by another order.');
-                keep_old($_POST);
+        try {
+            $jobNo = $this->applyJobNo($order, (string)($_POST['job_no'] ?? ''));
+        } catch (\Throwable $e) {
+            flash('danger', e($e->getMessage()));
+            keep_old($_POST);
             redirect(admin_url('orders/' . $id . '/edit'));
-            }
-            Logger::activity('order', 'job_no', 'order', (int)$id, 'Job number ' . $order['job_no'] . ' → ' . $jobNo);
         }
 
         DB::update('orders', [

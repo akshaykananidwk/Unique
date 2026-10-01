@@ -1,12 +1,9 @@
 {
-    "version": "2.7.0",
-    "released_at": "2026-09-09",
+    "version": "2.8.0",
+    "released_at": "2026-10-01",
     "changelog": [
-        "Sort the Orders list by tapping a column heading — Customer, Job No, Date, Due, Status, Total or Balance. Tapping the same heading again turns the order round, and the sort stays put while you filter.",
-        "Tick boxes on every row. Pick the ones you want and a bar appears: Print selected, or Selected to Excel. Shift-click ticks a whole run of rows at once, and Select all takes the page in one go.",
-        "New Excel button: the list you are looking at comes down as a spreadsheet — job no, customer, phone, contact person, dates, status, items, designer, who took it, priority, total, paid, discount, balance and note. Money is written as plain numbers so Excel can add it up.",
-        "The Orders list now shows what the whole filtered set comes to — total and balance due — under the table, not just the page you are on.",
-        "Fixed: \"Still pending (not delivered)\" meant one thing on the screen and another on the printed sheet, so the two did not match. The screen, the sheet and the Excel file now read the filter in exactly one place and always agree.",
-        "A Clear button next to Filter puts the list back to normal in one tap."
+        "The job number can be typed over straight from the Orders list. Click it, type the number that is written on the slip, press Enter or tab away — it is saved on the spot. Escape puts the old one back. It still has to stay unique: a number already on another order is refused and the old one is kept.",
+        "Nobody is given a design job by the system any more. A new job stays with no designer against it until a person takes it off the board or someone names him by hand, so a name never appears on work that was never accepted. The round-robin auto-assign setting is gone from Settings along with the code behind it.",
+        "In the item box the designer now reads \"— Nobody yet —\" instead of \"Assign later / auto\", because nothing is assigned automatically any more."
     ]
 }

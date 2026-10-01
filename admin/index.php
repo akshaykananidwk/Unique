@@ -62,6 +62,7 @@ $router->post('/order-items/{id}/assign', 'OrderController@assignDesigner');
 $router->get('/orders/{id}/job-card', 'OrderController@jobCard');
 $router->post('/orders/{id}/whatsapp', 'OrderController@sendWhatsapp');
 $router->post('/orders/{id}/prepared-by', 'OrderController@setPreparedBy');
+$router->post('/orders/{id}/job-no', 'OrderController@setJobNo');
 
 // Customers
 $router->get('/customers', 'CustomerController@index');

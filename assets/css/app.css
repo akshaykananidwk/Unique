@@ -97,6 +97,23 @@
 }
 .kp-status-pick option { color: var(--bs-body-color); background: var(--bs-body-bg); font-weight: 400; }
 
+/* Job number in the orders list — a plain code with a faint dotted line under it, so the
+   column still reads as a list while saying it can be typed over. It turns into a proper
+   box on hover and on focus. */
+.kp-jobno {
+  width: 11.5rem;
+  max-width: 100%;
+  font-family: var(--bs-font-monospace);
+  font-size: .8rem;
+  background: transparent;
+  padding-inline: .35rem;
+  border: 1px solid transparent;
+  border-bottom-style: dashed;
+  border-bottom-color: var(--bs-border-color);
+}
+.kp-jobno:hover { border: 1px solid var(--bs-border-color); background: var(--bs-body-bg); }
+.kp-jobno:focus { border: 1px solid var(--kp-brand); background: var(--bs-body-bg); }
+
 /* Priority — urgent/rush shout in red, normal sits calm in green.
    Declared before the overdue rules so an overdue row still wins its red tint. */
 .kp-prio-rush { background: #a51d2a !important; color: #fff !important; }

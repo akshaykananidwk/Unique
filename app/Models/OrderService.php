@@ -154,10 +154,8 @@ class OrderService
                 $itemRowId = DB::insert('order_items', ['order_id' => $orderId] + $row);
                 self::history($orderId, $itemRowId, null, $row['status'], $userId, $source === 'public', 'Order created');
 
-                // Auto-assign designer when enabled and none picked
-                if ($requiresDesign && !$designerId && Settings::getBool('auto_assign_designer')) {
-                    self::autoAssignDesigner($itemRowId, $branchId, $userId);
-                }
+                // Nobody is given the job by the system. A designer takes it off the board
+                // himself, or someone names him — either way a person decides.
             }
 
             self::recalcTotals($orderId);
@@ -277,11 +275,7 @@ class OrderService
                 Logger::activity('order', 'add_item', 'order_item', $newId,
                     $order['job_no'] . ': line added — ' . $row['item_name_snapshot']);
                 if ($requiresDesign && $designerId) {
-                    $newDesigner[] = $newId;
-                } elseif ($requiresDesign && !$designerId && Settings::getBool('auto_assign_designer')) {
-                    if (self::autoAssignDesigner($newId, $branchId, $userId)) {
-                        $newDesigner[] = $newId;
-                    }
+                    $newDesigner[] = $newId;   // only because a person named him
                 }
                 $keptIds[] = $newId;
             }
@@ -1012,37 +1006,6 @@ class OrderService
         return ['ok' => true];
     }
 
-    /** Round-robin auto-assignment respecting designer_capacity. */
-    public static function autoAssignDesigner(int $itemId, int $branchId, ?int $userId): ?int
-    {
-        $designers = DB::all(
-            'SELECT u.id, u.designer_capacity,
-                    (SELECT COUNT(*) FROM `' . tbl('order_items') . '` oi
-                     WHERE oi.assigned_designer_id = u.id
-                       AND oi.status IN (\'design_pending\',\'design_in_progress\',\'proof_sent\',\'change_requested\')) AS open_jobs,
-                    (SELECT MAX(oi2.designer_assigned_at) FROM `' . tbl('order_items') . '` oi2
-                     WHERE oi2.assigned_designer_id = u.id) AS last_assigned
-             FROM `' . tbl('users') . '` u
-             WHERE u.is_active = 1 AND u.deleted_at IS NULL AND ' . Designers::sqlCanDesign('u') . '
-             ORDER BY open_jobs ASC, last_assigned ASC, u.id ASC'
-        );
-        foreach ($designers as $designer) {
-            $capacity = $designer['designer_capacity'] !== null ? (int)$designer['designer_capacity'] : PHP_INT_MAX;
-            if ((int)$designer['open_jobs'] < $capacity) {
-                DB::update('order_items', [
-                    'assigned_designer_id' => (int)$designer['id'],
-                    'designer_assigned_at' => now(),
-                    'claimed_at' => now(),
-                    'claimed_by_user_id' => (int)$designer['id'],
-                    'updated_at' => now(),
-                ], ['id' => $itemId]);
-                Logger::activity('order', 'auto_assign', 'order_item', $itemId,
-                    'Auto-assigned designer #' . $designer['id'] . ' (round-robin)');
-                return (int)$designer['id'];
-            }
-        }
-        return null;
-    }
 
     public static function cancelOrder(int $orderId, string $reason, ?int $userId): array
     {

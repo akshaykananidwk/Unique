@@ -94,6 +94,16 @@
     });
   }
 
+  // ---------------------------------------------------------------- job number, typed in place
+  // The field auto-submits when you tab away having changed it, so Escape has to be a real
+  // way out: it puts the number back and lets go, without saving anything.
+  document.addEventListener('keydown', e => {
+    const field = e.target.closest ? e.target.closest('.kp-jobno') : null;
+    if (!field || e.key !== 'Escape') return;
+    field.value = field.defaultValue;
+    field.blur();
+  });
+
   // ---------------------------------------------------------------- picking rows on Orders
   // Tick the rows you want and the Print and Excel buttons carry exactly those, as ?ids=…
   // Nothing is ticked to begin with, so the plain buttons still take the whole filter.

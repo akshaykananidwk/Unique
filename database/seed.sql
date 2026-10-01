@@ -118,7 +118,6 @@ INSERT INTO `settings` (`group_key`,`setting_key`,`setting_value`,`is_encrypted`
 ('app','job_prefix','JOB',0),
 ('app','idle_timeout_minutes','120',0),
 ('app','asset_version','1',0),
-('app','auto_assign_designer','0',0),
 ('app','revision_flag_threshold','3',0),
 ('app','proof_max_upload_mb','15',0),
 ('app','upload_max_mb','15',0),

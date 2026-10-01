@@ -65,9 +65,6 @@
       <div class="col-md-3"><label class="form-label">Proof reminder after (hours)</label><input type="number" name="proof_reminder_hours" class="form-control" value="<?= e($values['proof_reminder_hours'] ?: '24') ?>"></div>
       <div class="col-12 d-flex flex-wrap gap-4 mt-2">
         <div class="form-check form-switch">
-          <input class="form-check-input" type="checkbox" name="auto_assign_designer" value="1" id="aad" <?= $values['auto_assign_designer'] === '1' ? 'checked' : '' ?>>
-          <label class="form-check-label" for="aad">Auto-assign designers (round-robin)</label></div>
-        <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" name="public_otp_required" value="1" id="por" <?= $values['public_otp_required'] === '1' ? 'checked' : '' ?>>
           <label class="form-check-label" for="por">Require WhatsApp OTP on public orders</label></div>
         <div class="form-check form-switch">

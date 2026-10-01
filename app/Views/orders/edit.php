@@ -188,7 +188,7 @@
             <input type="datetime-local" id="modalDue" class="form-control"></div>
           <div class="col-12 col-md-6" id="modalDesignerWrap"><label class="form-label">Designer (optional)</label>
             <select id="modalDesigner" class="form-select">
-              <option value="">— Assign later / auto —</option>
+              <option value="">— Nobody yet —</option>
               <?php foreach ($designers as $d): ?>
                 <option value="<?= (int)$d['id'] ?>"><?= e($d['name']) ?></option>
               <?php endforeach; ?>

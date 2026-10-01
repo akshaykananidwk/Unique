@@ -851,7 +851,24 @@ class OrderController extends Controller
             abort(404, 'Job item not found.');
         }
         $this->findOrder((int)$item['order_id']); // branch check
-        $result = OrderService::assignDesigner((int)$id, (int)($_POST['designer_id'] ?? 0), (int)$this->user['id']);
+        $designerId = (int)($_POST['designer_id'] ?? 0);
+
+        // Picking the blank option means "take it off him" — the job goes back on the
+        // shared board for somebody else, which is as normal as handing it out.
+        if ($designerId === 0) {
+            if ($item['assigned_designer_id'] === null) {
+                flash('info', 'Nobody was holding that job anyway.');
+                redirect(admin_url('orders/' . $item['order_id']));
+            }
+            // Reaching here needed order.assign, so this is a manager taking it back —
+            // allowed even when a proof has already gone out.
+            $result = OrderService::releaseDesign((int)$id, (int)$this->user['id'], true);
+            flash($result['ok'] ? 'success' : 'danger',
+                $result['ok'] ? 'Taken off — the job is back on the board.' : $result['error']);
+            redirect(admin_url('orders/' . $item['order_id']));
+        }
+
+        $result = OrderService::assignDesigner((int)$id, $designerId, (int)$this->user['id']);
         flash($result['ok'] ? 'success' : 'danger', $result['ok'] ? 'Designer assigned.' : $result['error']);
         redirect(admin_url('orders/' . $item['order_id']));
     }

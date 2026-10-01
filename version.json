@@ -1,9 +1,9 @@
 {
-    "version": "2.9.1",
+    "version": "2.9.2",
     "released_at": "2026-10-01",
     "changelog": [
-        "The Orders list has a new Designer column, between Status and Total: the name of whoever accepted the design work, so you can see who is on which job without opening anything.",
-        "A job nobody has taken yet reads \"— not taken —\" in grey. An order whose lines went to two different people shows both names.",
-        "The name is clickable — it opens that person's own list of jobs. The column sorts too, like the other headings."
+        "A designer can be taken off a job again. On the order screen the designer box now offers a blank choice — \"— Take it off, back to the board —\" — and picking it puts the job back on the shared board for somebody else. The browser used to refuse with \"Please select an item in the list.\"",
+        "When nobody holds the job the same box reads \"— Nobody yet —\", so the state is clear before you touch it.",
+        "Taking a job off clears the designer and the accepted-at stamp, so it stops counting against that person's work. Picking blank when nobody held it just says so instead of showing an error."
     ]
 }

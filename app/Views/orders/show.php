@@ -63,8 +63,11 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
             <?php if (Acl::can('order.assign') && !in_array($item['status'], ['delivered', 'completed', 'cancelled'], true)): ?>
             <form method="post" action="<?= e(admin_url('order-items/' . $item['id'] . '/assign')) ?>" class="d-flex gap-1 mb-2">
               <?= Csrf::field() ?>
-              <select name="designer_id" class="form-select form-select-sm" required>
-                <option value="">Assign designer…</option>
+              <?php // No "required" here: the blank one is a real choice — it takes the job
+              // off whoever is holding it and puts it back on the shared board. ?>
+              <select name="designer_id" class="form-select form-select-sm">
+                <option value=""><?= $item['assigned_designer_id']
+                    ? '— Take it off, back to the board —' : '— Nobody yet —' ?></option>
                 <?php foreach ($designers as $d): ?>
                   <option value="<?= (int)$d['id'] ?>" <?= (int)$item['assigned_designer_id'] === (int)$d['id'] ? 'selected' : '' ?>><?= e($d['name']) ?></option>
                 <?php endforeach; ?>

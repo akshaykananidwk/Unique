@@ -107,6 +107,7 @@ $sortLink = function (string $key, string $label) use ($qs, $sort, $dir): string
     <th><?= $sortLink('job', 'Job No') ?></th>
     <th><?= $sortLink('date', 'Date') ?> / <?= $sortLink('due', 'Due') ?></th>
     <th><?= $sortLink('status', 'Status') ?></th>
+    <th><?= $sortLink('designer', 'Designer') ?></th>
     <th class="text-end"><?= $sortLink('total', 'Total') ?></th>
     <th class="text-end"><?= $sortLink('balance', 'Balance') ?></th>
     <th>Actions</th>
@@ -166,6 +167,19 @@ $sortLink = function (string $key, string $label) use ($qs, $sort, $dir): string
           <span class="badge bg-<?= e(Status::color((string)$o['status'])) ?>"><?= e(Status::label((string)$o['status'])) ?></span>
         <?php endif; ?>
       </td>
+      <?php // Who accepted the design, so the board can be read without opening anything.
+      // The name links to that person's own list of jobs. ?>
+      <td data-label="Designer" class="small">
+        <?php $pairs = array_filter(explode('|', (string)($o['designers_raw'] ?? ''))); ?>
+        <?php if (!$pairs): ?>
+          <span class="text-muted">— not taken —</span>
+        <?php else: ?>
+          <?php foreach ($pairs as $i => $pair): [$did, $dname] = array_pad(explode(':', $pair, 2), 2, ''); ?>
+            <?= $i ? ', ' : '' ?><a href="<?= e(admin_url('orders') . '?person=' . (int)$did . '&person_role=designer') ?>"
+               title="Everything <?= e($dname) ?> is designing"><?= e($dname) ?></a>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </td>
       <td data-label="Total" class="text-end"><?= e(fmt_money($o['total'])) ?></td>
       <td data-label="Balance" class="text-end <?= (float)$o['balance_amount'] > 0 ? 'text-danger fw-semibold' : 'text-success' ?>"><?= e(fmt_money($o['balance_amount'])) ?></td>
       <td data-label="Actions">
@@ -184,7 +198,7 @@ $sortLink = function (string $key, string $label) use ($qs, $sort, $dir): string
   <?php endforeach; ?>
   </tbody>
   <tfoot><tr class="fw-semibold">
-    <td colspan="5" class="text-end">All <?= (int)$total ?> matching orders</td>
+    <td colspan="6" class="text-end">All <?= (int)$total ?> matching orders</td>
     <td class="text-end"><?= e(fmt_money($sums['total'])) ?></td>
     <td class="text-end text-danger"><?= e(fmt_money($sums['balance'])) ?></td>
     <td></td>

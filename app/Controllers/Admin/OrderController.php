@@ -113,28 +113,42 @@ class OrderController extends Controller
         ];
     }
 
-    /** Which column the list is sorted by, and which way. Only these columns are allowed. */
-    private const SORTS = [
-        'customer' => 'c.name',
-        'job' => 'o.job_no',
-        'date' => 'o.order_date',
-        'due' => 'o.due_date',
-        'status' => 'o.status',
-        'total' => 'o.total',
-        'balance' => 'o.balance_amount',
-    ];
+    /**
+     * Which column the list may be sorted by, and the SQL behind each. Nothing outside this
+     * map ever reaches an ORDER BY.
+     *
+     * @return array<string,string>
+     */
+    private function sortColumns(): array
+    {
+        return [
+            'customer' => 'c.name',
+            'job' => 'o.job_no',
+            'date' => 'o.order_date',
+            'due' => 'o.due_date',
+            'status' => 'o.status',
+            // Whoever took the design work. An order with several lines sorts by the first
+            // name on it, which is what a list of names reads as anyway.
+            'designer' => '(SELECT MIN(us.name) FROM `' . tbl('order_items') . '` ois
+                            JOIN `' . tbl('users') . '` us ON us.id = ois.assigned_designer_id
+                            WHERE ois.order_id = o.id)',
+            'total' => 'o.total',
+            'balance' => 'o.balance_amount',
+        ];
+    }
 
     /** @return array{0:string,1:string,2:string} order-by SQL, sort key, direction */
     private function orderSort(): array
     {
         $sort = (string)($_GET['sort'] ?? '');
         $dir = strtolower((string)($_GET['dir'] ?? '')) === 'asc' ? 'ASC' : 'DESC';
-        if (!isset(self::SORTS[$sort])) {
+        $columns = $this->sortColumns();
+        if (!isset($columns[$sort])) {
             return ['o.created_at DESC', '', 'desc'];
         }
         // NULL due dates belong at the end whichever way it is sorted — a job with no date
         // is not the most urgent thing in the shop.
-        $col = self::SORTS[$sort];
+        $col = $columns[$sort];
         $nulls = $sort === 'due' ? $col . ' IS NULL, ' : '';
         return [$nulls . $col . ' ' . $dir . ', o.id DESC', $sort, strtolower($dir)];
     }
@@ -159,7 +173,13 @@ class OrderController extends Controller
             $params
         );
         $orders = DB::all(
-            'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone, b.name AS branch_name
+            'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone, b.name AS branch_name,
+                    -- Who took the design work, as id:name pairs so the name can link to
+                    -- that person\'s own list. Cancelled lines do not count.
+                    (SELECT GROUP_CONCAT(DISTINCT CONCAT(u2.id, \':\', u2.name) SEPARATOR \'|\')
+                     FROM `' . tbl('order_items') . '` oi2
+                     JOIN `' . tbl('users') . '` u2 ON u2.id = oi2.assigned_designer_id
+                     WHERE oi2.order_id = o.id AND oi2.status <> \'cancelled\') AS designers_raw
              FROM `' . tbl('orders') . '` o
              JOIN `' . tbl('customers') . '` c ON c.id = o.customer_id
              JOIN `' . tbl('branches') . "` b ON b.id = o.branch_id

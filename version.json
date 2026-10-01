@@ -1,10 +1,9 @@
 {
-    "version": "2.9.0",
+    "version": "2.9.1",
     "released_at": "2026-10-01",
     "changelog": [
-        "Sizes can be given in inches. Categories → Calculation has a new choice, \"inch × inch (all lines)\", alongside Qty × Rate, ft × ft and Mixed. A category's components can be set to inch × inch too.",
-        "In the item box there is now a Feet / Inches switch on every size line. The category decides which one starts ticked, and the counter can flip it for that one line — so one order can hold a banner typed as 11ft × 5ft and a sign typed as 18in × 24in.",
-        "Inches are only a way of typing the size. The rate stays per square foot, so 18in × 24in works out as 3 sq.ft and costs exactly what 1.5ft × 2ft costs. The figure is shown live in the Sq. Ft. box while you type.",
-        "The size is shown back in the unit it was given in — on the order list, on the job card and on the printed sheet: \"1 × 18×24in — 3 sq.ft\"."
+        "The Orders list has a new Designer column, between Status and Total: the name of whoever accepted the design work, so you can see who is on which job without opening anything.",
+        "A job nobody has taken yet reads \"— not taken —\" in grey. An order whose lines went to two different people shows both names.",
+        "The name is clickable — it opens that person's own list of jobs. The column sorts too, like the other headings."
     ]
 }

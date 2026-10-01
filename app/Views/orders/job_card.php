@@ -41,16 +41,10 @@ $wrapClass = $format === 'thermal' ? 'print-thermal' : 'print-a5';
         <td><strong>Due:</strong> <?= e(fmt_date($order['due_date'], true)) ?></td></tr>
     <tr><td colspan="2"><strong>Delivery:</strong> <?= e(ucfirst((string)$order['delivery_type'])) ?>
       <?= $order['delivery_address'] ? '— ' . e($order['delivery_address']) : '' ?></td></tr>
-  </table>
-  <?php // Who wrote it up, who made it, who took the money — the three names a shop is
-  // asked for when a job is queried later. ?>
-  <table style="margin-top:4px">
-    <tr>
-      <td><strong>Order By:</strong> <?= e($credits['order_by'] ?: '—') ?></td>
-      <td><strong>Prepared By:</strong> <?= e($credits['prepared_by'] ?: '____________') ?></td>
-      <td><strong>Prepaid By:</strong>
-        <?= e($credits['prepaid_by'] ?: '____________') ?><?= $credits['advance'] > 0 ? ' (' . e(fmt_money($credits['advance'])) . ')' : '' ?></td>
-    </tr>
+    <?php // Only the name of whoever wrote the job up. Who prepared it and who took the
+    // advance are kept on the order screen and in the Work Done report, but they have no
+    // business on the challan the customer is handed. ?>
+    <tr><td colspan="2"><strong>Order By:</strong> <?= e($credits['order_by'] ?: '—') ?></td></tr>
   </table>
   <table style="margin-top:6px">
     <thead><tr><th>#</th><th>Item &amp; specifications</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>

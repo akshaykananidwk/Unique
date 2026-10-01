@@ -184,11 +184,11 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
         <span class="text-muted">Designing</span>
         <strong><?= $people['designers'] ? e(implode(', ', $people['designers'])) : '— not assigned —' ?></strong>
       </div>
-      <?php // The three names the bill prints. Prepared By follows the designer unless it
-      // is set by hand — someone else may have finished the job. ?>
+      <?php // Kept for the shop's own records — the Work Done report answers "who made this
+      // job" from it. None of it goes on the challan the customer is handed. ?>
       <div class="d-flex justify-content-between border-bottom py-1 small">
-        <span class="text-muted">Prepared by <span class="text-muted">(printed on the bill)</span></span>
-        <strong><?= e($credits['prepared_by'] ?: '— blank on the print —') ?></strong>
+        <span class="text-muted">Prepared by <span class="text-muted">(office record)</span></span>
+        <strong><?= e($credits['prepared_by'] ?: '— not set —') ?></strong>
       </div>
       <div class="d-flex justify-content-between py-1 small">
         <span class="text-muted">Prepaid by</span>
@@ -207,7 +207,7 @@ $overdue = Status::isOverdue($order['due_date'], (string)$order['status']);
           <button class="btn btn-outline-primary">Set</button>
         </div>
         <div class="form-text">
-          Printed on the bill only when you set it here — it is never filled in by itself.
+          For the Work Done report, not for the printed challan. It is never filled in by itself.
           <?php if (!empty($credits['designer_hint'])): ?>
             The designer on this job is <strong><?= e($credits['designer_hint']) ?></strong>.
           <?php endif; ?>

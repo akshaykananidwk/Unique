@@ -58,7 +58,8 @@ $wrapClass = $format === 'thermal' ? 'print-thermal' : 'print-a5';
           <br><small>Status: <?= e(Status::label((string)$item['status'])) ?></small></td>
         <td><?php $n = fn($v) => rtrim(rtrim(number_format((float)$v, 2, '.', ''), '0'), '.');
             if ($item['total_sqft'] !== null && (float)$item['total_sqft'] > 0): ?>
-              <?= e($n($item['qty'])) ?> × <?= e($n($item['width_ft'])) ?>×<?= e($n($item['height_ft'])) ?>ft<br>
+              <?php $u = \App\Models\OrderCalc::unitOf((string)$item['calc_mode']); ?>
+              <?= e($n($item['qty'])) ?> × <?= e($n($item['width_ft'])) ?>×<?= e($n($item['height_ft'])) ?><?= e($u) ?><br>
               <strong><?= e($n($item['total_sqft'])) ?> sq.ft</strong>
             <?php else: ?>
               <?= e($n($item['qty'])) ?> <?= e($item['unit']) ?>

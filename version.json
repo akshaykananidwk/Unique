@@ -1,8 +1,10 @@
 {
-    "version": "2.8.1",
+    "version": "2.9.0",
     "released_at": "2026-10-01",
     "changelog": [
-        "Prepared By and Prepaid By no longer print on the job card. Only Order By stays, on its own line under Delivery — the challan the customer is handed now carries just the name of whoever wrote the job up.",
-        "Both names are still kept on the order screen and in the Work Done report, so the office can still answer who made a job and who took the advance."
+        "Sizes can be given in inches. Categories → Calculation has a new choice, \"inch × inch (all lines)\", alongside Qty × Rate, ft × ft and Mixed. A category's components can be set to inch × inch too.",
+        "In the item box there is now a Feet / Inches switch on every size line. The category decides which one starts ticked, and the counter can flip it for that one line — so one order can hold a banner typed as 11ft × 5ft and a sign typed as 18in × 24in.",
+        "Inches are only a way of typing the size. The rate stays per square foot, so 18in × 24in works out as 3 sq.ft and costs exactly what 1.5ft × 2ft costs. The figure is shown live in the Sq. Ft. box while you type.",
+        "The size is shown back in the unit it was given in — on the order list, on the job card and on the printed sheet: \"1 × 18×24in — 3 sq.ft\"."
     ]
 }

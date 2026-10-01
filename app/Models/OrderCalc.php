@@ -10,13 +10,36 @@ namespace App\Models;
  * three can never disagree. The browser mirrors these exact formulas for live feedback, but
  * whatever it shows is recomputed here on save — the server is always the authority.
  *
- * Two calculation modes, taken from the line's category:
+ * Three calculation modes, taken from the line's category but settable per line:
  *   simple : amount = qty x rate
- *   sqft   : total sq.ft = qty x width x height, amount = total sq.ft x rate
+ *   sqft   : total sq.ft = qty x width x height (feet),  amount = total sq.ft x rate
+ *   inch   : the same, with the width and height given in INCHES
+ *
+ * 'inch' is a way of typing a size, not a different way of charging for it. The customer
+ * who says "eighteen by twenty-four" is describing 1.5ft x 2ft, and the shop's rates are
+ * all per square foot, so an inch line is converted and billed by the square foot like any
+ * other. What was typed is kept as typed, so the card can show the inches back.
  */
 class OrderCalc
 {
-    public const MODES = ['simple', 'sqft'];
+    public const MODES = ['simple', 'sqft', 'inch'];
+
+    /** The modes that ask for a width and a height. */
+    public const SIZED_MODES = ['sqft', 'inch'];
+
+    public const INCHES_PER_FOOT = 12.0;
+
+    /** Does this mode measure a size, in whichever unit? */
+    public static function isSized(?string $mode): bool
+    {
+        return in_array((string)$mode, self::SIZED_MODES, true);
+    }
+
+    /** What the width and height of such a line are typed in: 'ft' or 'in'. */
+    public static function unitOf(?string $mode): string
+    {
+        return (string)$mode === 'inch' ? 'in' : 'ft';
+    }
 
     /** Round money to paise; keeps every stage of the sum consistent. */
     public static function money(float $n): float
@@ -40,9 +63,12 @@ class OrderCalc
         $w    = max(0.0, round((float)($in['width_ft'] ?? 0), 2));
         $h    = max(0.0, round((float)($in['height_ft'] ?? 0), 2));
 
-        if ($mode === 'sqft') {
-            // Quantity -> Width -> Height -> Total Sq.Ft. -> Rate -> Amount
-            $totalSqft = self::money($qty * $w * $h);
+        if (self::isSized($mode)) {
+            // Quantity -> Width -> Height -> Total Sq.Ft. -> Rate -> Amount.
+            // Inches become feet first; everything downstream is square feet.
+            $wFt = $mode === 'inch' ? $w / self::INCHES_PER_FOOT : $w;
+            $hFt = $mode === 'inch' ? $h / self::INCHES_PER_FOOT : $h;
+            $totalSqft = self::money($qty * $wFt * $hFt);
             $billed    = $totalSqft;
         } else {
             $totalSqft = null;
@@ -56,8 +82,9 @@ class OrderCalc
         return [
             'calc_mode'   => $mode,
             'qty'         => $qty,
-            'width_ft'    => $mode === 'sqft' ? $w : null,
-            'height_ft'   => $mode === 'sqft' ? $h : null,
+            // Stored as typed — feet for 'sqft', inches for 'inch'. The mode says which.
+            'width_ft'    => self::isSized($mode) ? $w : null,
+            'height_ft'   => self::isSized($mode) ? $h : null,
             'total_sqft'  => $totalSqft,
             'billed_qty'  => $billed,
             'rate'        => $rate,
@@ -98,14 +125,19 @@ class OrderCalc
         ];
     }
 
-    /** Human-readable size for a sq.ft line, e.g. "2 x 5ft x 2ft = 20 sq.ft". */
+    /**
+     * Human-readable size, in the unit it was given in:
+     *   "2 x 5ft x 2ft = 20 sq.ft"   ·   "2 x 18in x 24in = 6 sq.ft"
+     */
     public static function sizeText(array $calc): string
     {
-        if (($calc['calc_mode'] ?? '') !== 'sqft' || !$calc['total_sqft']) {
+        $mode = (string)($calc['calc_mode'] ?? '');
+        if (!self::isSized($mode) || !$calc['total_sqft']) {
             return '';
         }
+        $u = self::unitOf($mode);
         $n = static fn($v) => rtrim(rtrim(number_format((float)$v, 2, '.', ''), '0'), '.');
-        return $n($calc['qty']) . ' x ' . $n($calc['width_ft']) . 'ft x ' . $n($calc['height_ft']) . 'ft = '
-            . $n($calc['total_sqft']) . ' sq.ft';
+        return $n($calc['qty']) . ' x ' . $n($calc['width_ft']) . $u . ' x ' . $n($calc['height_ft']) . $u
+            . ' = ' . $n($calc['total_sqft']) . ' sq.ft';
     }
 }

@@ -22,7 +22,7 @@
         <div class="row g-2 mb-2">
           <div class="col-7"><label class="form-label small mb-0">Calculation</label>
             <select name="calc_mode" class="form-select form-select-sm">
-              <?php foreach (['simple' => 'Qty × Rate', 'sqft' => 'ft × ft (all lines)', 'mixed' => 'Mixed — component decides'] as $v => $l): ?>
+              <?php foreach (['simple' => 'Qty × Rate', 'sqft' => 'ft × ft (all lines)', 'inch' => 'inch × inch (all lines)', 'mixed' => 'Mixed — component decides'] as $v => $l): ?>
                 <option value="<?= $v ?>" <?= ($c['calc_mode'] ?? 'simple') === $v ? 'selected' : '' ?>><?= $l ?></option>
               <?php endforeach; ?>
             </select></div>
@@ -70,6 +70,7 @@
                   <div class="col-3"><select name="comp_mode[]" class="form-select form-select-sm">
                       <option value="simple" <?= ($comp['calc_mode'] ?? '') === 'simple' ? 'selected' : '' ?>>Qty × Rate</option>
                       <option value="sqft" <?= ($comp['calc_mode'] ?? '') === 'sqft' ? 'selected' : '' ?>>ft × ft</option>
+                      <option value="inch" <?= ($comp['calc_mode'] ?? '') === 'inch' ? 'selected' : '' ?>>inch × inch</option>
                     </select></div>
                   <div class="col-3"><input name="comp_unit[]" class="form-control form-control-sm"
                          placeholder="unit" value="<?= e($comp['unit'] ?? '') ?>"></div>

@@ -338,14 +338,19 @@
   // Mirrors App\Models\OrderCalc exactly. The server recalculates on save, so this is
   // only the live preview — but the formulas are kept identical on purpose.
   const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
+  // 'sqft' and 'inch' are the same sum — only the unit the size is typed in differs, and
+  // inches are turned into feet first. Billing is per square foot either way.
+  const isSized = m => m === 'sqft' || m === 'inch';
+  const sizeUnit = m => (m === 'inch' ? 'in' : 'ft');
   const calcLine = l => {
-    const mode = l.calc_mode === 'sqft' ? 'sqft' : 'simple';
+    const mode = isSized(l.calc_mode) ? l.calc_mode : 'simple';
     const qty = Math.max(0, round2(l.qty));
     const rate = Math.max(0, round2(l.rate));
-    const w = Math.max(0, round2(l.width_ft));
-    const h = Math.max(0, round2(l.height_ft));
-    const sqft = mode === 'sqft' ? round2(qty * w * h) : null;
-    const billed = mode === 'sqft' ? sqft : qty;
+    let w = Math.max(0, round2(l.width_ft));
+    let h = Math.max(0, round2(l.height_ft));
+    if (mode === 'inch') { w = w / 12; h = h / 12; }
+    const sqft = isSized(mode) ? round2(qty * w * h) : null;
+    const billed = isSized(mode) ? sqft : qty;
     const amount = round2(billed * rate);
     const taxPercent = Math.max(0, Number(l.tax_percent) || 0);
     return { sqft, amount, tax: round2(amount * taxPercent / 100) };
@@ -378,7 +383,8 @@
       return;
     }
     state.items.forEach((line, i) => {
-      const sq = line.calc_mode === 'sqft';
+      const sq = isSized(line.calc_mode);
+      const u = sizeUnit(line.calc_mode);
       const num = (cls, val, ph) =>
         '<input type="number" step="any" min="0" class="form-control form-control-sm ' + cls + '" data-i="' + i + '" value="' + (val == null ? '' : val) + '"' + (ph ? ' placeholder="' + ph + '"' : '') + '>';
       const tr = document.createElement('tr');
@@ -392,8 +398,10 @@
           (line.spec_text ? ' · ' + esc(line.spec_text) : '') + '</div></td>' +
         '<td data-label="Qty">' + num('kp-qty', line.qty) +
           (line.unit ? '<div class="small text-muted text-center">' + esc(line.unit) + '</div>' : '') + '</td>' +
-        '<td data-label="Width ft">' + (sq ? num('kp-w', line.width_ft) : '<span class="text-muted">—</span>') + '</td>' +
-        '<td data-label="Height ft">' + (sq ? num('kp-h', line.height_ft) : '<span class="text-muted">—</span>') + '</td>' +
+        '<td data-label="Width">' + (sq ? num('kp-w', line.width_ft) +
+          '<div class="small text-muted text-center">' + u + '</div>' : '<span class="text-muted">—</span>') + '</td>' +
+        '<td data-label="Height">' + (sq ? num('kp-h', line.height_ft) +
+          '<div class="small text-muted text-center">' + u + '</div>' : '<span class="text-muted">—</span>') + '</td>' +
         '<td data-label="Sq. Ft." class="kp-sqft fw-semibold">' + (sq ? (line.total_sqft ?? 0) : '—') + '</td>' +
         '<td data-label="Rate ₹">' + num('kp-rate', line.rate) + '</td>' +
         '<td data-label="GST %">' + num('kp-gst', line.tax_percent) + '</td>' +
@@ -421,12 +429,12 @@
       line.qty = val('kp-qty');
       line.rate = val('kp-rate');
       line.tax_percent = parseFloat(val('kp-gst')) || 0;
-      if (line.calc_mode === 'sqft') { line.width_ft = val('kp-w'); line.height_ft = val('kp-h'); }
+      if (isSized(line.calc_mode)) { line.width_ft = val('kp-w'); line.height_ft = val('kp-h'); }
       const c = calcLine(line);
       line.total_sqft = c.sqft; line.amount = c.amount; line.tax_amount = c.tax;
       const tr = field.closest('tr');
       const sqCell = tr.querySelector('.kp-sqft');
-      if (sqCell && line.calc_mode === 'sqft') sqCell.textContent = c.sqft;
+      if (sqCell && isSized(line.calc_mode)) sqCell.textContent = c.sqft;
       const amtCell = tr.querySelector('.kp-amt');
       if (amtCell) amtCell.childNodes[0].nodeValue = money(c.amount);
       const gstCell = tr.querySelector('.kp-gstamt');
@@ -476,12 +484,40 @@
   // A line being re-opened remembers how it was worked out, even when its category has
   // since been changed or the component it was typed against is gone.
   let modeOverride = null;
-  const activeMode = () => {
+
+  /** What the category or component says this line is: simple, ft x ft, or inch x inch. */
+  const baseMode = () => {
     if (currentComponent) return currentComponent.calc_mode;
     if (modeOverride) return modeOverride;
     if (!currentCategory) return 'simple';
-    return currentCategory.calc_mode === 'sqft' ? 'sqft' : 'simple';
+    return isSized(currentCategory.calc_mode) ? currentCategory.calc_mode : 'simple';
   };
+
+  // The ft / inch switch. The category decides which one starts ticked; the counter can
+  // flip it for this one line, because the same customer gives feet one day and inches
+  // the next. A line with no size at all ignores it.
+  let sizeUnitPicked = null;
+  const sizeUnitRadios = () => Array.from(document.querySelectorAll('input[name="modalSizeUnit"]'));
+
+  const activeMode = () => {
+    const base = baseMode();
+    return isSized(base) && sizeUnitPicked ? sizeUnitPicked : base;
+  };
+
+  /** Show the size boxes when the line has a size, labelled in the unit that is ticked. */
+  function syncSizeUnit() {
+    const mode = activeMode();
+    showSqftFields(isSized(mode));
+    sizeUnitRadios().forEach(r => { r.checked = r.value === mode; });
+    document.querySelectorAll('.kp-size-unit').forEach(n => { n.textContent = sizeUnit(mode); });
+  }
+
+  sizeUnitRadios().forEach(radio => radio.addEventListener('change', () => {
+    if (!radio.checked) return;
+    sizeUnitPicked = radio.value;
+    syncSizeUnit();
+    modalCalc();
+  }));
 
   function paintComponents(components) {
     if (!componentSelect) return;
@@ -489,7 +525,9 @@
     (components || []).forEach((c, i) => {
       const o = document.createElement('option');
       o.value = String(i);
-      o.textContent = c.name + (c.calc_mode === 'sqft' ? '  (ft × ft)' : '  (' + c.unit + ')');
+      o.textContent = c.name + (isSized(c.calc_mode)
+        ? (c.calc_mode === 'inch' ? '  (in × in)' : '  (ft × ft)')
+        : '  (' + c.unit + ')');
       componentSelect.appendChild(o);
     });
     componentSelect.closest('.kp-component-wrap').style.display = (components && components.length) ? '' : 'none';
@@ -497,7 +535,8 @@
 
   if (componentSelect) componentSelect.addEventListener('change', () => {
     const list = (currentCategory && currentCategory._components) || [];
-    modeOverride = null;   // he picked one himself — that decides now
+    modeOverride = null;     // he picked one himself — that decides now
+    sizeUnitPicked = null;   // and it brings its own unit with it
     currentComponent = componentSelect.value === '' ? null : list[parseInt(componentSelect.value, 10)];
     if (currentComponent) {
       nameInput.value = currentComponent.name;
@@ -505,7 +544,7 @@
     } else if (unitInput) {
       unitInput.value = '';
     }
-    showSqftFields(activeMode() === 'sqft');
+    syncSizeUnit();
     modalCalc();
   });
 
@@ -529,6 +568,7 @@
    */
   async function loadCategory(catId, prefillGst) {
     modeOverride = null;
+    sizeUnitPicked = null;
     if (!catId) { optionsBox.innerHTML = ''; currentCategory = null; currentComponent = null; showSqftFields(false); return false; }
     optionsBox.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm"></div></div>';
     const data = await kpFetch(window.KP.adminUrl + '/api/category-options/' + catId);
@@ -541,7 +581,7 @@
     // Prefill GST from the category (which already falls back to the shop default) — but not
     // when re-opening a line, whose own GST is put back afterwards.
     if (prefillGst !== false && el('modalGst')) el('modalGst').value = currentCategory.tax_percent || 0;
-    showSqftFields(activeMode() === 'sqft');
+    syncSizeUnit();
     const dw = el('modalDesignerWrap');
     if (dw) dw.style.display = currentCategory.requires_design == 1 ? '' : 'none';
     modalCalc();
@@ -599,8 +639,8 @@
       unit: unitInput ? (unitInput.value || '').trim() : '',
       item_name: name,
       qty: round2(el('modalQty').value) || 0,
-      width_ft: mode === 'sqft' ? round2(el('modalWidth').value) : null,
-      height_ft: mode === 'sqft' ? round2(el('modalHeight').value) : null,
+      width_ft: isSized(mode) ? round2(el('modalWidth').value) : null,
+      height_ft: isSized(mode) ? round2(el('modalHeight').value) : null,
       rate: round2(el('modalRate').value) || 0,
       tax_percent: el('modalGst') ? (parseFloat(el('modalGst').value) || 0) : (currentCategory.tax_percent || 0),
       spec: spec,
@@ -691,13 +731,16 @@
     put('modalDesigner', line.designer_id ? String(line.designer_id) : '');
     put('modalInstructions', line.special_instructions || '');
     modeOverride = line.calc_mode || null;
-    showSqftFields(activeMode() === 'sqft');
+    sizeUnitPicked = isSized(line.calc_mode) ? line.calc_mode : null;
+    syncSizeUnit();
     modalCalc();
   }
 
   if (itemModalEl) itemModalEl.addEventListener('hidden.bs.modal', () => {
     editIndex = null;
     modeOverride = null;
+    sizeUnitPicked = null;
+    syncSizeUnit();   // put the ft/inch switch back before the box is opened again
     setModalMode(false);
     if (nameInput) nameInput.value = '';
     ['modalQty'].forEach(id => { if (el(id)) el(id).value = 1; });

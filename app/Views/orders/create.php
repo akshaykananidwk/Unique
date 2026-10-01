@@ -103,8 +103,8 @@
         <thead><tr>
           <th style="min-width:190px">Item</th>
           <th style="width:90px">Qty</th>
-          <th style="width:90px">Width ft</th>
-          <th style="width:90px">Height ft</th>
+          <th style="width:90px">Width</th>
+          <th style="width:90px">Height</th>
           <th style="width:95px">Sq. Ft.</th>
           <th style="width:105px">Rate ₹</th>
           <th style="width:85px">GST %</th>
@@ -217,12 +217,25 @@
             <input id="modalUnit" class="form-control" placeholder="pcs / sqft / ft / mtr / job"></div>
         </div>
         <div id="modalOptions" class="border-top pt-2"></div>
+        <?php // Feet or inches — the same shop takes both, and the customer decides which
+        // he says. Only how the size is TYPED changes; the rate stays per sq.ft either way. ?>
+        <div class="row g-2 pt-2 kp-sqft-only">
+          <div class="col-12">
+            <label class="form-label mb-1">Size given in</label>
+            <div class="btn-group btn-group-sm d-block" role="group" aria-label="Size unit">
+              <input type="radio" class="btn-check" name="modalSizeUnit" id="sizeUnitFtC" value="sqft" checked>
+              <label class="btn btn-outline-secondary" for="sizeUnitFtC">Feet &nbsp;ft × ft</label>
+              <input type="radio" class="btn-check" name="modalSizeUnit" id="sizeUnitInC" value="inch">
+              <label class="btn btn-outline-secondary" for="sizeUnitInC">Inches &nbsp;in × in</label>
+            </div>
+          </div>
+        </div>
         <div class="row g-2 border-top pt-3 align-items-end">
           <div class="col-4 col-md-2"><label class="form-label">Qty *</label>
             <input type="number" step="any" min="0" id="modalQty" class="form-control" value="1"></div>
-          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Width ft</label>
+          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Width <span class="kp-size-unit">ft</span></label>
             <input type="number" step="any" min="0" id="modalWidth" class="form-control" value="0"></div>
-          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Height ft</label>
+          <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Height <span class="kp-size-unit">ft</span></label>
             <input type="number" step="any" min="0" id="modalHeight" class="form-control" value="0"></div>
           <div class="col-4 col-md-2 kp-sqft-only"><label class="form-label">Sq. Ft.</label>
             <input id="modalSqft" class="form-control-plaintext fw-semibold ps-2" readonly value="0"></div>

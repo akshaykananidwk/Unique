@@ -77,7 +77,7 @@ class CatalogController extends Controller
             'is_active' => !empty($_POST['is_active']) ? 1 : 0,
             'show_on_public' => !empty($_POST['show_on_public']) ? 1 : 0,
             // How this category's lines are worked out, and what GST they carry.
-            'calc_mode' => in_array($_POST['calc_mode'] ?? '', ['simple', 'sqft', 'mixed'], true)
+            'calc_mode' => in_array($_POST['calc_mode'] ?? '', ['simple', 'sqft', 'inch', 'mixed'], true)
                 ? $_POST['calc_mode'] : ($category['calc_mode'] ?? 'simple'),
             'tax_percent' => max(0, min(100, (float)($_POST['tax_percent'] ?? 0))),
             'requires_design' => !empty($_POST['requires_design']) ? 1 : 0,
@@ -123,7 +123,7 @@ class CatalogController extends Controller
                 DB::insert('category_components', [
                     'category_id' => (int)$id,
                     'name' => mb_substr($name, 0, 120),
-                    'calc_mode' => (($modes[$i] ?? 'simple') === 'sqft') ? 'sqft' : 'simple',
+                    'calc_mode' => in_array($modes[$i] ?? '', ['sqft', 'inch'], true) ? $modes[$i] : 'simple',
                     'unit' => mb_substr(trim((string)($units[$i] ?? 'pcs')) ?: 'pcs', 0, 20),
                     'sort_order' => ++$sort,
                     'is_active' => 1,
@@ -132,7 +132,7 @@ class CatalogController extends Controller
         });
         // A category holding any foot x foot component is a mixed one.
         $hasSqft = (int)DB::val(
-            "SELECT COUNT(*) FROM `" . tbl('category_components') . "` WHERE category_id = ? AND calc_mode = 'sqft'",
+            "SELECT COUNT(*) FROM `" . tbl('category_components') . "` WHERE category_id = ? AND calc_mode IN ('sqft','inch')",
             [(int)$id]
         ) > 0;
         $count = (int)DB::val('SELECT COUNT(*) FROM `' . tbl('category_components') . '` WHERE category_id = ?', [(int)$id]);

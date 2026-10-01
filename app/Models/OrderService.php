@@ -390,7 +390,7 @@ class OrderService
             'width_ft' => $calc['width_ft'],
             'height_ft' => $calc['height_ft'],
             'total_sqft' => $calc['total_sqft'],
-            'unit' => $unit !== '' ? $unit : ($calc['calc_mode'] === 'sqft' ? 'sqft' : 'pcs'),
+            'unit' => $unit !== '' ? $unit : (OrderCalc::isSized($calc['calc_mode']) ? 'sqft' : 'pcs'),
             'rate' => $calc['rate'],
             'rate_overridden' => 0,
             'spec_json' => json_encode($spec, JSON_UNESCAPED_UNICODE),

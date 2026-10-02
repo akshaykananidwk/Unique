@@ -100,7 +100,7 @@ class OrderService
 
             // 2. Job number + tracking token. A number typed by hand wins (e.g. to match a
             //    GST bill); otherwise take the next one from the branch sequence.
-            $jobNo = trim((string)($payload['job_no'] ?? ''));
+            $jobNo = (string)fit($payload['job_no'] ?? '', 40);
             if ($jobNo !== '') {
                 if (DB::val('SELECT id FROM `' . tbl('orders') . '` WHERE job_no = ?', [$jobNo])) {
                     throw new \RuntimeException('Job number "' . $jobNo . '" is already used by another order.');
@@ -325,7 +325,9 @@ class OrderService
     {
         $categoryId = (int)($line['category_id'] ?? 0);
         $name = trim((string)($line['item_name'] ?? ''));
-        $unit = trim((string)($line['unit'] ?? ''));
+        // A unit is a word, not a sentence — anything longer is trimmed rather than
+        // thrown back at the counter with a driver error.
+        $unit = (string)fit($line['unit'] ?? '', 40);
         $catalogItemId = !empty($line['item_id']) ? (int)$line['item_id'] : null;
         $turnaround = 24;
 
@@ -571,13 +573,13 @@ class OrderService
             throw new \RuntimeException('Customer name is required for a new customer.');
         }
         $customerId = DB::insert('customers', [
-            'name' => $name,
+            'name' => fit($name, 120),
             'phone' => $phone,
             'whatsapp' => local_phone($c['whatsapp'] ?? '') ?: $phone,
-            'email' => $c['email'] ?? null,
-            'address' => $c['address'] ?? null,
-            'pincode' => $c['pincode'] ?? null,
-            'gstin' => $c['gstin'] ?? null,
+            'email' => fit($c['email'] ?? null, 150),
+            'address' => fit($c['address'] ?? null, 255),
+            'pincode' => fit($c['pincode'] ?? null, 10),
+            'gstin' => fit($c['gstin'] ?? null, 20),
             'source' => $source === 'public' ? 'public' : 'counter',
             'created_by' => $userId,
             'branch_id' => $branchId,
@@ -605,9 +607,10 @@ class OrderService
         // name: a different name typed against a known number means a second firm on that
         // number, not a rename, and renaming would quietly move every past order with it.
         $updates = [];
-        foreach (['address', 'gstin', 'email'] as $field) {
+        $widths = ['address' => 255, 'gstin' => 20, 'email' => 150];
+        foreach ($widths as $field => $max) {
             if (!empty($c[$field]) && trim((string)$existing[$field]) === '') {
-                $updates[$field] = trim((string)$c[$field]);
+                $updates[$field] = fit($c[$field], $max);
             }
         }
         if ($updates) {

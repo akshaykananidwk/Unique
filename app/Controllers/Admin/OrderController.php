@@ -415,7 +415,8 @@ class OrderController extends Controller
                 'notify_customer' => ($_POST['notify_customer'] ?? '1') !== '0',
             ]);
         } catch (\Throwable $e) {
-            $this->backToCreate('Could not save the order: ' . $e->getMessage());
+            // The counter cannot act on a driver message; say which box is at fault instead.
+            $this->backToCreate(friendly_db_error($e));
         }
 
         $this->storeReferenceFiles((int)$result['order_id']);
@@ -679,7 +680,7 @@ class OrderController extends Controller
         try {
             OrderService::syncOrderItems((int)$id, $itemsRaw, (int)$this->user['id']);
         } catch (\Throwable $e) {
-            flash('danger', 'Could not update the items: ' . $e->getMessage());
+            flash('danger', e(friendly_db_error($e)));
             keep_old($_POST);
             redirect(admin_url('orders/' . $id . '/edit'));
         }

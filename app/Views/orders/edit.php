@@ -10,7 +10,7 @@
   <!-- Order-level fields -->
   <div class="card mb-3"><div class="card-body row g-2">
     <div class="col-md-3"><label class="form-label">Job No</label>
-      <input name="job_no" class="form-control" value="<?= e($order['job_no']) ?>" required>
+      <input name="job_no" class="form-control" maxlength="40" value="<?= e($order['job_no']) ?>" required>
       <div class="form-text">Editable any time — must stay unique.</div></div>
     <div class="col-md-3"><label class="form-label">Order Date</label>
       <input type="datetime-local" name="order_date" class="form-control"
@@ -167,7 +167,7 @@
             <select id="modalComponent" class="form-select"></select>
             <div class="form-text">Pick a ready component, or choose Custom and type any name.</div></div>
           <div class="col-md-5"><label class="form-label">Unit</label>
-            <input id="modalUnit" class="form-control" placeholder="pcs / sqft / ft / mtr / job"></div>
+            <input id="modalUnit" class="form-control" maxlength="40" placeholder="pcs / sqft / ft / nag"></div>
         </div>
         <div id="modalOptions" class="border-top pt-2"></div>
         <?php // Feet or inches — the same shop takes both, and the customer decides which

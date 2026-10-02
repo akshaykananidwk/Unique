@@ -1,9 +1,10 @@
 {
-    "version": "2.9.2",
-    "released_at": "2026-10-01",
+    "version": "2.9.3",
+    "released_at": "2026-10-02",
     "changelog": [
-        "A designer can be taken off a job again. On the order screen the designer box now offers a blank choice — \"— Take it off, back to the board —\" — and picking it puts the job back on the shared board for somebody else. The browser used to refuse with \"Please select an item in the list.\"",
-        "When nobody holds the job the same box reads \"— Nobody yet —\", so the state is clear before you touch it.",
-        "Taking a job off clears the designer and the accepted-at stamp, so it stops counting against that person's work. Picking blank when nobody held it just says so instead of showing an error."
+        "Fixed: a written-up order was refused with \"SQLSTATE[22001]: Data too long for column 'unit'\" when the Unit box held more than 20 letters — which a Gujarati unit like \"ચોરસ ફૂટ પ્રમાણે\" easily does. The column now holds 40, and anything longer is trimmed instead of throwing the whole order away.",
+        "The same guard now covers every box that has a fixed width: job number, customer name, address, GSTIN, email, pincode, contact name, designation and notes. Too much text is shortened on the way in; it can no longer stop a save.",
+        "A database error is no longer shown to the counter as a driver message. It now reads \"The 'Unit' box has more text than it can hold — shorten it and save again\", naming the box at fault.",
+        "The Unit and Job No boxes stop at 40 letters in the browser too, so the limit shows while typing rather than after pressing Save."
     ]
 }

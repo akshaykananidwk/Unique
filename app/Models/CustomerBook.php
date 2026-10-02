@@ -117,13 +117,13 @@ class CustomerBook
         );
         return DB::insert('customer_contacts', [
             'customer_id' => $customerId,
-            'name' => $name,
+            'name' => fit($name, 120),
             'phone' => $phone,
             'whatsapp' => local_phone((string)($data['whatsapp'] ?? '')) ?: $phone,
-            'email' => ($data['email'] ?? '') ?: null,
-            'designation' => ($data['designation'] ?? '') ?: null,
+            'email' => fit($data['email'] ?? null, 150),
+            'designation' => fit($data['designation'] ?? null, 80),
             'is_primary' => $hasPrimary ? 0 : 1,
-            'notes' => ($data['notes'] ?? '') ?: null,
+            'notes' => fit($data['notes'] ?? null, 255),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -152,9 +152,9 @@ class CustomerBook
                 $update['phone'] = $phone;
             }
         }
-        foreach (['name', 'designation', 'email', 'notes'] as $field) {
+        foreach (['name' => 120, 'designation' => 80, 'email' => 150, 'notes' => 255] as $field => $max) {
             if (array_key_exists($field, $data)) {
-                $update[$field] = trim((string)$data[$field]) ?: null;
+                $update[$field] = fit($data[$field], $max);
             }
         }
         if (array_key_exists('whatsapp', $data)) {

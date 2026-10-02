@@ -283,3 +283,57 @@ function start_session(): void
     session_name('kp_session');
     session_start();
 }
+
+/**
+ * Trim a value to what its database column can actually hold.
+ *
+ * A column has a width; a person typing has none. Nobody should lose a written-up order
+ * because a word ran two letters past a limit they cannot see, and nobody should be shown
+ * "SQLSTATE[22001]" for it either. Length is counted in CHARACTERS, not bytes, because the
+ * columns are utf8mb4 and the shop writes in Gujarati.
+ *
+ * @return string|null the fitted value, or null when nothing was typed
+ */
+function fit(mixed $value, int $max): ?string
+{
+    $s = trim((string)($value ?? ''));
+    if ($s === '') {
+        return null;
+    }
+    return mb_substr($s, 0, $max);
+}
+
+/**
+ * Turn a database complaint into a sentence the shop can act on.
+ *
+ * The counter staff cannot do anything with a driver error, but they can shorten a word if
+ * they are told which box is too long.
+ */
+function friendly_db_error(\Throwable $e): string
+{
+    $msg = $e->getMessage();
+    if (preg_match("/Data too long for column '([^']+)'/", $msg, $m)) {
+        $labels = [
+            'unit' => 'Unit',
+            'job_no' => 'Job No',
+            'name' => 'Name',
+            'address' => 'Address',
+            'city' => 'City',
+            'gstin' => 'GSTIN',
+            'email' => 'Email',
+            'designation' => 'Designation',
+            'phone' => 'Mobile number',
+            'item_name_snapshot' => 'Item name',
+            'delivery_address' => 'Delivery address',
+        ];
+        $field = $labels[$m[1]] ?? $m[1];
+        return 'The "' . $field . '" box has more text than it can hold — shorten it and save again.';
+    }
+    if (str_contains($msg, 'Duplicate entry')) {
+        return 'Something with that number already exists. Change it and save again.';
+    }
+    if (str_contains($msg, 'SQLSTATE')) {
+        return 'The order could not be saved. Nothing was lost — check the figures and try again.';
+    }
+    return $msg;
+}
